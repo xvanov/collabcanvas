@@ -20,7 +20,7 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
   const isDragging = useRef(false);
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
-  const fpsInterval = useRef<number | undefined>(undefined);
+  const rafId = useRef<number | undefined>(undefined);
 
   // Update dimensions on mount and resize
   useEffect(() => {
@@ -41,11 +41,11 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
     };
   }, []);
 
-  // FPS counter
+  // FPS counter using requestAnimationFrame for accurate rendering frame tracking
   useEffect(() => {
     if (!onFpsUpdate) return;
 
-    const calculateFPS = () => {
+    const measureFPS = () => {
       const now = performance.now();
       frameCount.current++;
       
@@ -59,14 +59,17 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
         frameCount.current = 0;
         lastFrameTime.current = now;
       }
+
+      // Continue measuring on next frame
+      rafId.current = requestAnimationFrame(measureFPS);
     };
 
-    // Run FPS calculation at 60Hz
-    fpsInterval.current = setInterval(calculateFPS, 16);
+    // Start measuring
+    rafId.current = requestAnimationFrame(measureFPS);
 
     return () => {
-      if (fpsInterval.current) {
-        clearInterval(fpsInterval.current);
+      if (rafId.current) {
+        cancelAnimationFrame(rafId.current);
       }
     };
   }, [onFpsUpdate]);
@@ -110,9 +113,6 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
     if (onZoomChange) {
       onZoomChange(clampedScale);
     }
-    
-    // Increment frame count for FPS tracking
-    frameCount.current++;
   };
 
   // Handle drag start
@@ -123,11 +123,6 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
   // Handle drag end
   const handleDragEnd = () => {
     isDragging.current = false;
-  };
-
-  // Handle drag move (for FPS tracking)
-  const handleDragMove = () => {
-    frameCount.current++;
   };
 
   return (
@@ -149,7 +144,6 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
           onWheel={handleWheel}
           onDragStart={handleDragStart}
           onDragEnd={handleDragEnd}
-          onDragMove={handleDragMove}
         >
           <Layer>
             {/* Grid pattern for visual reference - expands with zoom */}
