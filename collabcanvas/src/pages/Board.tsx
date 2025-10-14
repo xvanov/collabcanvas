@@ -4,6 +4,8 @@ import Canvas from '../components/Canvas';
 import { useCanvasStore } from '../store/canvasStore';
 import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
+import { useLocks } from '../hooks/useLocks';
+import { useOffline } from '../hooks/useOffline';
 
 /**
  * Board page (main canvas view)
@@ -15,13 +17,26 @@ export function Board() {
   const [zoom, setZoom] = useState<number>(1);
   const { user } = useAuth();
   const setCurrentUser = useCanvasStore((state) => state.setCurrentUser);
-  const { createShape } = useShapes();
+  const { createShape, reloadShapesFromFirestore } = useShapes();
+  const { clearStaleLocks } = useLocks();
+  const { isOnline } = useOffline();
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
 
   // Update current user in store when user changes
   useEffect(() => {
     setCurrentUser(user);
   }, [user, setCurrentUser]);
+
+  // Handle reconnection and reload shapes
+  useEffect(() => {
+    if (user && isOnline) {
+      // Reload shapes from Firestore on reconnection
+      reloadShapesFromFirestore();
+      
+      // Clear stale locks on reconnection
+      clearStaleLocks();
+    }
+  }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks]);
 
   const handleCreateShape = () => {
     if (!user) return;

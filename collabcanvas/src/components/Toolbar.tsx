@@ -3,6 +3,7 @@ import FPSCounter from './FPSCounter';
 import ZoomIndicator from './ZoomIndicator';
 import { useCanvasStore } from '../store/canvasStore';
 import { usePresence } from '../hooks/usePresence';
+import { useOffline } from '../hooks/useOffline';
 
 interface ToolbarProps {
   children?: React.ReactNode;
@@ -19,6 +20,13 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
   const { activeUsersCount } = usePresence();
+  const { 
+    connectionStatus, 
+    connectionStatusColor, 
+    hasQueuedUpdates, 
+    queuedUpdatesCount,
+    retryQueuedUpdates 
+  } = useOffline();
 
   const handleCreateRectangle = () => {
     if (!currentUser) return;
@@ -72,6 +80,23 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
         {children}
       </div>
       <div className="flex items-center gap-6">
+        {/* Connection Status */}
+        <div className="flex items-center gap-2 text-sm">
+          <div className={`h-2 w-2 rounded-full ${connectionStatusColor.replace('text-', 'bg-')}`}></div>
+          <span className={`font-medium ${connectionStatusColor}`}>
+            {connectionStatus}
+          </span>
+          {hasQueuedUpdates && (
+            <button
+              onClick={retryQueuedUpdates}
+              className="ml-2 rounded bg-blue-100 px-2 py-1 text-xs text-blue-700 hover:bg-blue-200"
+              title={`Retry ${queuedUpdatesCount} queued updates`}
+            >
+              Retry ({queuedUpdatesCount})
+            </button>
+          )}
+        </div>
+
         {/* Active Users Count */}
         <div className="flex items-center gap-2 text-sm text-gray-600">
           <div className="flex items-center gap-1">

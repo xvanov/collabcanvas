@@ -2,9 +2,9 @@ import { initializeApp } from 'firebase/app';
 import type { FirebaseApp } from 'firebase/app';
 import { getAuth, connectAuthEmulator } from 'firebase/auth';
 import type { Auth } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import { getFirestore, connectFirestoreEmulator, enableNetwork, disableNetwork } from 'firebase/firestore';
 import type { Firestore } from 'firebase/firestore';
-import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
+import { getDatabase, connectDatabaseEmulator, goOnline, goOffline } from 'firebase/database';
 import type { Database } from 'firebase/database';
 
 // Firebase configuration from environment variables
@@ -24,6 +24,12 @@ export const app: FirebaseApp = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
 export const firestore: Firestore = getFirestore(app);
 export const rtdb: Database = getDatabase(app);
+
+// Export network control functions for offline handling
+export const enableFirestoreNetwork = () => enableNetwork(firestore);
+export const disableFirestoreNetwork = () => disableNetwork(firestore);
+export const enableRTDBNetwork = () => goOnline(rtdb);
+export const disableRTDBNetwork = () => goOffline(rtdb);
 
 // Connect to emulators if in development mode
 const useEmulators = import.meta.env.VITE_USE_FIREBASE_EMULATORS === 'true';

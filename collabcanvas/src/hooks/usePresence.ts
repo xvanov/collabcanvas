@@ -8,6 +8,7 @@ import {
   subscribeToPresence,
   type PresenceData 
 } from '../services/rtdb';
+import { offlineManager } from '../services/offline';
 import { getUserColor } from '../utils/colors';
 
 /**
@@ -24,11 +25,20 @@ export const usePresence = () => {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isPresenceSetRef = useRef(false);
 
-  // Throttled cursor update function (reduced frequency for better performance)
+  // Throttled cursor update function with offline handling
   const throttledUpdateCursor = useCallback(
     (x: number, y: number) => {
       if (!user) return;
-      updateCursor(user.uid, x, y).catch(console.error);
+      
+      updateCursor(user.uid, x, y).catch((error) => {
+        console.error('Failed to update cursor:', error);
+        
+        // Queue for offline sync
+        offlineManager.queuePresenceUpdate('updateCursor', user.uid, {
+          cursor: { x, y },
+        });
+        console.log('📝 Queued cursor update for offline sync');
+      });
     },
     [user]
   );
@@ -45,6 +55,14 @@ export const usePresence = () => {
         console.log('Presence set for user:', user.name);
       } catch (error) {
         console.error('Failed to set presence:', error);
+        
+        // Queue for offline sync
+        const userColor = getUserColor(user.uid);
+        offlineManager.queuePresenceUpdate('setPresence', user.uid, {
+          name: user.name,
+          color: userColor,
+        });
+        console.log('📝 Queued presence setup for offline sync');
       }
     };
 

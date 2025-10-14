@@ -181,7 +181,7 @@
 
 ---
 
-## [ ] PR #9 — Offline Handling & Resync
+## [x] PR #9 — Offline Handling & Resync
 
 **Work**
 
