@@ -106,7 +106,7 @@
 
 ---
 
-## [ ] PR #6 — Presence & Cursors (RTDB)
+## [x] PR #6 — Presence & Cursors (RTDB)
 
 **Work**
 
