@@ -2,6 +2,7 @@ import { AuthButton } from './AuthButton';
 import FPSCounter from './FPSCounter';
 import ZoomIndicator from './ZoomIndicator';
 import { useCanvasStore } from '../store/canvasStore';
+import { usePresence } from '../hooks/usePresence';
 
 interface ToolbarProps {
   children?: React.ReactNode;
@@ -17,6 +18,7 @@ interface ToolbarProps {
 export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
+  const { activeUsersCount } = usePresence();
 
   const handleCreateRectangle = () => {
     if (!currentUser) return;
@@ -70,6 +72,15 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
         {children}
       </div>
       <div className="flex items-center gap-6">
+        {/* Active Users Count */}
+        <div className="flex items-center gap-2 text-sm text-gray-600">
+          <div className="flex items-center gap-1">
+            <div className="h-2 w-2 rounded-full bg-green-500"></div>
+            <span className="font-medium">{activeUsersCount + (currentUser ? 1 : 0)}</span>
+            <span className="text-gray-500">active</span>
+          </div>
+        </div>
+        
         {zoom !== undefined && <ZoomIndicator scale={zoom} />}
         {fps !== undefined && <FPSCounter fps={fps} />}
         <AuthButton />
