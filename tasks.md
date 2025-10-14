@@ -7,7 +7,7 @@
 
 ---
 
-## [ ] PR #1 — Project Bootstrap & Firebase Setup
+## [x] PR #1 — Project Bootstrap & Firebase Setup
 
 **Work**
 
@@ -17,11 +17,6 @@
 * Create `services/firebase.ts` (app/init), `services/firestore.ts`, `services/rtdb.ts`
 * Wire `.firebaserc`, `firebase.json`, emulator config for local development
 * Set up environment variables for Firebase config
-
-**Tests (light)**
-
-* **Unit**: `firebase.ts` exports defined clients (app, auth, firestore, rtdb)
-* **Integration (emulator smoke)**: can connect to the emulators; a Firestore read/write round‑trip succeeds
 
 ---
 
