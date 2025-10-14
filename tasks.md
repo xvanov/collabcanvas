@@ -156,7 +156,7 @@
 
 ---
 
-## [ ] PR #8 — Security Rules (Firestore + RTDB)
+## [x] PR #8 — Security Rules (Firestore + RTDB)
 
 **Work**
 
