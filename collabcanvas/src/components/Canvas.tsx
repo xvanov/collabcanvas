@@ -12,7 +12,6 @@ interface CanvasProps {
 export interface CanvasHandle {
   getViewportCenter: () => { x: number; y: number };
 }
-
 /**
  * Main canvas component with Konva integration
  * Supports pan (click and drag) and zoom (mouse wheel) at 60 FPS
@@ -35,7 +34,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
-
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -192,7 +190,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       return { x: centerX, y: centerY };
     },
   }));
-
   return (
     <div
       ref={containerRef}
