@@ -35,6 +35,13 @@ vi.mock('firebase/app', () => ({
 vi.mock('firebase/firestore', () => ({
   getFirestore: vi.fn(() => ({})),
   connectFirestoreEmulator: vi.fn(),
+  collection: vi.fn(() => ({})),
+  doc: vi.fn(() => ({})),
+  setDoc: vi.fn(() => Promise.resolve()),
+  updateDoc: vi.fn(() => Promise.resolve()),
+  onSnapshot: vi.fn(() => vi.fn()),
+  query: vi.fn(() => ({})),
+  serverTimestamp: vi.fn(() => Date.now()),
 }));
 
 // Mock Firebase RTDB module

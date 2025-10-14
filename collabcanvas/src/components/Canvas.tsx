@@ -3,6 +3,7 @@ import { Stage, Layer, Line } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from './Shape';
 import { useCanvasStore } from '../store/canvasStore';
+import { useShapes } from '../hooks/useShapes';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
@@ -28,7 +29,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const rafId = useRef<number | undefined>(undefined);
 
   // Store state
-  const shapes = useCanvasStore((state) => state.shapes);
+  const { shapes } = useShapes();
   const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
   const locks = useCanvasStore((state) => state.locks);
   const selectShape = useCanvasStore((state) => state.selectShape);
@@ -262,8 +263,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               );
             })()}
             
-            {/* Render shapes from store */}
-            {Array.from(shapes.values()).map((shape) => {
+            {/* Render shapes from Firestore sync */}
+            {shapes.map((shape) => {
               const lock = locks.get(shape.id);
               const isLocked = lock !== undefined && lock.userId !== currentUser?.uid;
               const isSelected = selectedShapeId === shape.id;
