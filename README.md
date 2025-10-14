@@ -2,7 +2,9 @@
 
 > **Real-time collaborative canvas** - A Figma-style collaborative drawing tool built with React, Firebase, and Konva.js
 
-[![Deploy Status](https://img.shields.io/badge/deployed-Firebase%20Hosting-blue)](https://collabcanvas.web.app)
+## 🌐 [Live Demo](https://collabcanvas-dev.web.app/)
+
+[![Deploy Status](https://img.shields.io/badge/deployed-Firebase%20Hosting-blue)](https://collabcanvas-dev.web.app/)
 [![Tech Stack](https://img.shields.io/badge/stack-React%20%7C%20Firebase%20%7C%20Konva-green)](https://github.com/gauntletai/collabcanvas)
 [![Performance](https://img.shields.io/badge/performance-60%20FPS%20%7C%20%3C100ms%20sync-orange)](https://github.com/gauntletai/collabcanvas)
 
@@ -274,4 +276,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 **Built with ❤️ for real-time collaboration**
 
-[Live Demo](https://collabcanvas.web.app) • [Documentation](./architecture.md) • [Issues](https://github.com/gauntletai/collabcanvas/issues)
+[Live Demo](https://collabcanvas-dev.web.app/) • [Documentation](./architecture.md) • [Issues](https://github.com/gauntletai/collabcanvas/issues)
