@@ -6,6 +6,7 @@
 import { Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCanvasStore } from '../store/canvasStore';
+import { useShapes } from '../hooks/useShapes';
 
 interface ShapeProps {
   id: string;
@@ -35,17 +36,16 @@ export function Shape({
   onSelect,
   onDragEnd,
 }: ShapeProps) {
-  const updateShapePosition = useCanvasStore((state) => state.updateShapePosition);
+  const { updateShapePosition } = useShapes();
   const currentUser = useCanvasStore((state) => state.currentUser);
 
   const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const pos = node.position();
     
-    // Update store with new position (no bounds constraint for now - shapes can move freely)
-    // Bounds will be enforced when we add viewport limits in future PRs
+    // Update position with Firestore sync (throttled and optimistic)
     if (currentUser) {
-      updateShapePosition(id, pos.x, pos.y, currentUser.uid);
+      updateShapePosition(id, pos.x, pos.y);
     }
     
     onDragEnd(pos.x, pos.y);
