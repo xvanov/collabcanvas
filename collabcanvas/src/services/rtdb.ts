@@ -115,6 +115,8 @@ export const acquireLock = async (
   };
 
   try {
+    // Use set() to overwrite any existing lock
+    // This allows the same user to re-acquire their own lock
     await set(lockRef, lockData);
     
     // Auto-cleanup on disconnect

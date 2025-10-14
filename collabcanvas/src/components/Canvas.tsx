@@ -4,9 +4,11 @@ import Konva from 'konva';
 import { Shape } from './Shape';
 import { Cursor } from './Cursor';
 import { CursorOverlay } from './CursorOverlay';
+import { LockOverlay } from './LockOverlay';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
+import { useLocks } from '../hooks/useLocks';
 import { throttle } from '../utils/throttle';
 
 interface CanvasProps {
@@ -36,13 +38,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   // Store state
   const { shapes } = useShapes();
   const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
-  const locks = useCanvasStore((state) => state.locks);
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
   
   // Presence state
   const { users: otherUsers, updateCursorPosition } = usePresence();
+  
+  // Locks state
+  const { locks, isShapeLockedByOtherUser } = useLocks();
 
   // Throttled cursor update function
   const throttledUpdateCursor = throttle(updateCursorPosition, 32); // 32ms = ~30Hz
@@ -294,8 +298,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             
             {/* Render shapes from Firestore sync */}
             {shapes.map((shape) => {
-              const lock = locks.get(shape.id);
-              const isLocked = lock !== undefined && lock.userId !== currentUser?.uid;
+              const isLocked = isShapeLockedByOtherUser(shape.id);
               const isSelected = selectedShapeId === shape.id;
               
               return (
@@ -311,6 +314,26 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   isLocked={isLocked}
                   onSelect={() => handleShapeSelect(shape.id)}
                   onDragEnd={handleShapeDragEnd}
+                />
+              );
+            })}
+            
+            {/* Render lock overlays for shapes locked by other users */}
+            {shapes.map((shape) => {
+              const lock = locks.get(shape.id);
+              const isLockedByOther = isShapeLockedByOtherUser(shape.id);
+              
+              if (!isLockedByOther || !lock) return null;
+              
+              return (
+                <LockOverlay
+                  key={`lock-${shape.id}`}
+                  shapeId={shape.id}
+                  lock={lock}
+                  x={shape.x}
+                  y={shape.y}
+                  width={shape.w}
+                  height={shape.h}
                 />
               );
             })}

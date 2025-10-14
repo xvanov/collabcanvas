@@ -128,7 +128,7 @@
 
 ---
 
-## [ ] PR #7 — Shape Locking (RTDB)
+## [x] PR #7 — Shape Locking (RTDB)
 
 **Work**
 
