@@ -86,6 +86,8 @@ Real-time collaborative canvas application built with React, TypeScript, and Fir
 src/
 ├── components/      # Reusable UI components
 │   ├── AuthButton.tsx
+│   ├── Canvas.tsx
+│   ├── FPSCounter.tsx
 │   └── Toolbar.tsx
 ├── hooks/          # Custom React hooks
 │   └── useAuth.ts
@@ -99,6 +101,9 @@ src/
 ├── test/           # Test utilities and mocks
 │   ├── setup.ts
 │   └── mocks/
+├── utils/          # Utility functions
+│   ├── fps.ts
+│   └── viewport.ts
 ├── types.ts        # TypeScript type definitions
 ├── App.tsx         # Main app component
 └── main.tsx        # Entry point
@@ -110,14 +115,14 @@ src/
 
 - **PR #1**: Project Bootstrap & Firebase Setup
 - **PR #2**: Authentication (Google Sign-In)
+- **PR #3**: Canvas Renderer (Konva Integration)
 
 ### 🚧 In Progress
 
-- **PR #3**: Canvas Renderer (Konva Integration) - Coming soon
+- **PR #4**: Shape Creation & Movement - Coming soon
 
 ### 📋 Planned
 
-- PR #4: Shape Creation & Movement
 - PR #5: Firestore Realtime Sync
 - PR #6: Presence & Cursors (RTDB)
 - PR #7: Shape Locking (RTDB)
