@@ -12,6 +12,7 @@ import {
   subscribeToShapes,
   type FirestoreShape 
 } from '../services/firestore';
+import { offlineManager } from '../services/offline';
 import { createDragThrottle } from '../utils/throttle';
 import type { Shape } from '../types';
 
@@ -62,7 +63,7 @@ export function useShapes() {
   const updatingShapes = useRef<Set<string>>(new Set());
 
   /**
-   * Create a new shape with optimistic updates
+   * Create a new shape with optimistic updates and offline handling
    */
   const createShape = useCallback(async (shape: Shape) => {
     if (!user) {
@@ -79,8 +80,10 @@ export function useShapes() {
       console.log(`✅ Shape ${shape.id} created in Firestore`);
     } catch (error) {
       console.error('❌ Failed to create shape in Firestore:', error);
-      // TODO: In a production app, you might want to revert the optimistic update
-      // For now, we'll leave it in the store and let the listener sync it
+      
+      // Queue for offline sync
+      offlineManager.queueCreateShape(shape.id, shape.x, shape.y, user.uid);
+      console.log(`📝 Queued shape creation for offline sync: ${shape.id}`);
     }
   }, [user, createShapeInStore]);
 
@@ -110,7 +113,7 @@ export function useShapes() {
   }, [user, updateShapePositionInStore]);
 
   /**
-   * Throttled function for Firestore position updates
+   * Throttled function for Firestore position updates with offline handling
    * Only executes at most once every 16ms (60 FPS)
    */
   const throttledFirestoreUpdate = useMemo(
@@ -120,6 +123,10 @@ export function useShapes() {
         console.log(`✅ Shape ${shapeId} position updated in Firestore`);
       } catch (error) {
         console.error('❌ Failed to update shape position in Firestore:', error);
+        
+        // Queue for offline sync
+        offlineManager.queueUpdatePosition(shapeId, x, y, userId);
+        console.log(`📝 Queued position update for offline sync: ${shapeId}`);
       }
     }),
     []
@@ -211,6 +218,26 @@ export function useShapes() {
   }, [shapes, setShapes, user]);
 
   /**
+   * Reload all shapes from Firestore (useful for page refresh or reconnection)
+   */
+  const reloadShapesFromFirestore = useCallback(async () => {
+    if (!user) return;
+
+    console.log('🔄 Reloading all shapes from Firestore...');
+    
+    try {
+      // Set up a one-time listener to get all current shapes
+      const unsubscribe = subscribeToShapes((firestoreShapes) => {
+        console.log(`📥 Loaded ${firestoreShapes.length} shapes from Firestore`);
+        handleFirestoreUpdate(firestoreShapes);
+        unsubscribe(); // Unsubscribe after first load
+      });
+    } catch (error) {
+      console.error('❌ Failed to reload shapes from Firestore:', error);
+    }
+  }, [user, handleFirestoreUpdate]);
+
+  /**
    * Set up Firestore listener for real-time sync
    */
   useEffect(() => {
@@ -229,6 +256,7 @@ export function useShapes() {
   return {
     createShape,
     updateShapePosition,
+    reloadShapesFromFirestore,
     shapes: Array.from(shapes.values()),
   };
 }

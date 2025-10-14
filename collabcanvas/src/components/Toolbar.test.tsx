@@ -20,6 +20,17 @@ vi.mock('../hooks/usePresence', () => ({
   })),
 }));
 
+// Mock the useOffline hook
+vi.mock('../hooks/useOffline', () => ({
+  useOffline: vi.fn(() => ({
+    connectionStatus: 'Online',
+    connectionStatusColor: 'text-green-500',
+    hasQueuedUpdates: false,
+    queuedUpdatesCount: 0,
+    retryQueuedUpdates: vi.fn(),
+  })),
+}));
+
 // Mock AuthButton component
 vi.mock('./AuthButton', () => ({
   AuthButton: () => <div>Auth Button</div>,

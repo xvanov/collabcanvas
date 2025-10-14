@@ -5,6 +5,7 @@
 
 import { create } from 'zustand';
 import type { Shape, Lock, Presence, User } from '../types';
+import type { ConnectionState } from '../services/offline';
 
 interface CanvasState {
   // Shapes
@@ -33,6 +34,12 @@ interface CanvasState {
   // Current User
   currentUser: User | null;
   setCurrentUser: (user: User | null) => void;
+  
+  // Offline State
+  connectionState: ConnectionState;
+  setConnectionState: (state: ConnectionState) => void;
+  queuedUpdatesCount: number;
+  setQueuedUpdatesCount: (count: number) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set) => ({
@@ -134,6 +141,26 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   setCurrentUser: (user: User | null) =>
     set(() => ({
       currentUser: user,
+    })),
+  
+  // Offline state
+  connectionState: {
+    isOnline: navigator.onLine,
+    isFirestoreOnline: true,
+    isRTDBOnline: true,
+    lastOnlineTime: null,
+  },
+  
+  setConnectionState: (state: ConnectionState) =>
+    set(() => ({
+      connectionState: state,
+    })),
+  
+  queuedUpdatesCount: 0,
+  
+  setQueuedUpdatesCount: (count: number) =>
+    set(() => ({
+      queuedUpdatesCount: count,
     })),
 }));
 

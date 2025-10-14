@@ -6,6 +6,7 @@
 import { useEffect, useCallback } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import { acquireLock, releaseLock, subscribeToLocks } from '../services/rtdb';
+import { offlineManager } from '../services/offline';
 import type { LockData } from '../services/rtdb';
 import type { Lock } from '../types';
 
@@ -51,7 +52,7 @@ export function useLocks() {
     return unsubscribe;
   }, [currentUser, setLocks]);
 
-  // Acquire lock on a shape
+  // Acquire lock on a shape with offline handling
   const acquireShapeLock = useCallback(
     async (shapeId: string): Promise<boolean> => {
       if (!currentUser) return false;
@@ -64,13 +65,20 @@ export function useLocks() {
         return success;
       } catch (error) {
         console.error('Failed to acquire lock:', error);
-        return false;
+        
+        // Queue for offline sync
+        offlineManager.queueLockOperation('acquireLock', shapeId, currentUser.uid, currentUser.name);
+        console.log('📝 Queued lock acquisition for offline sync');
+        
+        // Optimistically update local state
+        lockShape(shapeId, currentUser.uid, currentUser.name);
+        return true; // Return true for optimistic update
       }
     },
     [currentUser, lockShape]
   );
 
-  // Release lock on a shape
+  // Release lock on a shape with offline handling
   const releaseShapeLock = useCallback(
     async (shapeId: string): Promise<void> => {
       try {
@@ -78,9 +86,18 @@ export function useLocks() {
         unlockShape(shapeId);
       } catch (error) {
         console.error('Failed to release lock:', error);
+        
+        // Queue for offline sync
+        if (currentUser) {
+          offlineManager.queueLockOperation('releaseLock', shapeId, currentUser.uid);
+          console.log('📝 Queued lock release for offline sync');
+        }
+        
+        // Optimistically update local state
+        unlockShape(shapeId);
       }
     },
-    [unlockShape]
+    [unlockShape, currentUser]
   );
 
   // Check if a shape is locked by current user
@@ -101,6 +118,38 @@ export function useLocks() {
     [locks, currentUser]
   );
 
+  // Clear stale locks on reconnect
+  const clearStaleLocks = useCallback(async () => {
+    if (!currentUser) return;
+
+    console.log('🧹 Clearing stale locks on reconnect...');
+    
+    const now = Date.now();
+    const staleLocks: string[] = [];
+    
+    // Find locks older than 30 seconds
+    locks.forEach((lock, shapeId) => {
+      if (now - lock.lockedAt > 30000) { // 30 seconds
+        staleLocks.push(shapeId);
+      }
+    });
+    
+    // Release stale locks
+    for (const shapeId of staleLocks) {
+      try {
+        await releaseLock(shapeId);
+        unlockShape(shapeId);
+        console.log(`🧹 Released stale lock for shape: ${shapeId}`);
+      } catch (error) {
+        console.error(`Failed to release stale lock for ${shapeId}:`, error);
+      }
+    }
+    
+    if (staleLocks.length > 0) {
+      console.log(`✅ Cleared ${staleLocks.length} stale locks`);
+    }
+  }, [currentUser, locks, unlockShape]);
+
   // Get lock info for a shape
   const getShapeLock = useCallback(
     (shapeId: string) => {
@@ -113,6 +162,7 @@ export function useLocks() {
     locks,
     acquireShapeLock,
     releaseShapeLock,
+    clearStaleLocks,
     isShapeLockedByCurrentUser,
     isShapeLockedByOtherUser,
     getShapeLock,
