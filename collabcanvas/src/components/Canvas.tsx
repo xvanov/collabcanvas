@@ -2,8 +2,12 @@ import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 're
 import { Stage, Layer, Line } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from './Shape';
+import { Cursor } from './Cursor';
+import { CursorOverlay } from './CursorOverlay';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
+import { usePresence } from '../hooks/usePresence';
+import { throttle } from '../utils/throttle';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
@@ -23,6 +27,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
+  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
   const isDragging = useRef(false);
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
@@ -35,6 +40,12 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
+  
+  // Presence state
+  const { users: otherUsers, updateCursorPosition } = usePresence();
+
+  // Throttled cursor update function
+  const throttledUpdateCursor = throttle(updateCursorPosition, 32); // 32ms = ~30Hz
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -137,22 +148,40 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
   };
 
-  // Handle mouse move - pan the canvas if dragging
+  // Handle mouse move - pan the canvas if dragging, track cursor position always
   const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    if (!isDragging.current) return;
-
     const stage = stageRef.current;
     if (!stage) return;
 
-    // Get the mouse movement delta
+    // Get the mouse position in stage coordinates
     const pointer = stage.getPointerPosition();
     if (!pointer) return;
 
-    // Update stage position based on drag
-    setStagePos((prev) => ({
-      x: prev.x + e.evt.movementX,
-      y: prev.y + e.evt.movementY,
-    }));
+    // Convert pointer position to stage coordinates (accounting for pan and zoom)
+    const stagePos = stage.position();
+    const stageScale = stage.scaleX();
+    
+    const stageX = (pointer.x - stagePos.x) / stageScale;
+    const stageY = (pointer.y - stagePos.y) / stageScale;
+
+    // Always update cursor position for display (in stage coordinates)
+    setCursorPosition({
+      x: stageX,
+      y: stageY,
+    });
+
+    // Update cursor position in RTDB (throttled to 30Hz) - only if user is authenticated
+    if (currentUser) {
+      throttledUpdateCursor(stageX, stageY);
+    }
+
+    // Pan the canvas if dragging
+    if (isDragging.current) {
+      setStagePos((prev) => ({
+        x: prev.x + e.evt.movementX,
+        y: prev.y + e.evt.movementY,
+      }));
+    }
   };
 
   // Handle mouse up - stop panning
@@ -285,6 +314,20 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                 />
               );
             })}
+            
+            {/* Render current user's cursor */}
+            {currentUser && (
+              <Cursor
+                x={cursorPosition.x}
+                y={cursorPosition.y}
+                color="#3B82F6"
+                name={currentUser.name}
+                isCurrentUser={true}
+              />
+            )}
+            
+            {/* Render other users' cursors */}
+            <CursorOverlay users={otherUsers} />
           </Layer>
         </Stage>
       )}

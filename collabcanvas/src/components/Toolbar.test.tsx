@@ -13,6 +13,13 @@ vi.mock('../store/canvasStore', () => ({
   useCanvasStore: vi.fn(),
 }));
 
+// Mock the usePresence hook
+vi.mock('../hooks/usePresence', () => ({
+  usePresence: vi.fn(() => ({
+    activeUsersCount: 0,
+  })),
+}));
+
 // Mock AuthButton component
 vi.mock('./AuthButton', () => ({
   AuthButton: () => <div>Auth Button</div>,
