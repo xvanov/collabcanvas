@@ -6,11 +6,14 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:production": "tsc -b && vite build --mode production",
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:ui": "vitest --ui"
+    "test:ui": "vitest --ui",
+    "deploy": "npm run build:production && firebase deploy --only hosting",
+    "deploy:rules": "firebase deploy --only firestore:rules,database:rules"
   },
   "dependencies": {
     "firebase": "^12.4.0",
