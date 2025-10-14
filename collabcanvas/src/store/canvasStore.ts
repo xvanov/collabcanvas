@@ -22,7 +22,7 @@ interface CanvasState {
   locks: Map<string, Lock>;
   lockShape: (shapeId: string, userId: string, userName: string) => void;
   unlockShape: (shapeId: string) => void;
-  setLocks: (locks: Lock[]) => void;
+  setLocks: (locks: Array<{ shapeId: string; lock: Lock }>) => void;
   
   // Presence
   users: Map<string, Presence>;
@@ -101,9 +101,9 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       return { locks: newLocks };
     }),
   
-  setLocks: (locks: Lock[]) =>
+  setLocks: (locks: Array<{ shapeId: string; lock: Lock }>) =>
     set(() => ({
-      locks: new Map(locks.map((lock, index) => [`shape-${index}`, lock])),
+      locks: new Map(locks.map(({ shapeId, lock }) => [shapeId, lock])),
     })),
   
   // Presence state

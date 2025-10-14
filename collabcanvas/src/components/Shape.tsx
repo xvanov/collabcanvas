@@ -1,12 +1,13 @@
 /**
  * Shape component for rendering and interacting with rectangles on the canvas
- * Supports drag-to-move interaction with boundary constraints
+ * Supports drag-to-move interaction with boundary constraints and locking
  */
 
 import { Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
+import { useLocks } from '../hooks/useLocks';
 
 interface ShapeProps {
   id: string;
@@ -37,9 +38,30 @@ export function Shape({
   onDragEnd,
 }: ShapeProps) {
   const { updateShapePosition } = useShapes();
+  const { acquireShapeLock, releaseShapeLock, isShapeLockedByCurrentUser } = useLocks();
   const currentUser = useCanvasStore((state) => state.currentUser);
 
-  const handleDragEnd = (e: KonvaEventObject<DragEvent>) => {
+  const handleClick = async () => {
+    if (!currentUser) return;
+
+    // If shape is locked by another user, don't allow selection
+    if (isLocked && !isShapeLockedByCurrentUser(id)) {
+      return;
+    }
+
+    // If shape is not locked, try to acquire lock
+    if (!isShapeLockedByCurrentUser(id)) {
+      const lockAcquired = await acquireShapeLock(id);
+      if (!lockAcquired) {
+        // Failed to acquire lock, don't select
+        return;
+      }
+    }
+
+    onSelect();
+  };
+
+  const handleDragEnd = async (e: KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const pos = node.position();
     
@@ -49,6 +71,13 @@ export function Shape({
     }
     
     onDragEnd(pos.x, pos.y);
+  };
+
+  const handleMouseUp = async () => {
+    // Release lock when mouse is released (drag complete)
+    if (isShapeLockedByCurrentUser(id)) {
+      await releaseShapeLock(id);
+    }
   };
 
   return (
@@ -62,9 +91,10 @@ export function Shape({
       draggable={!isLocked}
       stroke={isSelected ? '#1E40AF' : undefined}
       strokeWidth={isSelected ? 3 : 0}
-      onClick={onSelect}
-      onTap={onSelect}
+      onClick={handleClick}
+      onTap={handleClick}
       onDragEnd={handleDragEnd}
+      onMouseUp={handleMouseUp}
       shadowColor="black"
       shadowBlur={isSelected ? 10 : 5}
       shadowOpacity={isSelected ? 0.4 : 0.2}
