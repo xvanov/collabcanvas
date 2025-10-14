@@ -1,18 +1,55 @@
-rules_version='2'
+rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
+    // Global board shapes collection
+    match /boards/{boardId}/shapes/{shapeId} {
+      // Auth required for all operations
+      allow read: if request.auth != null;
+      
+      // Create: Validate shape schema and auth
+      allow create: if request.auth != null
+        // Validate shape type
+        && request.resource.data.type == 'rect'
+        // Validate fixed dimensions
+        && request.resource.data.w == 100
+        && request.resource.data.h == 100
+        // Validate fixed color
+        && request.resource.data.color == '#3B82F6'
+        // Validate position fields are numbers
+        && request.resource.data.x is number
+        && request.resource.data.y is number
+        // Validate metadata
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid
+        // Ensure server timestamps are used
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp;
+      
+      // Update: Only allow position updates by authenticated user
+      allow update: if request.auth != null
+        // Only the user who last updated can update again
+        && request.resource.data.updatedBy == request.auth.uid
+        // Validate that only position fields change
+        && request.resource.data.w == resource.data.w
+        && request.resource.data.h == resource.data.h
+        && request.resource.data.color == resource.data.color
+        && request.resource.data.type == resource.data.type
+        && request.resource.data.createdBy == resource.data.createdBy
+        && request.resource.data.createdAt == resource.data.createdAt
+        // Validate new position fields
+        && request.resource.data.x is number
+        && request.resource.data.y is number
+        // Validate updatedAt timestamp
+        && request.resource.data.updatedAt is timestamp;
+      
+      // No delete operations in MVP
+      allow delete: if false;
+    }
+    
+    // Deny all other paths
     match /{document=**} {
-      // This rule allows anyone with your database reference to view, edit,
-      // and delete all data in your database. It is useful for getting
-      // started, but it is configured to expire after 30 days because it
-      // leaves your app open to attackers. At that time, all client
-      // requests to your database will be denied.
-      //
-      // Make sure to write security rules for your app before that time, or
-      // else all client requests to your database will be denied until you
-      // update your rules.
-      allow read, write: if request.time < timestamp.date(2025, 11, 12);
+      allow read, write: if false;
     }
   }
 }
