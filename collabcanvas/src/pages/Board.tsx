@@ -3,6 +3,7 @@ import { Toolbar } from '../components/Toolbar';
 import Canvas from '../components/Canvas';
 import { useCanvasStore } from '../store/canvasStore';
 import { useAuth } from '../hooks/useAuth';
+import { useShapes } from '../hooks/useShapes';
 
 /**
  * Board page (main canvas view)
@@ -14,7 +15,7 @@ export function Board() {
   const [zoom, setZoom] = useState<number>(1);
   const { user } = useAuth();
   const setCurrentUser = useCanvasStore((state) => state.setCurrentUser);
-  const createShape = useCanvasStore((state) => state.createShape);
+  const { createShape } = useShapes();
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
 
   // Update current user in store when user changes

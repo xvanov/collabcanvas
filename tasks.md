@@ -81,7 +81,7 @@
 
 ---
 
-## [ ] PR #5 — Firestore Realtime Sync (Shapes)
+## [x] PR #5 — Firestore Realtime Sync (Shapes)
 
 **Work**
 
