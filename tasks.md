@@ -59,7 +59,7 @@
 
 ---
 
-## [ ] PR #4 — Shape Creation & Movement (Local State)
+## [x] PR #4 — Shape Creation & Movement (Local State)
 
 **Work**
 

@@ -1,17 +1,22 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
 import { Stage, Layer, Line } from 'react-konva';
 import Konva from 'konva';
+import { Shape } from './Shape';
+import { useCanvasStore } from '../store/canvasStore';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
   onZoomChange?: (scale: number) => void;
 }
 
+export interface CanvasHandle {
+  getViewportCenter: () => { x: number; y: number };
+}
 /**
  * Main canvas component with Konva integration
  * Supports pan (click and drag) and zoom (mouse wheel) at 60 FPS
  */
-export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
+const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChange }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -22,6 +27,13 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
 
+  // Store state
+  const shapes = useCanvasStore((state) => state.shapes);
+  const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
+  const locks = useCanvasStore((state) => state.locks);
+  const selectShape = useCanvasStore((state) => state.selectShape);
+  const deselectShape = useCanvasStore((state) => state.deselectShape);
+  const currentUser = useCanvasStore((state) => state.currentUser);
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -115,21 +127,69 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
     }
   };
 
-  // Handle drag start
-  const handleDragStart = () => {
-    isDragging.current = true;
+  // Handle mouse down - start pan if clicking on empty space
+  const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const clickedOnEmpty = e.target === stageRef.current;
+    if (clickedOnEmpty) {
+      isDragging.current = true;
+      deselectShape();
+    }
   };
 
-  // Handle drag end - sync stage position with state
-  const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
+  // Handle mouse move - pan the canvas if dragging
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!isDragging.current) return;
+
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    // Get the mouse movement delta
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    // Update stage position based on drag
+    setStagePos((prev) => ({
+      x: prev.x + e.evt.movementX,
+      y: prev.y + e.evt.movementY,
+    }));
+  };
+
+  // Handle mouse up - stop panning
+  const handleMouseUp = () => {
     isDragging.current = false;
-    const stage = e.target as Konva.Stage;
-    setStagePos({
-      x: stage.x(),
-      y: stage.y(),
-    });
   };
 
+  // Handle canvas click - deselect shapes when clicking empty space
+  const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    // If clicking on the stage itself (not a shape), deselect
+    if (e.target === stageRef.current) {
+      deselectShape();
+    }
+  };
+
+  // Handle shape selection
+  const handleShapeSelect = (shapeId: string) => {
+    selectShape(shapeId);
+  };
+
+  // Handle shape drag end - no additional action needed, Shape component handles it
+  const handleShapeDragEnd = () => {
+    // Shape component already updates the store
+  };
+
+  // Expose method to get viewport center for shape creation
+  useImperativeHandle(ref, () => ({
+    getViewportCenter: () => {
+      const stage = stageRef.current;
+      if (!stage) return { x: 200, y: 200 };
+
+      // Calculate the center of the visible viewport in stage coordinates
+      const centerX = (dimensions.width / 2 - stagePos.x) / stageScale;
+      const centerY = (dimensions.height / 2 - stagePos.y) / stageScale;
+
+      return { x: centerX, y: centerY };
+    },
+  }));
   return (
     <div
       ref={containerRef}
@@ -141,14 +201,16 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
           ref={stageRef}
           width={dimensions.width}
           height={dimensions.height}
-          draggable
           x={stagePos.x}
           y={stagePos.y}
           scaleX={stageScale}
           scaleY={stageScale}
           onWheel={handleWheel}
-          onDragStart={handleDragStart}
-          onDragEnd={handleDragEnd}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onClick={handleStageClick}
+          onTap={handleStageClick}
         >
           <Layer>
             {/* Grid pattern for visual reference - expands with zoom */}
@@ -199,11 +261,37 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
                 </>
               );
             })()}
-            {/* Shapes will be rendered here in future PRs */}
+            
+            {/* Render shapes from store */}
+            {Array.from(shapes.values()).map((shape) => {
+              const lock = locks.get(shape.id);
+              const isLocked = lock !== undefined && lock.userId !== currentUser?.uid;
+              const isSelected = selectedShapeId === shape.id;
+              
+              return (
+                <Shape
+                  key={shape.id}
+                  id={shape.id}
+                  x={shape.x}
+                  y={shape.y}
+                  width={shape.w}
+                  height={shape.h}
+                  fill={shape.color}
+                  isSelected={isSelected}
+                  isLocked={isLocked}
+                  onSelect={() => handleShapeSelect(shape.id)}
+                  onDragEnd={handleShapeDragEnd}
+                />
+              );
+            })}
           </Layer>
         </Stage>
       )}
     </div>
   );
-}
+});
+
+Canvas.displayName = 'Canvas';
+
+export default Canvas;
 
