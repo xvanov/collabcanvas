@@ -1,0 +1,105 @@
+import { useEffect, useState } from 'react';
+import {
+  signInWithPopup,
+  GoogleAuthProvider,
+  signOut as firebaseSignOut,
+  onAuthStateChanged,
+  type User as FirebaseUser,
+} from 'firebase/auth';
+import { auth } from '../services/firebase';
+import type { User } from '../types';
+
+/**
+ * Hook for managing Firebase authentication state
+ * Provides Google Sign-In functionality and user data persistence
+ */
+export function useAuth() {
+  const [user, setUser] = useState<User | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    // Listen for authentication state changes
+    const unsubscribe = onAuthStateChanged(
+      auth,
+      (firebaseUser: FirebaseUser | null) => {
+        if (firebaseUser) {
+          // User is signed in
+          const userData: User = {
+            uid: firebaseUser.uid,
+            name: firebaseUser.displayName || 'Anonymous',
+            email: firebaseUser.email,
+            photoURL: firebaseUser.photoURL,
+          };
+          setUser(userData);
+        } else {
+          // User is signed out
+          setUser(null);
+        }
+        setLoading(false);
+      },
+      (error) => {
+        console.error('Auth state change error:', error);
+        setError(error.message);
+        setLoading(false);
+      }
+    );
+
+    // Cleanup subscription on unmount
+    return () => unsubscribe();
+  }, []);
+
+  /**
+   * Sign in with Google using popup
+   */
+  const signInWithGoogle = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      
+      const userData: User = {
+        uid: result.user.uid,
+        name: result.user.displayName || 'Anonymous',
+        email: result.user.email,
+        photoURL: result.user.photoURL,
+      };
+      
+      setUser(userData);
+      return userData;
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign in';
+      setError(errorMessage);
+      console.error('Sign in error:', err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  /**
+   * Sign out the current user
+   */
+  const signOut = async () => {
+    setError(null);
+    try {
+      await firebaseSignOut(auth);
+      setUser(null);
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to sign out';
+      setError(errorMessage);
+      console.error('Sign out error:', err);
+      throw err;
+    }
+  };
+
+  return {
+    user,
+    loading,
+    error,
+    signInWithGoogle,
+    signOut,
+  };
+}
+

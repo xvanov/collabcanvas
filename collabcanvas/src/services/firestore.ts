@@ -7,7 +7,7 @@ import {
   serverTimestamp,
   query,
 } from 'firebase/firestore';
-import type { Unsubscribe, DocumentData } from 'firebase/firestore';
+import type { Unsubscribe, DocumentData, FieldValue } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 // Collection reference for the global board
@@ -15,8 +15,8 @@ const BOARD_ID = 'global';
 const shapesCollection = collection(firestore, 'boards', BOARD_ID, 'shapes');
 
 /**
- * Shape data structure for Firestore
- */
+* Shape data structure for Firestore
+*/
 export interface FirestoreShape {
   id: string;
   type: 'rect';
@@ -25,9 +25,9 @@ export interface FirestoreShape {
   w: number;
   h: number;
   color: string;
-  createdAt: any; // serverTimestamp
+  createdAt: FieldValue | number; // serverTimestamp or timestamp
   createdBy: string;
-  updatedAt: any; // serverTimestamp
+  updatedAt: FieldValue | number; // serverTimestamp or timestamp
   updatedBy: string;
 }
 

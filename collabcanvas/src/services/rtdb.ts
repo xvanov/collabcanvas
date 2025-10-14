@@ -20,7 +20,7 @@ export interface PresenceData {
     x: number;
     y: number;
   };
-  lastSeen: any; // serverTimestamp
+  lastSeen: object | number; // serverTimestamp or timestamp
   isActive: boolean;
 }
 
@@ -30,7 +30,7 @@ export interface PresenceData {
 export interface LockData {
   userId: string;
   userName: string;
-  lockedAt: any; // serverTimestamp
+  lockedAt: object | number; // serverTimestamp or timestamp
 }
 
 /**

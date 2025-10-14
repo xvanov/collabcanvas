@@ -20,7 +20,7 @@
 
 ---
 
-## [ ] PR #2 — Authentication (Google Sign‑In)
+## [x] PR #2 — Authentication (Google Sign‑In)
 
 **Work**
 
