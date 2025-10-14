@@ -1,7 +1,11 @@
-import { initializeApp, FirebaseApp } from 'firebase/app';
-import { getAuth, Auth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, Firestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getDatabase, Database, connectDatabaseEmulator } from 'firebase/database';
+import { initializeApp } from 'firebase/app';
+import type { FirebaseApp } from 'firebase/app';
+import { getAuth, connectAuthEmulator } from 'firebase/auth';
+import type { Auth } from 'firebase/auth';
+import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
+import type { Firestore } from 'firebase/firestore';
+import { getDatabase, connectDatabaseEmulator } from 'firebase/database';
+import type { Database } from 'firebase/database';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {

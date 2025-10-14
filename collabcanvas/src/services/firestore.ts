@@ -6,9 +6,8 @@ import {
   onSnapshot,
   serverTimestamp,
   query,
-  Unsubscribe,
-  DocumentData,
 } from 'firebase/firestore';
+import type { Unsubscribe, DocumentData } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 // Collection reference for the global board

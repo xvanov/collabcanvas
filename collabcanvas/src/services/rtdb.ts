@@ -5,9 +5,8 @@ import {
   onDisconnect,
   remove,
   serverTimestamp,
-  Unsubscribe,
-  DataSnapshot,
 } from 'firebase/database';
+import type { Unsubscribe, DataSnapshot } from 'firebase/database';
 import { rtdb } from './firebase';
 
 /**
