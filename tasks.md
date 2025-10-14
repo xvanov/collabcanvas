@@ -39,7 +39,7 @@
 
 ---
 
-## [ ] PR #3 — Canvas Renderer (Konva Integration)
+## [x] PR #3 — Canvas Renderer (Konva Integration)
 
 **Work**
 
