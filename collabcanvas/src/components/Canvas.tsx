@@ -120,9 +120,14 @@ export default function Canvas({ onFpsUpdate, onZoomChange }: CanvasProps) {
     isDragging.current = true;
   };
 
-  // Handle drag end
-  const handleDragEnd = () => {
+  // Handle drag end - sync stage position with state
+  const handleDragEnd = (e: Konva.KonvaEventObject<DragEvent>) => {
     isDragging.current = false;
+    const stage = e.target as Konva.Stage;
+    setStagePos({
+      x: stage.x(),
+      y: stage.y(),
+    });
   };
 
   return (

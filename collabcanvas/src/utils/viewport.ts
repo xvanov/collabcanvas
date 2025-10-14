@@ -73,7 +73,7 @@ export function calculateZoomScale(
   currentScale: number,
   delta: number
 ): number {
-  const scaleBy = 1.02; // Zoom factor per unit
+  const scaleBy = 1.05; // Zoom factor per unit (matches Canvas component)
   const newScale = delta > 0 ? currentScale / scaleBy : currentScale * scaleBy;
   return clampZoom(newScale);
 }
