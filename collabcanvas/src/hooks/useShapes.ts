@@ -15,12 +15,20 @@ import {
 import { offlineManager } from '../services/offline';
 import { createDragThrottle } from '../utils/throttle';
 import type { Shape } from '../types';
+import { perfMetrics, registerHarnessApi, isHarnessEnabled, timestampLikeToMillis } from '../utils/harness';
 
 /**
  * Converts Firestore shape to local Shape type
  * Handles serverTimestamp conversion to numbers
  */
 function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
+  const createdAtMillis = timestampLikeToMillis(firestoreShape.createdAt as never) ?? Date.now();
+  const updatedAtMillis = timestampLikeToMillis(firestoreShape.updatedAt as never) ?? createdAtMillis;
+  const clientUpdatedAt =
+    typeof (firestoreShape as { clientUpdatedAt?: unknown }).clientUpdatedAt === 'number'
+      ? (firestoreShape as { clientUpdatedAt: number }).clientUpdatedAt
+      : updatedAtMillis;
+
   return {
     id: firestoreShape.id,
     type: firestoreShape.type,
@@ -29,14 +37,11 @@ function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
     w: firestoreShape.w,
     h: firestoreShape.h,
     color: firestoreShape.color,
-    createdAt: typeof firestoreShape.createdAt === 'number' 
-      ? firestoreShape.createdAt 
-      : Date.now(),
+    createdAt: createdAtMillis,
     createdBy: firestoreShape.createdBy,
-    updatedAt: typeof firestoreShape.updatedAt === 'number' 
-      ? firestoreShape.updatedAt 
-      : Date.now(),
+    updatedAt: updatedAtMillis,
     updatedBy: firestoreShape.updatedBy,
+    clientUpdatedAt,
   };
 }
 
@@ -50,11 +55,15 @@ export function useShapes() {
     shapes,
     createShape: createShapeInStore,
     updateShapePosition: updateShapePositionInStore,
-    setShapes,
+    setShapesFromMap,
   } = useCanvasStore();
 
   // Track pending updates to prevent conflicts
-  const pendingUpdates = useRef<Map<string, { x: number; y: number; timestamp: number }>>(new Map());
+  const pendingUpdates = useRef<Map<string, { x: number; y: number; clientTimestamp: number }>>(new Map());
+  const pendingFlushRef = useRef<number | null>(null);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const latestShapesRef = useRef<Map<string, Shape> | null>(null);
+  const shapesFrameRef = useRef<number | null>(null);
   
   // Track if we're currently syncing to prevent loops
   const isSyncing = useRef(false);
@@ -73,11 +82,11 @@ export function useShapes() {
 
     // Optimistic update - add to store immediately
     createShapeInStore(shape);
+    perfMetrics.markEvent('shapeCreateLocal');
 
     try {
       // Sync to Firestore
       await createShapeInFirestore(shape.id, shape.x, shape.y, user.uid);
-      console.log(`✅ Shape ${shape.id} created in Firestore`);
     } catch (error) {
       console.error('❌ Failed to create shape in Firestore:', error);
       
@@ -90,42 +99,19 @@ export function useShapes() {
   /**
    * Update shape position with throttling and optimistic updates
    */
-  const updateShapePosition = useCallback(async (
-    id: string, 
-    x: number, 
-    y: number
-  ) => {
-    if (!user) {
-      console.warn('Cannot update shape: user not authenticated');
-      return;
-    }
-
-    // Mark this shape as being updated by us
-    updatingShapes.current.add(id);
-
-    // Store the pending update
-    pendingUpdates.current.set(id, { x, y, timestamp: Date.now() });
-
-    // Optimistic update - update store immediately
-    updateShapePositionInStore(id, x, y, user.uid);
-
-    // Throttled Firestore update will be handled by the throttled function
-  }, [user, updateShapePositionInStore]);
-
   /**
    * Throttled function for Firestore position updates with offline handling
    * Only executes at most once every 16ms (60 FPS)
    */
   const throttledFirestoreUpdate = useMemo(
-    () => createDragThrottle(async (shapeId: string, x: number, y: number, userId: string) => {
+    () => createDragThrottle(async (shapeId: string, x: number, y: number, userId: string, clientTimestamp: number) => {
       try {
-        await updateShapePositionInFirestore(shapeId, x, y, userId);
-        console.log(`✅ Shape ${shapeId} position updated in Firestore`);
+        await updateShapePositionInFirestore(shapeId, x, y, userId, clientTimestamp);
       } catch (error) {
         console.error('❌ Failed to update shape position in Firestore:', error);
         
         // Queue for offline sync
-        offlineManager.queueUpdatePosition(shapeId, x, y, userId);
+        offlineManager.queueUpdatePosition(shapeId, x, y, userId, clientTimestamp);
         console.log(`📝 Queued position update for offline sync: ${shapeId}`);
       }
     }),
@@ -143,17 +129,105 @@ export function useShapes() {
 
     // Process each pending update
     updates.forEach(([shapeId, update]) => {
-      throttledFirestoreUpdate(shapeId, update.x, update.y, user.uid);
+      throttledFirestoreUpdate(shapeId, update.x, update.y, user.uid, update.clientTimestamp);
+      perfMetrics.markEvent('shapeUpdateFlush');
       // Clear the updating flag after we've sent the update
       updatingShapes.current.delete(shapeId);
     });
   }, [user, throttledFirestoreUpdate]);
 
-  // Process pending updates every 16ms
+  const scheduleShapesCommit = useCallback(() => {
+    if (!latestShapesRef.current) return;
+
+    const scheduleViaRaf = typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function';
+
+    if (scheduleViaRaf) {
+      if (shapesFrameRef.current !== null) return;
+      shapesFrameRef.current = window.requestAnimationFrame(() => {
+        shapesFrameRef.current = null;
+        if (!latestShapesRef.current) return;
+        setShapesFromMap(new Map(latestShapesRef.current));
+        latestShapesRef.current = null;
+      });
+    } else {
+      if (shapesFrameRef.current !== null) return;
+      shapesFrameRef.current = window.setTimeout(() => {
+        shapesFrameRef.current = null;
+        if (!latestShapesRef.current) return;
+        setShapesFromMap(new Map(latestShapesRef.current));
+        latestShapesRef.current = null;
+      }, 16);
+    }
+  }, [setShapesFromMap]);
+
+  const schedulePendingFlush = useCallback(() => {
+    if (!user) return;
+    if (pendingUpdates.current.size === 0) return;
+
+    const scheduleViaRaf = typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function';
+
+    if (scheduleViaRaf) {
+      if (pendingFlushRef.current !== null) return;
+      pendingFlushRef.current = window.requestAnimationFrame(() => {
+        pendingFlushRef.current = null;
+        processPendingUpdates();
+        if (pendingUpdates.current.size > 0) {
+          schedulePendingFlush();
+        }
+      });
+    } else {
+      if (fallbackTimerRef.current) return;
+      fallbackTimerRef.current = setTimeout(() => {
+        fallbackTimerRef.current = null;
+        processPendingUpdates();
+        if (pendingUpdates.current.size > 0) {
+          schedulePendingFlush();
+        }
+      }, 16);
+    }
+  }, [processPendingUpdates, user]);
+
   useEffect(() => {
-    const interval = setInterval(processPendingUpdates, 16);
-    return () => clearInterval(interval);
-  }, [processPendingUpdates]);
+    return () => {
+      if (pendingFlushRef.current !== null && typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(pendingFlushRef.current);
+      }
+      if (fallbackTimerRef.current) {
+        clearTimeout(fallbackTimerRef.current);
+      }
+      if (shapesFrameRef.current !== null) {
+        if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+          window.cancelAnimationFrame(shapesFrameRef.current);
+        } else {
+          clearTimeout(shapesFrameRef.current);
+        }
+      }
+    };
+  }, []);
+
+  const updateShapePosition = useCallback(async (
+    id: string,
+    x: number,
+    y: number
+  ) => {
+    if (!user) {
+      console.warn('Cannot update shape: user not authenticated');
+      return;
+    }
+
+    // Mark this shape as being updated by us
+    updatingShapes.current.add(id);
+
+    // Store the pending update
+    const clientTimestamp = Date.now();
+    pendingUpdates.current.set(id, { x, y, clientTimestamp });
+
+    // Optimistic update - update store immediately
+    updateShapePositionInStore(id, x, y, user.uid, clientTimestamp);
+    perfMetrics.markEvent('shapeUpdateRequest');
+
+    schedulePendingFlush();
+  }, [schedulePendingFlush, updateShapePositionInStore, user]);
 
   /**
    * Handle incoming Firestore updates
@@ -166,6 +240,16 @@ export function useShapes() {
     isSyncing.current = true;
     
     try {
+      if (perfMetrics.enabled) {
+        firestoreShapes.forEach((rawShape) => {
+          const isRemoteUpdate = user ? rawShape.updatedBy !== user.uid : true;
+          const clientTimestamp = typeof (rawShape as { clientUpdatedAt?: unknown }).clientUpdatedAt === 'number'
+            ? (rawShape as { clientUpdatedAt: number }).clientUpdatedAt
+            : timestampLikeToMillis(rawShape.updatedAt as never);
+          perfMetrics.trackShapeUpdate(rawShape.id, clientTimestamp ?? null, isRemoteUpdate);
+        });
+      }
+
       // Convert Firestore shapes to local format
       const localShapes = firestoreShapes.map(convertFirestoreShape);
       
@@ -209,13 +293,13 @@ export function useShapes() {
         }
       });
       
-      // Update store with merged shapes
-      setShapes(Array.from(mergedShapes.values()));
-      
+      latestShapesRef.current = mergedShapes;
+      scheduleShapesCommit();
+
     } finally {
       isSyncing.current = false;
     }
-  }, [shapes, setShapes, user]);
+  }, [scheduleShapesCommit, shapes, user]);
 
   /**
    * Reload all shapes from Firestore (useful for page refresh or reconnection)
@@ -252,6 +336,15 @@ export function useShapes() {
       unsubscribe();
     };
   }, [user, handleFirestoreUpdate]);
+
+  useEffect(() => {
+    if (!isHarnessEnabled()) return;
+    registerHarnessApi('shapes', {
+      createShape,
+      updateShapePosition,
+      reloadShapesFromFirestore,
+    });
+  }, [createShape, updateShapePosition, reloadShapesFromFirestore]);
 
   return {
     createShape,

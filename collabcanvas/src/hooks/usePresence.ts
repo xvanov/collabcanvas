@@ -10,6 +10,7 @@ import {
 } from '../services/rtdb';
 import { offlineManager } from '../services/offline';
 import { getUserColor } from '../utils/colors';
+import { perfMetrics, timestampLikeToMillis } from '../utils/harness';
 
 /**
  * Hook for managing user presence and cursor synchronization via RTDB
@@ -29,7 +30,7 @@ export const usePresence = () => {
   const throttledUpdateCursor = useCallback(
     (x: number, y: number) => {
       if (!user) return;
-      
+
       updateCursor(user.uid, x, y).catch((error) => {
         console.error('Failed to update cursor:', error);
         
@@ -39,6 +40,8 @@ export const usePresence = () => {
         });
         console.log('📝 Queued cursor update for offline sync');
       });
+
+      perfMetrics.markEvent('cursorUpdateLocal');
     },
     [user]
   );
@@ -75,15 +78,20 @@ export const usePresence = () => {
 
     const unsubscribe = subscribeToPresence((presenceMap: Record<string, PresenceData>) => {
       // Convert presence map to array and filter out current user
-      const otherUsers = Object.values(presenceMap)
-        .filter((presence) => presence.userId !== user.uid)
-        .map((presence) => ({
+      const otherUsers = Object.values(presenceMap).filter((presence) => presence.userId !== user.uid);
+
+      const normalizedUsers = otherUsers.map((presence) => {
+        const lastSeenSource = presence.lastSeen as number | { toMillis?: () => number; seconds?: number; nanoseconds?: number };
+        const lastSeenMillis = timestampLikeToMillis(lastSeenSource) ?? Date.now();
+        perfMetrics.trackCursorUpdate(presence.userId, lastSeenSource);
+        return {
           ...presence,
-          lastSeen: typeof presence.lastSeen === 'number' ? presence.lastSeen : Date.now(),
-        }));
+          lastSeen: lastSeenMillis,
+        };
+      });
 
       // Update store with other users' presence
-      setUsers(otherUsers);
+      setUsers(normalizedUsers);
     });
 
     unsubscribeRef.current = unsubscribe;

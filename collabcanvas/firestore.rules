@@ -24,7 +24,8 @@ service cloud.firestore {
         && request.resource.data.updatedBy == request.auth.uid
         // Ensure server timestamps are used
         && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.clientUpdatedAt is number;
       
       // Update: Only allow position updates by authenticated user
       allow update: if request.auth != null
@@ -41,7 +42,8 @@ service cloud.firestore {
         && request.resource.data.x is number
         && request.resource.data.y is number
         // Validate updatedAt timestamp
-        && request.resource.data.updatedAt is timestamp;
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.clientUpdatedAt is number;
       
       // No delete operations in MVP
       allow delete: if false;

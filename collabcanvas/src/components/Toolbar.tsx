@@ -50,6 +50,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
       createdBy: currentUser.uid,
       updatedAt: Date.now(),
       updatedBy: currentUser.uid,
+      clientUpdatedAt: Date.now(),
     };
 
     createShape(newShape);
@@ -113,4 +114,3 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
     </div>
   );
 }
-

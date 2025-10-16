@@ -20,6 +20,7 @@ describe('Firestore Service', () => {
         createdBy: 'user-123',
         updatedAt: Date.now(),
         updatedBy: 'user-123',
+        clientUpdatedAt: Date.now(),
       };
 
       expect(mockShape.type).toBe('rect');
@@ -66,6 +67,7 @@ describe('Firestore Service', () => {
         createdBy: 'user-123',
         updatedAt: Date.now(),
         updatedBy: 'user-123',
+        clientUpdatedAt: Date.now(),
       };
 
       expect(mockShape.createdAt).toBeDefined();
@@ -104,6 +106,7 @@ describe('Firestore Service', () => {
         color: '#3B82F6',
         createdBy: userId,
         updatedBy: userId,
+        clientUpdatedAt: Date.now(),
       };
 
       expect(shapeData.type).toBe('rect');
@@ -122,6 +125,7 @@ describe('Firestore Service', () => {
         x: 300,
         y: 400,
         updatedBy: userId,
+        clientUpdatedAt: Date.now(),
       };
 
       expect(updateData.x).toBe(300);
@@ -130,6 +134,7 @@ describe('Firestore Service', () => {
       expect('w' in updateData).toBe(false);
       expect('h' in updateData).toBe(false);
       expect('color' in updateData).toBe(false);
+      expect(typeof updateData.clientUpdatedAt).toBe('number');
     });
 
     it('should not include createdAt or createdBy in updates', () => {
@@ -138,10 +143,12 @@ describe('Firestore Service', () => {
         x: 300,
         y: 400,
         updatedBy: userId,
+        clientUpdatedAt: Date.now(),
       };
 
       expect('createdAt' in updateData).toBe(false);
       expect('createdBy' in updateData).toBe(false);
+      expect(typeof updateData.clientUpdatedAt).toBe('number');
     });
   });
 });

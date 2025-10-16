@@ -17,6 +17,7 @@ export interface Shape {
   createdBy: string;
   updatedAt: number | null;
   updatedBy: string;
+  clientUpdatedAt: number | null;
 }
 
 /**
@@ -61,4 +62,3 @@ export interface ViewportState {
   offsetX: number;
   offsetY: number;
 }
-

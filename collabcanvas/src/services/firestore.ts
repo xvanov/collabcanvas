@@ -29,6 +29,7 @@ export interface FirestoreShape {
   createdBy: string;
   updatedAt: FieldValue | number; // serverTimestamp or timestamp
   updatedBy: string;
+  clientUpdatedAt: number;
 }
 
 /**
@@ -53,6 +54,7 @@ export const createShape = async (
     createdBy: userId,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
+    clientUpdatedAt: Date.now(),
   };
 
   await setDoc(shapeRef, shapeData);
@@ -66,7 +68,8 @@ export const updateShapePosition = async (
   shapeId: string,
   x: number,
   y: number,
-  userId: string
+  userId: string,
+  clientTimestamp: number
 ): Promise<void> => {
   const shapeRef = doc(shapesCollection, shapeId);
   
@@ -75,6 +78,7 @@ export const updateShapePosition = async (
     y,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
+    clientUpdatedAt: clientTimestamp,
   });
 };
 
@@ -101,4 +105,3 @@ export const subscribeToShapes = (
     callback(shapes);
   });
 };
-

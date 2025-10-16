@@ -18,6 +18,7 @@ describe('Security Rules Logic', () => {
           color: '#3B82F6',
           createdBy: 'user-123',
           updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
         };
 
         // Validate type
@@ -37,6 +38,7 @@ describe('Security Rules Logic', () => {
         // Validate user fields
         expect(validShape.createdBy).toBe('user-123');
         expect(validShape.updatedBy).toBe('user-123');
+        expect(typeof validShape.clientUpdatedAt).toBe('number');
       });
 
       it('should reject invalid shape types', () => {
@@ -108,6 +110,7 @@ describe('Security Rules Logic', () => {
           y: 400,
           updatedAt: 1234567891,
           updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
         };
 
         // Check that fixed properties remain unchanged
@@ -122,16 +125,17 @@ describe('Security Rules Logic', () => {
         expect(validUpdate.x).toBe(300);
         expect(validUpdate.y).toBe(400);
         expect(validUpdate.updatedBy).toBe('user-123');
+        expect(typeof validUpdate.clientUpdatedAt).toBe('number');
       });
 
       it('should reject updates that modify fixed properties', () => {
         const invalidUpdates = [
-          { x: 300, y: 400, w: 200 }, // Trying to change width
-          { x: 300, y: 400, h: 200 }, // Trying to change height
-          { x: 300, y: 400, color: '#FF0000' }, // Trying to change color
-          { x: 300, y: 400, type: 'circle' }, // Trying to change type
-          { x: 300, y: 400, createdBy: 'different-user' }, // Trying to change createdBy
-          { x: 300, y: 400, createdAt: Date.now() }, // Trying to change createdAt
+          { x: 300, y: 400, w: 200, clientUpdatedAt: Date.now() }, // Trying to change width
+          { x: 300, y: 400, h: 200, clientUpdatedAt: Date.now() }, // Trying to change height
+          { x: 300, y: 400, color: '#FF0000', clientUpdatedAt: Date.now() }, // Trying to change color
+          { x: 300, y: 400, type: 'circle', clientUpdatedAt: Date.now() }, // Trying to change type
+          { x: 300, y: 400, createdBy: 'different-user', clientUpdatedAt: Date.now() }, // Trying to change createdBy
+          { x: 300, y: 400, createdAt: Date.now(), clientUpdatedAt: Date.now() }, // Trying to change createdAt
         ];
 
         invalidUpdates.forEach(update => {
@@ -149,6 +153,7 @@ describe('Security Rules Logic', () => {
           x: 300,
           y: 400,
           updatedBy: 'different-user', // Different user
+          clientUpdatedAt: Date.now(),
         };
 
         expect(invalidUpdate.updatedBy).not.toBe(originalShape.updatedBy);
