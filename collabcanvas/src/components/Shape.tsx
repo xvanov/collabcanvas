@@ -72,14 +72,17 @@ function ShapeComponent({
     // Update position with Firestore sync (throttled and optimistic)
     await onUpdatePosition(pos.x, pos.y);
     
+    // Release lock when drag operation completes
+    if (isLockedByCurrentUser()) {
+      await onReleaseLock();
+    }
+    
     onDragEnd(pos.x, pos.y);
   };
 
   const handleMouseUp = async () => {
-    // Release lock when mouse is released (drag complete)
-    if (isLockedByCurrentUser()) {
-      await onReleaseLock();
-    }
+    // Don't release lock on mouse up - only on drag end
+    // This allows users to click to lock without immediately releasing
   };
 
   return (
@@ -94,7 +97,6 @@ function ShapeComponent({
       stroke={isSelected ? '#1E40AF' : undefined}
       strokeWidth={isSelected ? 3 : 0}
       onClick={handleClick}
-      onTap={handleClick}
       onDragEnd={handleDragEnd}
       onMouseUp={handleMouseUp}
       // Cursor styles
