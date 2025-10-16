@@ -253,7 +253,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           onMouseMove={handleMouseMove}
           onMouseUp={handleMouseUp}
           onClick={handleStageClick}
-          onTap={handleStageClick}
         >
           <Layer>
             {/* Grid pattern for visual reference - expands with zoom */}
