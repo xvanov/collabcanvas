@@ -1,0 +1,222 @@
+{
+  "config": {
+    "configFile": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/playwright.perf.config.ts",
+    "rootDir": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs",
+    "forbidOnly": false,
+    "fullyParallel": false,
+    "globalSetup": null,
+    "globalTeardown": null,
+    "globalTimeout": 0,
+    "grep": {},
+    "grepInvert": null,
+    "maxFailures": 0,
+    "metadata": {
+      "actualWorkers": 2
+    },
+    "preserveOutput": "always",
+    "reporter": [
+      [
+        "list",
+        null
+      ],
+      [
+        "json",
+        {
+          "outputFile": "test-results/perf-report.json"
+        }
+      ]
+    ],
+    "reportSlowTests": {
+      "max": 5,
+      "threshold": 300000
+    },
+    "quiet": false,
+    "projects": [
+      {
+        "outputDir": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "chromium",
+        "name": "chromium",
+        "testDir": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 18000
+      },
+      {
+        "outputDir": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test-results",
+        "repeatEach": 1,
+        "retries": 0,
+        "metadata": {
+          "actualWorkers": 2
+        },
+        "id": "firefox",
+        "name": "firefox",
+        "testDir": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs",
+        "testIgnore": [],
+        "testMatch": [
+          "**/*.@(spec|test).?(c|m)[jt]s?(x)"
+        ],
+        "timeout": 18000
+      }
+    ],
+    "shard": null,
+    "updateSnapshots": "missing",
+    "updateSourceMethod": "patch",
+    "version": "1.56.0",
+    "workers": 2,
+    "webServer": null
+  },
+  "suites": [
+    {
+      "title": "performance-harness.spec.ts",
+      "file": "performance-harness.spec.ts",
+      "column": 0,
+      "line": 0,
+      "specs": [
+        {
+          "title": "collabcanvas sustains PRD performance targets under load",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 18000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "chromium",
+              "projectName": "chromium",
+              "results": [
+                {
+                  "workerIndex": 0,
+                  "parallelIndex": 0,
+                  "status": "failed",
+                  "duration": 8343,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m18\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m18\u001b[39m\n    at /Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts:203:32",
+                    "location": {
+                      "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                      "column": 32,
+                      "line": 203
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 201 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorSampleCount)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 202 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 203 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mmedianFps)\u001b[33m.\u001b[39mtoBeGreaterThanOrEqual(\u001b[35m60\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 204 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mshapeLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m100\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 205 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m50\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 206 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                        "column": 32,
+                        "line": 203
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m18\u001b[39m\n\n\u001b[0m \u001b[90m 201 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorSampleCount)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 202 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 203 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mmedianFps)\u001b[33m.\u001b[39mtoBeGreaterThanOrEqual(\u001b[35m60\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 204 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mshapeLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m100\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 205 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m50\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 206 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at /Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts:203:32\u001b[22m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-10-16T22:11:02.763Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test-results/performance-harness-collab-e8e8b-formance-targets-under-load-chromium/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                    "column": 32,
+                    "line": 203
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "7df075fe1aa9b7898dbe-6832fc417bae43ceb264",
+          "file": "performance-harness.spec.ts",
+          "line": 70,
+          "column": 1
+        },
+        {
+          "title": "collabcanvas sustains PRD performance targets under load",
+          "ok": false,
+          "tags": [],
+          "tests": [
+            {
+              "timeout": 18000,
+              "annotations": [],
+              "expectedStatus": "passed",
+              "projectId": "firefox",
+              "projectName": "firefox",
+              "results": [
+                {
+                  "workerIndex": 1,
+                  "parallelIndex": 1,
+                  "status": "failed",
+                  "duration": 13378,
+                  "error": {
+                    "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m23\u001b[39m",
+                    "stack": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m23\u001b[39m\n    at /Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts:203:32",
+                    "location": {
+                      "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                      "column": 32,
+                      "line": 203
+                    },
+                    "snippet": "\u001b[0m \u001b[90m 201 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorSampleCount)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 202 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 203 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mmedianFps)\u001b[33m.\u001b[39mtoBeGreaterThanOrEqual(\u001b[35m60\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 204 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mshapeLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m100\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 205 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m50\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 206 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m"
+                  },
+                  "errors": [
+                    {
+                      "location": {
+                        "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                        "column": 32,
+                        "line": 203
+                      },
+                      "message": "Error: \u001b[2mexpect(\u001b[22m\u001b[31mreceived\u001b[39m\u001b[2m).\u001b[22mtoBeGreaterThanOrEqual\u001b[2m(\u001b[22m\u001b[32mexpected\u001b[39m\u001b[2m)\u001b[22m\n\nExpected: >= \u001b[32m60\u001b[39m\nReceived:    \u001b[31m23\u001b[39m\n\n\u001b[0m \u001b[90m 201 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorSampleCount)\u001b[33m.\u001b[39mtoBeGreaterThan(\u001b[35m0\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 202 |\u001b[39m\n\u001b[31m\u001b[1m>\u001b[22m\u001b[39m\u001b[90m 203 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mmedianFps)\u001b[33m.\u001b[39mtoBeGreaterThanOrEqual(\u001b[35m60\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m     |\u001b[39m                                \u001b[31m\u001b[1m^\u001b[22m\u001b[39m\n \u001b[90m 204 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mshapeLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m100\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 205 |\u001b[39m   expect(aggregated\u001b[33m.\u001b[39mcursorLatencyP95)\u001b[33m.\u001b[39mtoBeLessThanOrEqual(\u001b[35m50\u001b[39m)\u001b[33m;\u001b[39m\n \u001b[90m 206 |\u001b[39m })\u001b[33m;\u001b[39m\u001b[0m\n\u001b[2m    at /Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts:203:32\u001b[22m"
+                    }
+                  ],
+                  "stdout": [],
+                  "stderr": [],
+                  "retry": 0,
+                  "startTime": "2025-10-16T22:11:02.763Z",
+                  "annotations": [],
+                  "attachments": [
+                    {
+                      "name": "trace",
+                      "contentType": "application/zip",
+                      "path": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test-results/performance-harness-collab-e8e8b-formance-targets-under-load-firefox/trace.zip"
+                    }
+                  ],
+                  "errorLocation": {
+                    "file": "/Users/kalin.ivanov/rep/gauntletai/collabcanvas/test/perf/specs/performance-harness.spec.ts",
+                    "column": 32,
+                    "line": 203
+                  }
+                }
+              ],
+              "status": "unexpected"
+            }
+          ],
+          "id": "7df075fe1aa9b7898dbe-921f42d048a213bb0859",
+          "file": "performance-harness.spec.ts",
+          "line": 70,
+          "column": 1
+        }
+      ]
+    }
+  ],
+  "errors": [],
+  "stats": {
+    "startTime": "2025-10-16T22:11:02.116Z",
+    "duration": 16611.774,
+    "expected": 0,
+    "skipped": 0,
+    "unexpected": 2,
+    "flaky": 0
+  }
+}

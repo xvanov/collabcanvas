@@ -1,24 +1,76 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   signInWithPopup,
   GoogleAuthProvider,
   signOut as firebaseSignOut,
   onAuthStateChanged,
+  signInAnonymously,
   type User as FirebaseUser,
 } from 'firebase/auth';
 import { auth } from '../services/firebase';
 import type { User } from '../types';
+import { getHarnessUser, isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 
 /**
  * Hook for managing Firebase authentication state
  * Provides Google Sign-In functionality and user data persistence
  */
 export function useAuth() {
-  const [user, setUser] = useState<User | null>(null);
-  const [loading, setLoading] = useState(true);
+  const harnessUser = useMemo(() => getHarnessUser(), []);
+  const harnessMode = isHarnessEnabled() && Boolean(harnessUser);
+  const [user, setUser] = useState<User | null>(harnessUser ?? null);
+  const [loading, setLoading] = useState(!harnessMode);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    if (harnessMode) {
+      setLoading(true);
+      registerHarnessApi('auth', {
+        setUser,
+      });
+
+      if (!auth.currentUser) {
+        signInAnonymously(auth)
+          .then((result) => {
+            const anon = result.user;
+            const userData: User = {
+              uid: anon.uid,
+              name: harnessUser?.name ?? 'Harness User',
+              email: harnessUser?.email ?? null,
+              photoURL: harnessUser?.photoURL ?? null,
+            };
+            setUser(userData);
+            if (typeof window !== 'undefined' && window.__perfHarness) {
+              window.__perfHarness.user = userData;
+            }
+          })
+          .catch((error) => {
+            console.error('Harness anonymous sign-in failed:', error);
+            setError(error.message ?? 'Failed to sign in');
+          })
+          .finally(() => {
+            setLoading(false);
+          });
+      } else {
+        const anon = auth.currentUser;
+        const userData: User = {
+          uid: anon.uid,
+          name: harnessUser?.name ?? 'Harness User',
+          email: harnessUser?.email ?? null,
+          photoURL: harnessUser?.photoURL ?? null,
+        };
+        setUser(userData);
+        if (typeof window !== 'undefined' && window.__perfHarness) {
+          window.__perfHarness.user = userData;
+        }
+        setLoading(false);
+      }
+
+      return () => {
+        // keep anonymous session; no cleanup required for harness mode
+      };
+    }
+
     // Listen for authentication state changes
     const unsubscribe = onAuthStateChanged(
       auth,
@@ -47,12 +99,17 @@ export function useAuth() {
 
     // Cleanup subscription on unmount
     return () => unsubscribe();
-  }, []);
+  }, [harnessMode]);
 
   /**
    * Sign in with Google using popup
    */
   const signInWithGoogle = async () => {
+    if (harnessMode && harnessUser) {
+      setError(null);
+      setUser(harnessUser);
+      return harnessUser;
+    }
     setError(null);
     setLoading(true);
     try {
@@ -82,6 +139,11 @@ export function useAuth() {
    * Sign out the current user
    */
   const signOut = async () => {
+    if (harnessMode && harnessUser) {
+      setError(null);
+      setUser(harnessUser);
+      return;
+    }
     setError(null);
     try {
       await firebaseSignOut(auth);
@@ -102,4 +164,3 @@ export function useAuth() {
     signOut,
   };
 }
-

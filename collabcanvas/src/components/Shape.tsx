@@ -3,11 +3,9 @@
  * Supports drag-to-move interaction with boundary constraints and locking
  */
 
+import { memo } from 'react';
 import { Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
-import { useCanvasStore } from '../store/canvasStore';
-import { useShapes } from '../hooks/useShapes';
-import { useLocks } from '../hooks/useLocks';
 
 interface ShapeProps {
   id: string;
@@ -20,12 +18,17 @@ interface ShapeProps {
   isLocked: boolean;
   onSelect: () => void;
   onDragEnd: (x: number, y: number) => void;
+  onUpdatePosition: (x: number, y: number) => Promise<void> | void;
+  onAcquireLock: () => Promise<boolean>;
+  onReleaseLock: () => Promise<void>;
+  isLockedByCurrentUser: () => boolean;
+  isInteractionEnabled: boolean;
 }
 
 /**
  * Rectangle shape component with drag interaction
  */
-export function Shape({
+function ShapeComponent({
   id,
   x,
   y,
@@ -36,22 +39,23 @@ export function Shape({
   isLocked,
   onSelect,
   onDragEnd,
+  onUpdatePosition,
+  onAcquireLock,
+  onReleaseLock,
+  isLockedByCurrentUser,
+  isInteractionEnabled,
 }: ShapeProps) {
-  const { updateShapePosition } = useShapes();
-  const { acquireShapeLock, releaseShapeLock, isShapeLockedByCurrentUser } = useLocks();
-  const currentUser = useCanvasStore((state) => state.currentUser);
-
   const handleClick = async () => {
-    if (!currentUser) return;
+    if (!isInteractionEnabled) return;
 
     // If shape is locked by another user, don't allow selection
-    if (isLocked && !isShapeLockedByCurrentUser(id)) {
+    if (isLocked && !isLockedByCurrentUser()) {
       return;
     }
 
     // If shape is not locked, try to acquire lock
-    if (!isShapeLockedByCurrentUser(id)) {
-      const lockAcquired = await acquireShapeLock(id);
+    if (!isLockedByCurrentUser()) {
+      const lockAcquired = await onAcquireLock();
       if (!lockAcquired) {
         // Failed to acquire lock, don't select
         return;
@@ -66,17 +70,15 @@ export function Shape({
     const pos = node.position();
     
     // Update position with Firestore sync (throttled and optimistic)
-    if (currentUser) {
-      updateShapePosition(id, pos.x, pos.y);
-    }
+    await onUpdatePosition(pos.x, pos.y);
     
     onDragEnd(pos.x, pos.y);
   };
 
   const handleMouseUp = async () => {
     // Release lock when mouse is released (drag complete)
-    if (isShapeLockedByCurrentUser(id)) {
-      await releaseShapeLock(id);
+    if (isLockedByCurrentUser()) {
+      await onReleaseLock();
     }
   };
 
@@ -88,18 +90,13 @@ export function Shape({
       width={width}
       height={height}
       fill={fill}
-      draggable={!isLocked}
+      draggable={!isLocked && isInteractionEnabled}
       stroke={isSelected ? '#1E40AF' : undefined}
       strokeWidth={isSelected ? 3 : 0}
       onClick={handleClick}
       onTap={handleClick}
       onDragEnd={handleDragEnd}
       onMouseUp={handleMouseUp}
-      shadowColor="black"
-      shadowBlur={isSelected ? 10 : 5}
-      shadowOpacity={isSelected ? 0.4 : 0.2}
-      shadowOffsetX={0}
-      shadowOffsetY={2}
       // Cursor styles
       onMouseEnter={(e) => {
         const container = e.target.getStage()?.container();
@@ -117,3 +114,5 @@ export function Shape({
   );
 }
 
+export const Shape = memo(ShapeComponent);
+Shape.displayName = 'Shape';

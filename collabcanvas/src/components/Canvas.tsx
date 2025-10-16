@@ -10,6 +10,7 @@ import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { throttle } from '../utils/throttle';
+import { perfMetrics } from '../utils/harness';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
@@ -36,7 +37,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const rafId = useRef<number | undefined>(undefined);
 
   // Store state
-  const { shapes } = useShapes();
+  const { shapes, updateShapePosition } = useShapes();
+  const shapeMap = useCanvasStore((state) => state.shapes);
   const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
@@ -46,7 +48,13 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const { users: otherUsers, updateCursorPosition } = usePresence();
   
   // Locks state
-  const { locks, isShapeLockedByOtherUser } = useLocks();
+  const {
+    locks,
+    isShapeLockedByOtherUser,
+    isShapeLockedByCurrentUser,
+    acquireShapeLock,
+    releaseShapeLock,
+  } = useLocks();
 
   // Throttled cursor update function
   const throttledUpdateCursor = throttle(updateCursorPosition, 32); // 32ms = ~30Hz
@@ -83,6 +91,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       if (elapsed >= 1000) {
         const fps = Math.round((frameCount.current * 1000) / elapsed);
         onFpsUpdate(fps);
+        perfMetrics.recordFps(fps);
         
         frameCount.current = 0;
         lastFrameTime.current = now;
@@ -314,21 +323,28 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   isLocked={isLocked}
                   onSelect={() => handleShapeSelect(shape.id)}
                   onDragEnd={handleShapeDragEnd}
+                  onUpdatePosition={async (nextX, nextY) => {
+                    await updateShapePosition(shape.id, nextX, nextY);
+                  }}
+                  onAcquireLock={async () => acquireShapeLock(shape.id)}
+                  onReleaseLock={async () => releaseShapeLock(shape.id)}
+                  isLockedByCurrentUser={() => isShapeLockedByCurrentUser(shape.id)}
+                  isInteractionEnabled={Boolean(currentUser)}
                 />
               );
             })}
             
             {/* Render lock overlays for shapes locked by other users */}
-            {shapes.map((shape) => {
-              const lock = locks.get(shape.id);
-              const isLockedByOther = isShapeLockedByOtherUser(shape.id);
-              
-              if (!isLockedByOther || !lock) return null;
-              
+            {Array.from(locks.entries()).map(([shapeId, lock]) => {
+              const shape = shapeMap.get(shapeId);
+              const isLockedByOther = isShapeLockedByOtherUser(shapeId);
+
+              if (!shape || !isLockedByOther) return null;
+
               return (
                 <LockOverlay
-                  key={`lock-${shape.id}`}
-                  shapeId={shape.id}
+                  key={`lock-${shapeId}`}
+                  shapeId={shapeId}
                   lock={lock}
                   x={shape.x}
                   y={shape.y}
@@ -361,4 +377,3 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 Canvas.displayName = 'Canvas';
 
 export default Canvas;
-

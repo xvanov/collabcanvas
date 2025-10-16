@@ -21,6 +21,7 @@ describe('Shape Component - Props Validation', () => {
       createdBy: 'user-1',
       updatedAt: Date.now(),
       updatedBy: 'user-1',
+      clientUpdatedAt: Date.now(),
     };
 
     expect(shape.w).toBe(100);
@@ -40,6 +41,7 @@ describe('Shape Component - Props Validation', () => {
       createdBy: 'user-2',
       updatedAt: Date.now(),
       updatedBy: 'user-2',
+      clientUpdatedAt: Date.now(),
     };
 
     expect(shape.color).toBe('#3B82F6');
@@ -58,6 +60,7 @@ describe('Shape Component - Props Validation', () => {
       createdBy: 'user-3',
       updatedAt: Date.now(),
       updatedBy: 'user-3',
+      clientUpdatedAt: Date.now(),
     };
 
     expect(shape.type).toBe('rect');
@@ -76,6 +79,7 @@ describe('Shape Component - Props Validation', () => {
       createdBy: 'user-4',
       updatedAt: Date.now(),
       updatedBy: 'user-4',
+      clientUpdatedAt: Date.now(),
     };
 
     const shape2: ShapeType = {
@@ -110,6 +114,7 @@ describe('Shape Component - Props Validation', () => {
       createdBy: 'user-original',
       updatedAt: now + 1000,
       updatedBy: 'user-editor',
+      clientUpdatedAt: now + 1000,
     };
 
     expect(shape.createdBy).toBe('user-original');
@@ -117,4 +122,3 @@ describe('Shape Component - Props Validation', () => {
     expect(shape.updatedAt).toBeGreaterThan(shape.createdAt!);
   });
 });
-

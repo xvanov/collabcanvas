@@ -36,6 +36,7 @@ describe('canvasStore', () => {
         createdBy: 'user-1',
         updatedAt: Date.now(),
         updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
       };
 
       createShape(newShape);
@@ -66,12 +67,13 @@ describe('canvasStore', () => {
         createdBy: 'user-1',
         updatedAt: Date.now(),
         updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
       };
 
       createShape(originalShape);
 
       // Update position
-      updateShapePosition('test-shape-2', 200, 250, 'user-2');
+      updateShapePosition('test-shape-2', 200, 250, 'user-2', Date.now());
 
       const updatedShape = useCanvasStore.getState().shapes.get('test-shape-2');
       expect(updatedShape).toBeDefined();
@@ -96,7 +98,7 @@ describe('canvasStore', () => {
       const initialSize = shapes.size;
       
       // Try to update non-existent shape
-      updateShapePosition('non-existent-shape', 300, 400, 'user-1');
+      updateShapePosition('non-existent-shape', 300, 400, 'user-1', Date.now());
       
       const finalSize = useCanvasStore.getState().shapes.size;
       expect(finalSize).toBe(initialSize);
@@ -118,6 +120,7 @@ describe('canvasStore', () => {
           createdBy: 'user-1',
           updatedAt: Date.now(),
           updatedBy: 'user-1',
+          clientUpdatedAt: Date.now(),
         },
         {
           id: 'shape-2',
@@ -131,6 +134,7 @@ describe('canvasStore', () => {
           createdBy: 'user-2',
           updatedAt: Date.now(),
           updatedBy: 'user-2',
+          clientUpdatedAt: Date.now(),
         },
       ];
 
@@ -320,4 +324,3 @@ describe('canvasStore', () => {
     });
   });
 });
-

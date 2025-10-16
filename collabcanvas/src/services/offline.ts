@@ -189,19 +189,19 @@ class OfflineManager {
   /**
    * Queue a position update for later sync
    */
-  public queueUpdatePosition(shapeId: string, x: number, y: number, userId: string): void {
+  public queueUpdatePosition(shapeId: string, x: number, y: number, userId: string, clientTimestamp?: number): void {
     // Remove any existing position updates for this shape to avoid duplicates
     this.queuedUpdates = this.queuedUpdates.filter(
       update => !(update.type === 'updatePosition' && update.shapeId === shapeId)
     );
-    
+
     const update: QueuedUpdatePosition = {
       type: 'updatePosition',
       shapeId,
       x,
       y,
       userId,
-      timestamp: Date.now(),
+      timestamp: clientTimestamp ?? Date.now(),
     };
     
     this.queuedUpdates.push(update);
@@ -302,7 +302,7 @@ class OfflineManager {
         break;
         
       case 'updatePosition':
-        await updateShapePositionInFirestore(update.shapeId, update.x, update.y, update.userId);
+        await updateShapePositionInFirestore(update.shapeId, update.x, update.y, update.userId, update.timestamp);
         break;
         
       case 'acquireLock':

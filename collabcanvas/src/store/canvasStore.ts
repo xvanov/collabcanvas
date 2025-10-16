@@ -6,13 +6,15 @@
 import { create } from 'zustand';
 import type { Shape, Lock, Presence, User } from '../types';
 import type { ConnectionState } from '../services/offline';
+import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 
 interface CanvasState {
   // Shapes
   shapes: Map<string, Shape>;
   createShape: (shape: Shape) => void;
-  updateShapePosition: (id: string, x: number, y: number, updatedBy: string) => void;
+  updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) => void;
   setShapes: (shapes: Shape[]) => void;
+  setShapesFromMap: (shapes: Map<string, Shape>) => void;
   
   // Selection
   selectedShapeId: string | null;
@@ -52,8 +54,8 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       newShapes.set(shape.id, shape);
       return { shapes: newShapes };
     }),
-  
-  updateShapePosition: (id: string, x: number, y: number, updatedBy: string) =>
+
+  updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) =>
     set((state) => {
       const shape = state.shapes.get(id);
       if (!shape) return state;
@@ -65,6 +67,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         y,
         updatedAt: Date.now(),
         updatedBy,
+        clientUpdatedAt,
       });
       return { shapes: newShapes };
     }),
@@ -72,6 +75,11 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   setShapes: (shapes: Shape[]) =>
     set(() => ({
       shapes: new Map(shapes.map((shape) => [shape.id, shape])),
+    })),
+
+  setShapesFromMap: (incomingShapes: Map<string, Shape>) =>
+    set(() => ({
+      shapes: incomingShapes,
     })),
   
   // Selection state
@@ -164,3 +172,11 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     })),
 }));
 
+if (typeof window !== 'undefined' && isHarnessEnabled()) {
+  const storeApi = {
+    getState: () => useCanvasStore.getState(),
+  };
+
+  (window as Window & { __canvasStore?: typeof storeApi }).__canvasStore = storeApi;
+  registerHarnessApi('store', storeApi);
+}

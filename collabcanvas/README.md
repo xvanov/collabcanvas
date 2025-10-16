@@ -158,6 +158,28 @@ npm test
    VITE_USE_FIREBASE_EMULATORS=true npm test
    ```
 
+### Performance Harness (Playwright)
+
+1. Install Playwright browsers (one-time):
+   ```bash
+   npx playwright install
+   ```
+2. Start Firebase emulators in one terminal:
+   ```bash
+   VITE_USE_FIREBASE_EMULATORS=true npx firebase emulators:start --only auth,firestore,database
+   ```
+3. In a second terminal, build and preview the app (same origin as the harness):
+   ```bash
+   npm run build
+   VITE_USE_FIREBASE_EMULATORS=true npm run preview -- --host 127.0.0.1 --port 4173
+   ```
+4. In a third terminal, execute the load harness against Chromium & Firefox:
+   ```bash
+   PERF_BASE_URL=http://127.0.0.1:4173 npm run test:perf
+   ```
+   JSON summaries are written to `test-results/perf/` and will fail if FPS drops below 60 or latency exceeds PRD limits.
+5. Safari validation remains manual: open the preview URL with `?diagnostics=1` (or press `Shift+D`) to display the diagnostics HUD and verify FPS/latency while exercising the canvas.
+
 ## Performance Targets
 
 - 60 FPS during canvas operations

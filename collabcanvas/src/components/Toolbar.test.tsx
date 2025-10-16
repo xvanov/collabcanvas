@@ -92,6 +92,7 @@ describe('Toolbar Component', () => {
     expect(createdShape.color).toBe('#3B82F6');
     expect(createdShape.createdBy).toBe('user-123');
     expect(createdShape.updatedBy).toBe('user-123');
+    expect(typeof createdShape.clientUpdatedAt).toBe('number');
   });
 
   it('should disable Create Rectangle button when no current user', () => {
@@ -161,4 +162,3 @@ describe('Toolbar Component', () => {
     expect(shape1Id).not.toBe(shape3Id);
   });
 });
-

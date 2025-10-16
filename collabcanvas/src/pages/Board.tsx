@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { Toolbar } from '../components/Toolbar';
 import Canvas from '../components/Canvas';
 import { useCanvasStore } from '../store/canvasStore';
@@ -6,6 +6,8 @@ import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
 import { useLocks } from '../hooks/useLocks';
 import { useOffline } from '../hooks/useOffline';
+import { DiagnosticsHud } from '../components/DiagnosticsHud';
+import { perfMetrics } from '../utils/harness';
 
 /**
  * Board page (main canvas view)
@@ -21,6 +23,18 @@ export function Board() {
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
+  const showDiagnosticsDefault = useMemo(() => {
+    if (typeof window === 'undefined') return perfMetrics.enabled;
+    const params = new URLSearchParams(window.location.search);
+    if (params.has('diagnostics') || params.get('diag') === '1') {
+      return true;
+    }
+    const stored = window.localStorage.getItem('collabcanvas:diagnosticsHUD');
+    if (stored === 'on') return true;
+    if (stored === 'off') return false;
+    return perfMetrics.enabled;
+  }, []);
+  const [showDiagnostics, setShowDiagnostics] = useState(showDiagnosticsDefault);
 
   // Update current user in store when user changes
   useEffect(() => {
@@ -37,6 +51,23 @@ export function Board() {
       clearStaleLocks();
     }
   }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key.toLowerCase() === 'd' && event.shiftKey) {
+        setShowDiagnostics((prev) => {
+          const next = !prev;
+          window.localStorage.setItem('collabcanvas:diagnosticsHUD', next ? 'on' : 'off');
+          return next;
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   const handleCreateShape = () => {
     if (!user) return;
@@ -56,6 +87,7 @@ export function Board() {
       createdBy: user.uid,
       updatedAt: Date.now(),
       updatedBy: user.uid,
+      clientUpdatedAt: Date.now(),
     };
 
     createShape(newShape);
@@ -73,7 +105,7 @@ export function Board() {
           onZoomChange={setZoom} 
         />
       </div>
+      <DiagnosticsHud fps={fps} visible={showDiagnostics} />
     </div>
   );
 }
-
