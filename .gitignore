@@ -29,3 +29,6 @@ firebase-*-debug.log*
 # BMAD (local only)
 .bmad-core/
 .bmad-*/
+
+
+.*test-results.*
