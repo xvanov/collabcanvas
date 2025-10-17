@@ -10,10 +10,12 @@ import {
   createShape as createShapeInFirestore, 
   updateShapePosition as updateShapePositionInFirestore,
   subscribeToShapes,
-  type FirestoreShape 
+  subscribeToShapesChanges,
+  type FirestoreShape,
+  type FirestoreShapeChange,
 } from '../services/firestore';
 import { offlineManager } from '../services/offline';
-import { createDragThrottle } from '../utils/throttle';
+import { createAdaptiveThrottle, createCoalescingThrottle } from '../utils/throttle';
 import type { Shape } from '../types';
 import { perfMetrics, registerHarnessApi, isHarnessEnabled, timestampLikeToMillis } from '../utils/harness';
 
@@ -58,6 +60,17 @@ export function useShapes() {
     setShapesFromMap,
   } = useCanvasStore();
 
+  // Stable refs for user id and shapes to avoid resubscribing listeners on state changes
+  const userIdRef = useRef<string | null>(null);
+  useEffect(() => {
+    userIdRef.current = user?.uid ?? null;
+  }, [user]);
+
+  const shapesRef = useRef<Map<string, Shape>>(new Map());
+  useEffect(() => {
+    shapesRef.current = shapes;
+  }, [shapes]);
+
   // Track pending updates to prevent conflicts
   const pendingUpdates = useRef<Map<string, { x: number; y: number; clientTimestamp: number }>>(new Map());
   const pendingFlushRef = useRef<number | null>(null);
@@ -70,6 +83,9 @@ export function useShapes() {
   
   // Track shapes we're currently updating to ignore our own updates from Firestore
   const updatingShapes = useRef<Set<string>>(new Set());
+  
+  // Track pending writes to prevent duplicates (LWW semantics)
+  const pendingWrites = useRef<Map<string, { timestamp: number; promise: Promise<void> }>>(new Map());
 
   /**
    * Create a new shape with optimistic updates and offline handling
@@ -100,21 +116,44 @@ export function useShapes() {
    * Update shape position with throttling and optimistic updates
    */
   /**
-   * Throttled function for Firestore position updates with offline handling
-   * Only executes at most once every 16ms (60 FPS)
+   * Adaptive throttled function for Firestore position updates with offline handling
+   * Starts at 16ms (60Hz) and adapts up to 100ms (10Hz) based on network conditions
+   * Uses coalescing to batch rapid updates
    */
   const throttledFirestoreUpdate = useMemo(
-    () => createDragThrottle(async (shapeId: string, x: number, y: number, userId: string, clientTimestamp: number) => {
-      try {
-        await updateShapePositionInFirestore(shapeId, x, y, userId, clientTimestamp);
-      } catch (error) {
-        console.error('❌ Failed to update shape position in Firestore:', error);
-        
-        // Queue for offline sync
-        offlineManager.queueUpdatePosition(shapeId, x, y, userId, clientTimestamp);
-        console.log(`📝 Queued position update for offline sync: ${shapeId}`);
-      }
-    }),
+    () => createCoalescingThrottle(
+      createAdaptiveThrottle(async (shapeId: string, x: number, y: number, userId: string, clientTimestamp: number) => {
+        // Check for duplicate writes (LWW semantics)
+        const existingWrite = pendingWrites.current.get(shapeId);
+        if (existingWrite && existingWrite.timestamp >= clientTimestamp) {
+          console.log(`Skipping duplicate write for ${shapeId}: existing=${existingWrite.timestamp}, new=${clientTimestamp}`);
+          return;
+        }
+
+        // Track this write
+        const writePromise = (async () => {
+          try {
+            await updateShapePositionInFirestore(shapeId, x, y, userId, clientTimestamp);
+            perfMetrics.markEvent('shapeUpdateSuccess');
+          } catch (error) {
+            console.error('❌ Failed to update shape position in Firestore:', error);
+            perfMetrics.markEvent('shapeUpdateFailure');
+            
+            // Queue for offline sync
+            offlineManager.queueUpdatePosition(shapeId, x, y, userId, clientTimestamp);
+            console.log(`📝 Queued position update for offline sync: ${shapeId}`);
+            throw error; // Re-throw to trigger adaptive throttling
+          } finally {
+            // Clean up pending write
+            pendingWrites.current.delete(shapeId);
+          }
+        })();
+
+        pendingWrites.current.set(shapeId, { timestamp: clientTimestamp, promise: writePromise });
+        await writePromise;
+      }, 16, 100), // Base 16ms, max 100ms
+      16 // Coalescing interval
+    ),
     []
   );
 
@@ -235,14 +274,14 @@ export function useShapes() {
    * Ignores updates from the current user to prevent visual glitches
    */
   const handleFirestoreUpdate = useCallback((firestoreShapes: FirestoreShape[]) => {
-    if (isSyncing.current || !user) return;
+    if (isSyncing.current || !userIdRef.current) return;
     
     isSyncing.current = true;
     
     try {
       if (perfMetrics.enabled) {
         firestoreShapes.forEach((rawShape) => {
-          const isRemoteUpdate = user ? rawShape.updatedBy !== user.uid : true;
+          const isRemoteUpdate = userIdRef.current ? rawShape.updatedBy !== userIdRef.current : true;
           const clientTimestamp = typeof (rawShape as { clientUpdatedAt?: unknown }).clientUpdatedAt === 'number'
             ? (rawShape as { clientUpdatedAt: number }).clientUpdatedAt
             : timestampLikeToMillis(rawShape.updatedAt as never);
@@ -258,7 +297,7 @@ export function useShapes() {
       const mergedShapes = new Map<string, Shape>();
       
       // Add all local shapes first
-      shapes.forEach((shape, id) => {
+      shapesRef.current.forEach((shape, id) => {
         mergedShapes.set(id, shape);
       });
       
@@ -299,13 +338,47 @@ export function useShapes() {
     } finally {
       isSyncing.current = false;
     }
-  }, [scheduleShapesCommit, shapes, user]);
+  }, [scheduleShapesCommit]);
+
+  /**
+   * Incremental Firestore change handler (added/modified/removed)
+   * Merges changes into a copy of the current shapes map and schedules a batched commit.
+   */
+  const handleFirestoreDocChanges = useCallback((changes: FirestoreShapeChange[]) => {
+    if (!userIdRef.current) return;
+    const merged = new Map(shapesRef.current);
+
+    for (const change of changes) {
+      const raw = change.shape;
+      const local = convertFirestoreShape(raw);
+
+      if (change.type === 'removed') {
+        merged.delete(local.id);
+        continue;
+      }
+
+      // Skip updates for shapes we're currently updating to prevent visual glitches
+      if (change.type === 'modified' && updatingShapes.current.has(local.id)) {
+        continue;
+      }
+
+      const existing = merged.get(local.id);
+      if (!existing) {
+        merged.set(local.id, local);
+      } else if ((local.updatedAt || 0) > (existing.updatedAt || 0)) {
+        merged.set(local.id, local);
+      }
+    }
+
+    latestShapesRef.current = merged;
+    scheduleShapesCommit();
+  }, [scheduleShapesCommit]);
 
   /**
    * Reload all shapes from Firestore (useful for page refresh or reconnection)
    */
   const reloadShapesFromFirestore = useCallback(async () => {
-    if (!user) return;
+    if (!userIdRef.current) return;
 
     console.log('🔄 Reloading all shapes from Firestore...');
     
@@ -319,23 +392,22 @@ export function useShapes() {
     } catch (error) {
       console.error('❌ Failed to reload shapes from Firestore:', error);
     }
-  }, [user, handleFirestoreUpdate]);
+  }, [handleFirestoreUpdate]);
 
   /**
    * Set up Firestore listener for real-time sync
    */
+  // Set up one stable Firestore listener per authenticated session
+  const userUid = user?.uid ?? null;
   useEffect(() => {
-    if (!user) return;
-
-    console.log('🔄 Setting up Firestore shapes listener');
-    
-    const unsubscribe = subscribeToShapes(handleFirestoreUpdate);
-    
+    if (!userUid) return;
+    console.log('🔄 Setting up Firestore shapes listener (incremental)');
+    const unsubscribe = subscribeToShapesChanges(handleFirestoreDocChanges);
     return () => {
       console.log('🔄 Cleaning up Firestore shapes listener');
       unsubscribe();
     };
-  }, [user, handleFirestoreUpdate]);
+  }, [handleFirestoreDocChanges, userUid]);
 
   useEffect(() => {
     if (!isHarnessEnabled()) return;

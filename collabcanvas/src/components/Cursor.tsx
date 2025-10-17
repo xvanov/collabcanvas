@@ -26,9 +26,7 @@ export const Cursor = memo(function Cursor({ x, y, color, name, isCurrentUser = 
         stroke={isCurrentUser ? '#FFFFFF' : '#FFFFFF'}
         strokeWidth={isCurrentUser ? 1 : 2}
         listening={false}
-        shadowColor="rgba(0, 0, 0, 0.3)"
-        shadowBlur={4}
-        shadowOffset={{ x: 0, y: 2 }}
+        perfectDrawEnabled={false}
       />
       
       {/* Name label (only for other users, not current user) */}
@@ -42,9 +40,7 @@ export const Cursor = memo(function Cursor({ x, y, color, name, isCurrentUser = 
           fill="#333333"
           padding={4}
           listening={false}
-          shadowColor="rgba(255, 255, 255, 0.8)"
-          shadowBlur={2}
-          shadowOffset={{ x: 0, y: 1 }}
+          perfectDrawEnabled={false}
         />
       )}
     </>

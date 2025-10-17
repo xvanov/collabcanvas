@@ -304,3 +304,16 @@ collabcanvas/
 - ❌ Additional shape types (circles, text, lines)
 - ❌ Undo/redo
 - ❌ AI integration
+ 
+---
+
+## Performance Optimization Stories (Core Competencies)
+
+- PRD: `docs/prd-performance.md`
+- Stories:
+  - `docs/stories/1.1.performance-hardening.md`
+  - `docs/stories/1.2.rendering-optimization.md`
+  - `docs/stories/1.3.state-update-optimization.md`
+  - `docs/stories/1.4.network-write-optimization.md`
+
+Acceptance criteria for these stories integrate the existing performance harness thresholds (median FPS ≥ 60; shape sync < 100ms; cursor < 50ms) and export reports to `collabcanvas/test/perf/test-results/`.

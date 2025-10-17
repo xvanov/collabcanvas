@@ -1,15 +1,13 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Stage, Layer, Line } from 'react-konva';
+import { Stage, Layer, Line, Circle } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from './Shape';
-import { Cursor } from './Cursor';
 import { CursorOverlay } from './CursorOverlay';
 import { LockOverlay } from './LockOverlay';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
-import { throttle } from '../utils/throttle';
 import { perfMetrics } from '../utils/harness';
 
 interface CanvasProps {
@@ -30,7 +28,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
-  const [cursorPosition, setCursorPosition] = useState({ x: 0, y: 0 });
+  // Imperative current-user cursor to avoid React re-renders on mousemove
+  const overlaysLayerRef = useRef<Konva.Layer>(null);
+  const currentCursorRef = useRef<Konva.Circle>(null);
   const isDragging = useRef(false);
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
@@ -56,8 +56,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     releaseShapeLock,
   } = useLocks();
 
-  // Throttled cursor update function
-  const throttledUpdateCursor = throttle(updateCursorPosition, 32); // 32ms = ~30Hz
+  // Cursor update function (throttling handled in usePresence)
+  // Cache cursor for Firefox performance optimization
+  useEffect(() => {
+    if (currentCursorRef.current) {
+      currentCursorRef.current.cache();
+    }
+  }, [currentUser]);
+
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -177,15 +183,16 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     const stageX = (pointer.x - stagePos.x) / stageScale;
     const stageY = (pointer.y - stagePos.y) / stageScale;
 
-    // Always update cursor position for display (in stage coordinates)
-    setCursorPosition({
-      x: stageX,
-      y: stageY,
-    });
+    // Imperatively update current user's cursor position to avoid React re-render
+    if (currentCursorRef.current) {
+      currentCursorRef.current.position({ x: stageX, y: stageY });
+      // Firefox optimization: draw only the cursor node, not the entire layer
+      currentCursorRef.current.draw();
+    }
 
-    // Update cursor position in RTDB (throttled to 30Hz) - only if user is authenticated
+    // Update cursor position in RTDB (throttled in usePresence) - only if user is authenticated
     if (currentUser) {
-      throttledUpdateCursor(stageX, stageY);
+      updateCursorPosition(stageX, stageY);
     }
 
     // Pan the canvas if dragging
@@ -254,27 +261,22 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           onMouseUp={handleMouseUp}
           onClick={handleStageClick}
         >
-          <Layer>
-            {/* Grid pattern for visual reference - expands with zoom */}
+          {/* Grid layer - non-interactive */}
+          <Layer listening={false} hitGraphEnabled={false}>
             {(() => {
-              // Calculate visible canvas area accounting for zoom
               const visibleWidth = dimensions.width / stageScale;
               const visibleHeight = dimensions.height / stageScale;
               const startX = -stagePos.x / stageScale;
               const startY = -stagePos.y / stageScale;
               const endX = startX + visibleWidth;
               const endY = startY + visibleHeight;
-              
               const gridSize = 50;
               const firstX = Math.floor(startX / gridSize) * gridSize;
               const firstY = Math.floor(startY / gridSize) * gridSize;
-              
               const verticalLines = Math.ceil((endX - firstX) / gridSize) + 1;
               const horizontalLines = Math.ceil((endY - firstY) / gridSize) + 1;
-              
               return (
                 <>
-                  {/* Vertical grid lines */}
                   {Array.from({ length: verticalLines }).map((_, i) => {
                     const x = firstX + i * gridSize;
                     return (
@@ -287,7 +289,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                       />
                     );
                   })}
-                  {/* Horizontal grid lines */}
                   {Array.from({ length: horizontalLines }).map((_, i) => {
                     const y = firstY + i * gridSize;
                     return (
@@ -303,12 +304,13 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                 </>
               );
             })()}
-            
-            {/* Render shapes from Firestore sync */}
+          </Layer>
+
+          {/* Shapes layer - interactive */}
+          <Layer>
             {shapes.map((shape) => {
               const isLocked = isShapeLockedByOtherUser(shape.id);
               const isSelected = selectedShapeId === shape.id;
-              
               return (
                 <Shape
                   key={shape.id}
@@ -332,14 +334,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                 />
               );
             })}
-            
-            {/* Render lock overlays for shapes locked by other users */}
+          </Layer>
+
+          {/* Overlays layer - non-interactive */}
+          <Layer ref={overlaysLayerRef} listening={false} hitGraphEnabled={false}>
             {Array.from(locks.entries()).map(([shapeId, lock]) => {
               const shape = shapeMap.get(shapeId);
               const isLockedByOther = isShapeLockedByOtherUser(shapeId);
-
               if (!shape || !isLockedByOther) return null;
-
               return (
                 <LockOverlay
                   key={`lock-${shapeId}`}
@@ -352,19 +354,19 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                 />
               );
             })}
-            
-            {/* Render current user's cursor */}
             {currentUser && (
-              <Cursor
-                x={cursorPosition.x}
-                y={cursorPosition.y}
-                color="#3B82F6"
-                name={currentUser.name}
-                isCurrentUser={true}
+              <Circle
+                ref={currentCursorRef}
+                x={0}
+                y={0}
+                radius={4}
+                fill="#3B82F6"
+                stroke="#FFFFFF"
+                strokeWidth={1}
+                listening={false}
+                perfectDrawEnabled={false}
               />
             )}
-            
-            {/* Render other users' cursors */}
             <CursorOverlay users={otherUsers} />
           </Layer>
         </Stage>

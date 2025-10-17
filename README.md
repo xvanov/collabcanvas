@@ -225,6 +225,15 @@ npm run test:integration
 - ✅ **500+ shapes** without FPS drops
 - ✅ **5+ concurrent users** without degradation
 
+## 📚 Performance Optimization Plan
+
+- Performance PRD: [docs/prd-performance.md](./docs/prd-performance.md)
+- Performance Stories:
+  - [Story 1.1: Performance Hardening](./docs/stories/1.1.performance-hardening.md)
+  - [Story 1.2: Rendering Pipeline Optimization](./docs/stories/1.2.rendering-optimization.md)
+  - [Story 1.3: State Update Optimization](./docs/stories/1.3.state-update-optimization.md)
+  - [Story 1.4: Network Write Optimization](./docs/stories/1.4.network-write-optimization.md)
+
 ## 🔒 Security
 
 - **Authentication Required** - All users must sign in with Google
@@ -277,3 +286,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 **Built with ❤️ for real-time collaboration**
 
 [Live Demo](https://collabcanvas-dev.web.app/) • [Documentation](./architecture.md) • [Issues](https://github.com/gauntletai/collabcanvas/issues)
+• [Docs Index](./docs/index.md)

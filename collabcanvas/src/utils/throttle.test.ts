@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { throttle, createDragThrottle, createCursorThrottle } from './throttle';
+import { throttle, createDragThrottle, createAdaptiveThrottle, createCoalescingThrottle } from './throttle';
 
 describe('throttle', () => {
   beforeEach(() => {
@@ -167,7 +167,7 @@ describe('createDragThrottle', () => {
   });
 });
 
-describe('createCursorThrottle', () => {
+describe('createCoalescingThrottle', () => {
   beforeEach(() => {
     vi.useFakeTimers();
   });
@@ -178,28 +178,29 @@ describe('createCursorThrottle', () => {
 
   it('should create throttle with 16ms interval for 60Hz updates', () => {
     const mockFn = vi.fn();
-    const cursorThrottle = createCursorThrottle(mockFn);
+    const coalescingThrottle = createCoalescingThrottle(mockFn, 16);
 
     // First call should execute immediately
-    cursorThrottle('test');
+    coalescingThrottle('test');
     expect(mockFn).toHaveBeenCalledTimes(1);
 
     // Second call within 16ms should be throttled
-    cursorThrottle('test2');
+    coalescingThrottle('test2');
     expect(mockFn).toHaveBeenCalledTimes(1);
 
     // Advance time by 16ms
     vi.advanceTimersByTime(16);
     expect(mockFn).toHaveBeenCalledTimes(2);
+    expect(mockFn).toHaveBeenLastCalledWith('test2'); // Should use latest args
   });
 
   it('should handle rapid cursor updates correctly', () => {
     const mockFn = vi.fn();
-    const cursorThrottle = createCursorThrottle(mockFn);
+    const coalescingThrottle = createCoalescingThrottle(mockFn, 16);
 
     // Simulate rapid cursor updates (every 2ms)
     for (let i = 0; i < 20; i++) {
-      cursorThrottle(`cursor${i}`);
+      coalescingThrottle(`cursor${i}`);
     }
 
     // Only first call should execute immediately
@@ -210,6 +211,50 @@ describe('createCursorThrottle', () => {
     vi.advanceTimersByTime(16);
     expect(mockFn).toHaveBeenCalledTimes(2);
     expect(mockFn).toHaveBeenCalledWith('cursor19');
+  });
+});
+
+describe('createAdaptiveThrottle', () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it('should start with base interval and adapt on failures', () => {
+    const mockFn = vi.fn().mockRejectedValue(new Error('Network error'));
+    const adaptiveThrottle = createAdaptiveThrottle(mockFn, 16, 100);
+
+    // First call should execute immediately
+    adaptiveThrottle('test');
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    // Second call should be throttled at base interval
+    adaptiveThrottle('test2');
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    // Advance time by 16ms
+    vi.advanceTimersByTime(16);
+    expect(mockFn).toHaveBeenCalledTimes(2);
+  });
+
+  it('should reset interval on successful calls', () => {
+    const mockFn = vi.fn().mockResolvedValueOnce('success');
+    const adaptiveThrottle = createAdaptiveThrottle(mockFn, 16, 100);
+
+    // First call should execute immediately
+    adaptiveThrottle('test1');
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    // Second call immediately - should be throttled
+    adaptiveThrottle('test2');
+    expect(mockFn).toHaveBeenCalledTimes(1);
+
+    // Advance time by 16ms - should execute second call
+    vi.advanceTimersByTime(16);
+    expect(mockFn).toHaveBeenCalledTimes(2);
   });
 });
 
@@ -239,13 +284,13 @@ describe('Performance characteristics', () => {
     expect(callCount).toBeLessThanOrEqual(62);
   });
 
-  it('should maintain 60Hz with cursor throttle', () => {
+  it('should maintain 60Hz with coalescing throttle', () => {
     const mockFn = vi.fn();
-    const cursorThrottle = createCursorThrottle(mockFn);
+    const coalescingThrottle = createCoalescingThrottle(mockFn, 16);
 
     // Simulate 1 second of cursor updates at 120Hz (every 8ms)
     for (let i = 0; i < 120; i++) {
-      cursorThrottle(`cursor${i}`);
+      coalescingThrottle(`cursor${i}`);
       vi.advanceTimersByTime(8);
     }
 
