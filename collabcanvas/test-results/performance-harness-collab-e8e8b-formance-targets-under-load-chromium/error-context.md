@@ -1,0 +1,71 @@
+# Page snapshot
+
+```yaml
+- generic [ref=e3]:
+  - generic [ref=e4]:
+    - generic [ref=e5]:
+      - heading "CollabCanvas" [level=1] [ref=e6]
+      - button "Create Rectangle" [ref=e7] [cursor=pointer]:
+        - img [ref=e8]
+        - text: Create Rectangle
+    - generic [ref=e10]:
+      - generic [ref=e11]:
+        - generic [ref=e13]: Syncing (4 updates)
+        - button "Retry (4)" [ref=e14] [cursor=pointer]
+      - generic [ref=e16]:
+        - generic [ref=e18]: "8"
+        - generic [ref=e19]: active
+      - generic [ref=e20]:
+        - generic [ref=e21]: "Zoom:"
+        - generic [ref=e22]: 100%
+      - generic [ref=e23]:
+        - generic [ref=e24]: "FPS:"
+        - generic [ref=e25]: "36"
+      - generic [ref=e26]:
+        - generic [ref=e27]:
+          - generic [ref=e28]: Harness harness-chromium-0
+          - generic [ref=e29]: harness-chromium-0@perf.local
+        - button "Sign Out" [ref=e30] [cursor=pointer]
+  - generic [ref=e37]:
+    - banner [ref=e38]:
+      - generic [ref=e39]: Diagnostics HUD
+      - generic [ref=e40]: Online
+    - generic [ref=e41]:
+      - generic [ref=e42]:
+        - term [ref=e43]: Live FPS
+        - definition [ref=e44]: "36"
+      - generic [ref=e45]:
+        - term [ref=e46]: Median FPS
+        - definition [ref=e47]: "16.5"
+      - generic [ref=e48]:
+        - term [ref=e49]: P95 Shape Latency
+        - definition [ref=e50]: 0.0 ms
+      - generic [ref=e51]:
+        - term [ref=e52]: P95 Cursor Latency
+        - definition [ref=e53]: 341.0 ms
+      - generic [ref=e54]:
+        - term [ref=e55]: Shapes
+        - definition [ref=e56]: "1"
+      - generic [ref=e57]:
+        - term [ref=e58]: Locked
+        - definition [ref=e59]: "0"
+      - generic [ref=e60]:
+        - term [ref=e61]: Queued Updates
+        - definition [ref=e62]: "4"
+    - generic [ref=e63]:
+      - generic [ref=e64]:
+        - generic [ref=e65]: reset
+        - generic [ref=e66]: "1"
+      - generic [ref=e67]:
+        - generic [ref=e68]: fpsSample
+        - generic [ref=e69]: "8"
+      - generic [ref=e70]:
+        - generic [ref=e71]: cursorUpdateSeen
+        - generic [ref=e72]: "22"
+      - generic [ref=e73]:
+        - generic [ref=e74]: cursorLatencyTooHigh
+        - generic [ref=e75]: "1"
+      - generic [ref=e76]:
+        - generic [ref=e77]: cursorUpdateRemote
+        - generic [ref=e78]: "21"
+```

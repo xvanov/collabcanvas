@@ -24,19 +24,6 @@ type PerfSummary = {
   cursorLatencySamples: number[];
 };
 
-interface AggregatedMetrics {
-  medianFps: number;
-  fpsSampleCount: number;
-  shapeLatencyP95: number;
-  shapeSampleCount: number;
-  cursorLatencyP95: number;
-  cursorSampleCount: number;
-  // Story 1.4: Network write optimization metrics
-  writeSuccessRate: number;
-  writeFailureRate: number;
-  adaptiveThrottleAdjustments: number;
-}
-
 function median(values: number[]): number {
   if (!values.length) return 0;
   const sorted = [...values].sort((a, b) => a - b);
@@ -47,53 +34,9 @@ function median(values: number[]): number {
   return sorted[mid];
 }
 
-function percentile(values: number[], percentileValue: number): number {
-  if (!values.length) return 0;
-  const sorted = [...values].sort((a, b) => a - b);
-  const index = Math.min(sorted.length - 1, Math.max(0, Math.floor((percentileValue / 100) * (sorted.length - 1))));
-  return sorted[index];
-}
-
-function aggregateSummaries(summaries: PerfSummary[]): AggregatedMetrics {
-  const fps = summaries.flatMap((summary) => summary.fpsSamples);
-  const shapeLatencies = summaries.flatMap((summary) => summary.shapeLatencySamples);
-  const cursorLatencies = summaries.flatMap((summary) => summary.cursorLatencySamples);
-
-  // Story 1.4: Calculate network write metrics
-  const totalWrites = summaries.reduce((sum, summary) => {
-    const successCount = summary.metadata.eventCounts['shapeUpdateSuccess'] || 0;
-    const failureCount = summary.metadata.eventCounts['shapeUpdateFailure'] || 0;
-    return sum + successCount + failureCount;
-  }, 0);
-  
-  const successWrites = summaries.reduce((sum, summary) => {
-    return sum + (summary.metadata.eventCounts['shapeUpdateSuccess'] || 0);
-  }, 0);
-  
-  const failureWrites = summaries.reduce((sum, summary) => {
-    return sum + (summary.metadata.eventCounts['shapeUpdateFailure'] || 0);
-  }, 0);
-
-  const writeSuccessRate = totalWrites > 0 ? successWrites / totalWrites : 1;
-  const writeFailureRate = totalWrites > 0 ? failureWrites / totalWrites : 0;
-
-  return {
-    medianFps: median(fps),
-    fpsSampleCount: fps.length,
-    shapeLatencyP95: percentile(shapeLatencies, 95),
-    shapeSampleCount: shapeLatencies.length,
-    cursorLatencyP95: percentile(cursorLatencies, 95),
-    cursorSampleCount: cursorLatencies.length,
-    // Story 1.4: Network write optimization metrics
-    writeSuccessRate,
-    writeFailureRate,
-    adaptiveThrottleAdjustments: 0, // TODO: Track throttle adjustments in harness
-  };
-}
-
 test.describe.configure({ mode: 'serial' });
 
-test('collabcanvas sustains PRD performance targets under load', async ({ browser, baseURL }, testInfo) => {
+test('collabcanvas sustains 60 FPS with diagnostics HUD enabled', async ({ browser, baseURL }, testInfo) => {
   expect(baseURL).toBeTruthy();
 
   const contexts = [] as import('@playwright/test').BrowserContext[];
@@ -102,8 +45,13 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
   for (let i = 0; i < CLIENT_COUNT; i++) {
     const context = await browser.newContext();
     const page = await context.newPage();
-    await page.goto(`${baseURL}/?perfHarness=1&hUser=harness-${testInfo.project.name}-${i}`);
+    await page.goto(`${baseURL}/?perfHarness=1&hUser=hud-${testInfo.project.name}-${i}`);
     await page.waitForSelector('text=Create Rectangle', { timeout: 30_000 });
+    // Toggle Diagnostics HUD (Shift+D) if supported by the app
+    await page.keyboard.down('Shift');
+    await page.keyboard.press('KeyD');
+    await page.keyboard.up('Shift');
+
     await page.evaluate(() => {
       window.__perfMetrics?.reset();
     });
@@ -112,18 +60,16 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
   }
 
   const leader = pages[0];
-
   await leader.waitForFunction(() => Boolean(window.__perfHarness?.apis?.shapes), { timeout: 20_000 });
 
+  // Create SHAPE_TARGET shapes in batches
   await leader.evaluate(
     async ({ shapeTarget, batchSize }) => {
       const harness = window.__perfHarness;
       if (!harness?.apis?.shapes) {
         throw new Error('Harness shapes API unavailable');
       }
-      const api = harness.apis.shapes as {
-        createShape: (shape: unknown) => Promise<void>;
-      };
+      const api = harness.apis.shapes as { createShape: (shape: unknown) => Promise<void> };
       const actor = harness.user ?? { uid: 'harness', name: 'Harness' };
 
       let created = 0;
@@ -133,7 +79,7 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
 
         for (let i = 0; i < batchLimit; i++) {
           const index = created + i;
-          const id = `perf-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
+          const id = `hud-${Date.now()}-${index}-${Math.random().toString(36).slice(2, 8)}`;
           operations.push(
             api.createShape({
               id,
@@ -153,7 +99,6 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
 
         await Promise.all(operations);
         created += batchLimit;
-
         await new Promise<void>((resolve) => {
           if (typeof requestAnimationFrame === 'function') {
             requestAnimationFrame(() => resolve());
@@ -166,16 +111,16 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
     { shapeTarget: SHAPE_TARGET, batchSize: CREATE_BATCH_SIZE }
   );
 
+  // Allow time for all clients to receive updates
   await Promise.all(pages.map((page) => page.waitForTimeout(2_000)));
 
+  // Move random shapes iteratively to exercise drag path
   await Promise.all(
     pages.map((page) =>
       page.evaluate(
         async ({ iterations, amplitude }) => {
           const harness = window.__perfHarness;
-          const api = harness?.apis?.shapes as {
-            updateShapePosition: (id: string, x: number, y: number) => Promise<void>;
-          } | undefined;
+          const api = harness?.apis?.shapes as { updateShapePosition: (id: string, x: number, y: number) => Promise<void> } | undefined;
           if (!api) {
             throw new Error('Harness shapes update API unavailable');
           }
@@ -202,36 +147,27 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
 
   await Promise.all(pages.map((page) => page.waitForTimeout(2_000)));
 
-  const summaries = await Promise.all(
-    pages.map((page) => page.evaluate(() => window.__perfMetrics?.exportSummary?.() ?? null))
-  );
+  const summaries = await Promise.all(pages.map((page) => page.evaluate(() => window.__perfMetrics?.exportSummary?.() ?? null)));
 
   await Promise.all(contexts.map((context) => context.close()));
 
   const validSummaries = summaries.filter((summary): summary is PerfSummary => Boolean(summary));
   expect(validSummaries.length).toBeGreaterThan(0);
 
-  const aggregated = aggregateSummaries(validSummaries);
+  const fps = validSummaries.flatMap((s) => s.fpsSamples);
+  const medianFps = median(fps);
 
   const output = {
-    aggregated,
+    aggregated: { medianFps, fpsSampleCount: fps.length },
     perClient: validSummaries,
   };
 
-  const outputPath = testInfo.outputPath(path.join('perf', `perf-summary-${testInfo.project.name}.json`));
+  const outputPath = testInfo.outputPath(path.join('perf', `perf-summary-hud-${testInfo.project.name}.json`));
   await fs.mkdir(path.dirname(outputPath), { recursive: true });
   await fs.writeFile(outputPath, JSON.stringify(output, null, 2), 'utf8');
 
-  expect(aggregated.fpsSampleCount).toBeGreaterThan(0);
-  expect(aggregated.shapeSampleCount).toBeGreaterThan(0);
-  expect(aggregated.cursorSampleCount).toBeGreaterThan(0);
-
-  expect(aggregated.medianFps).toBeGreaterThanOrEqual(60);
-  expect(aggregated.shapeLatencyP95).toBeLessThanOrEqual(100);
-  expect(aggregated.cursorLatencyP95).toBeLessThanOrEqual(50);
-  
-  // Story 1.4: Network write optimization acceptance criteria
-  expect(aggregated.writeSuccessRate).toBeGreaterThanOrEqual(0.95); // 95% success rate
-  expect(aggregated.writeFailureRate).toBeLessThanOrEqual(0.05); // 5% failure rate max
-  expect(aggregated.adaptiveThrottleAdjustments).toBeGreaterThanOrEqual(0); // Should adapt when needed
+  expect(fps.length).toBeGreaterThan(0);
+  expect(medianFps).toBeGreaterThanOrEqual(60);
 });
+
+

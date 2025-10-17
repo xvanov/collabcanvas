@@ -11,6 +11,8 @@ import {
 import { offlineManager } from '../services/offline';
 import { getUserColor } from '../utils/colors';
 import { perfMetrics, timestampLikeToMillis } from '../utils/harness';
+import { throttle } from '../utils/throttle';
+import type { Presence } from '../types';
 
 /**
  * Hook for managing user presence and cursor synchronization via RTDB
@@ -25,25 +27,40 @@ export const usePresence = () => {
   const { users, setUsers } = useCanvasStore();
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isPresenceSetRef = useRef(false);
+  const userIdRef = useRef<string | null>(null);
+  const lastSentRef = useRef<{ x: number; y: number } | null>(null);
+  const otherUsersUpdateRef = useRef(
+    throttle((users: Presence[]) => {
+      setUsers(users);
+    }, 100) // Throttle other users' updates to 10Hz
+  );
 
-  // Throttled cursor update function with offline handling
-  const throttledUpdateCursor = useCallback(
-    (x: number, y: number) => {
-      if (!user) return;
+  useEffect(() => {
+    userIdRef.current = user?.uid ?? null;
+  }, [user]);
 
-      updateCursor(user.uid, x, y).catch((error) => {
+  // Throttled cursor publisher with delta filtering (>= 2px) at ~20Hz (50ms)
+  const publishCursorRef = useRef(
+    throttle((x: number, y: number) => {
+      const uid = userIdRef.current;
+      if (!uid) return;
+
+      const last = lastSentRef.current;
+      const dx = last ? Math.abs(x - last.x) : Infinity;
+      const dy = last ? Math.abs(y - last.y) : Infinity;
+      if (dx < 2 && dy < 2) {
+        return; // ignore tiny movements
+      }
+
+      lastSentRef.current = { x, y };
+
+      updateCursor(uid, x, y).catch((error) => {
         console.error('Failed to update cursor:', error);
-        
-        // Queue for offline sync
-        offlineManager.queuePresenceUpdate('updateCursor', user.uid, {
-          cursor: { x, y },
-        });
+        offlineManager.queuePresenceUpdate('updateCursor', uid, { cursor: { x, y } });
         console.log('📝 Queued cursor update for offline sync');
       });
-
       perfMetrics.markEvent('cursorUpdateLocal');
-    },
-    [user]
+    }, 50)
   );
 
   // Set up presence when user is authenticated
@@ -90,8 +107,8 @@ export const usePresence = () => {
         };
       });
 
-      // Update store with other users' presence
-      setUsers(normalizedUsers);
+      // Update store with other users' presence (throttled for performance)
+      otherUsersUpdateRef.current(normalizedUsers);
     });
 
     unsubscribeRef.current = unsubscribe;
@@ -121,8 +138,8 @@ export const usePresence = () => {
 
   // Update cursor position (throttled)
   const updateCursorPosition = useCallback((x: number, y: number) => {
-    throttledUpdateCursor(x, y);
-  }, [throttledUpdateCursor]);
+    publishCursorRef.current(x, y);
+  }, []);
 
   // Get active users count (excluding current user)
   const activeUsersCount = users.size;

@@ -3,7 +3,7 @@
  * Supports drag-to-move interaction with boundary constraints and locking
  */
 
-import { memo } from 'react';
+import { memo, useCallback } from 'react';
 import { Rect } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
 
@@ -45,7 +45,7 @@ function ShapeComponent({
   isLockedByCurrentUser,
   isInteractionEnabled,
 }: ShapeProps) {
-  const handleClick = async () => {
+  const handleClick = useCallback(async () => {
     if (!isInteractionEnabled) return;
 
     // If shape is locked by another user, don't allow selection
@@ -63,9 +63,9 @@ function ShapeComponent({
     }
 
     onSelect();
-  };
+  }, [isInteractionEnabled, isLocked, isLockedByCurrentUser, onAcquireLock, onSelect]);
 
-  const handleDragEnd = async (e: KonvaEventObject<DragEvent>) => {
+  const handleDragEnd = useCallback(async (e: KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const pos = node.position();
     
@@ -78,12 +78,15 @@ function ShapeComponent({
     }
     
     onDragEnd(pos.x, pos.y);
-  };
+  }, [onUpdatePosition, isLockedByCurrentUser, onReleaseLock, onDragEnd]);
 
-  const handleMouseUp = async () => {
+  const handleMouseUp = useCallback(async () => {
     // Don't release lock on mouse up - only on drag end
     // This allows users to click to lock without immediately releasing
-  };
+  }, []);
+
+  const stroke = isSelected ? '#1E40AF' : undefined;
+  const strokeWidth = isSelected ? 3 : 0;
 
   return (
     <Rect
@@ -94,8 +97,8 @@ function ShapeComponent({
       height={height}
       fill={fill}
       draggable={!isLocked && isInteractionEnabled}
-      stroke={isSelected ? '#1E40AF' : undefined}
-      strokeWidth={isSelected ? 3 : 0}
+      stroke={stroke}
+      strokeWidth={strokeWidth}
       onClick={handleClick}
       onDragEnd={handleDragEnd}
       onMouseUp={handleMouseUp}

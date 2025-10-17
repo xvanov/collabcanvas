@@ -6,8 +6,10 @@ import {
   onSnapshot,
   serverTimestamp,
   query,
+  type QuerySnapshot,
+  type DocumentData,
 } from 'firebase/firestore';
-import type { Unsubscribe, DocumentData, FieldValue } from 'firebase/firestore';
+import type { Unsubscribe, FieldValue } from 'firebase/firestore';
 import { firestore } from './firebase';
 
 // Collection reference for the global board
@@ -30,6 +32,11 @@ export interface FirestoreShape {
   updatedAt: FieldValue | number; // serverTimestamp or timestamp
   updatedBy: string;
   clientUpdatedAt: number;
+}
+
+export interface FirestoreShapeChange {
+  type: 'added' | 'modified' | 'removed';
+  shape: FirestoreShape;
 }
 
 /**
@@ -103,5 +110,26 @@ export const subscribeToShapes = (
     });
     
     callback(shapes);
+  });
+};
+
+/**
+ * Subscribe to shapes using incremental document changes
+ * Emits only added/modified/removed items per snapshot to minimize churn
+ */
+export const subscribeToShapesChanges = (
+  onChanges: (changes: FirestoreShapeChange[]) => void
+): Unsubscribe => {
+  const q = query(shapesCollection);
+  return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
+    const changes: FirestoreShapeChange[] = snapshot.docChanges().map((change) => {
+      const data = change.doc.data() as DocumentData;
+      const shape: FirestoreShape = {
+        ...(data as FirestoreShape),
+        id: change.doc.id,
+      };
+      return { type: change.type, shape };
+    });
+    if (changes.length > 0) onChanges(changes);
   });
 };
