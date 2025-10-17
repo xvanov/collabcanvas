@@ -176,7 +176,7 @@ describe('createCursorThrottle', () => {
     vi.useRealTimers();
   });
 
-  it('should create throttle with 16ms interval for 60Hz updates', () => {
+  it('should create throttle with 50ms interval for 20Hz updates', () => {
     const mockFn = vi.fn();
     const cursorThrottle = createCursorThrottle(mockFn);
 
@@ -184,12 +184,12 @@ describe('createCursorThrottle', () => {
     cursorThrottle('test');
     expect(mockFn).toHaveBeenCalledTimes(1);
 
-    // Second call within 16ms should be throttled
+    // Second call within 50ms should be throttled
     cursorThrottle('test2');
     expect(mockFn).toHaveBeenCalledTimes(1);
 
-    // Advance time by 16ms
-    vi.advanceTimersByTime(16);
+    // Advance time by 50ms
+    vi.advanceTimersByTime(50);
     expect(mockFn).toHaveBeenCalledTimes(2);
   });
 
@@ -206,8 +206,8 @@ describe('createCursorThrottle', () => {
     expect(mockFn).toHaveBeenCalledTimes(1);
     expect(mockFn).toHaveBeenCalledWith('cursor0');
 
-    // Advance time by 16ms - should execute last call
-    vi.advanceTimersByTime(16);
+    // Advance time by 50ms - should execute last call
+    vi.advanceTimersByTime(50);
     expect(mockFn).toHaveBeenCalledTimes(2);
     expect(mockFn).toHaveBeenCalledWith('cursor19');
   });
@@ -239,20 +239,20 @@ describe('Performance characteristics', () => {
     expect(callCount).toBeLessThanOrEqual(62);
   });
 
-  it('should maintain 60Hz with cursor throttle', () => {
+  it('should maintain 20Hz with cursor throttle', () => {
     const mockFn = vi.fn();
     const cursorThrottle = createCursorThrottle(mockFn);
 
-    // Simulate 1 second of cursor updates at 120Hz (every 8ms)
-    for (let i = 0; i < 120; i++) {
+    // Simulate 1 second of cursor updates at 60Hz (every 16ms)
+    for (let i = 0; i < 60; i++) {
       cursorThrottle(`cursor${i}`);
-      vi.advanceTimersByTime(8);
+      vi.advanceTimersByTime(16);
     }
 
-    // Should have executed approximately 60 times (60Hz)
+    // Should have executed approximately 20 times (20Hz)
     // Allow some tolerance for timing (±2 calls)
     const callCount = mockFn.mock.calls.length;
-    expect(callCount).toBeGreaterThanOrEqual(58);
-    expect(callCount).toBeLessThanOrEqual(62);
+    expect(callCount).toBeGreaterThanOrEqual(18);
+    expect(callCount).toBeLessThanOrEqual(22);
   });
 });

@@ -65,6 +65,26 @@ function ShapeComponent({
     onSelect();
   };
 
+  const handleDragStart = async () => {
+    if (!isInteractionEnabled) return;
+
+    // If shape is locked by another user, prevent drag
+    if (isLocked && !isLockedByCurrentUser()) {
+      return false; // Prevent drag
+    }
+
+    // If shape is not locked, try to acquire lock
+    if (!isLockedByCurrentUser()) {
+      const lockAcquired = await onAcquireLock();
+      if (!lockAcquired) {
+        // Failed to acquire lock, prevent drag
+        return false;
+      }
+    }
+
+    return true; // Allow drag
+  };
+
   const handleDragEnd = async (e: KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const pos = node.position();
@@ -81,8 +101,11 @@ function ShapeComponent({
   };
 
   const handleMouseUp = async () => {
-    // Don't release lock on mouse up - only on drag end
-    // This allows users to click to lock without immediately releasing
+    // Release lock on mouse up if shape is locked by current user
+    // This provides immediate feedback when user stops interacting
+    if (isLockedByCurrentUser()) {
+      await onReleaseLock();
+    }
   };
 
   return (
@@ -97,6 +120,7 @@ function ShapeComponent({
       stroke={isSelected ? '#1E40AF' : undefined}
       strokeWidth={isSelected ? 3 : 0}
       onClick={handleClick}
+      onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
       onMouseUp={handleMouseUp}
       // Cursor styles

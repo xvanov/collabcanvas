@@ -1,4 +1,4 @@
-import { useEffect, useCallback, useRef } from 'react';
+import { useEffect, useCallback, useRef, useMemo } from 'react';
 import { useAuth } from './useAuth';
 import { useCanvasStore } from '../store/canvasStore';
 import { 
@@ -11,6 +11,7 @@ import {
 import { offlineManager } from '../services/offline';
 import { getUserColor } from '../utils/colors';
 import { perfMetrics, timestampLikeToMillis } from '../utils/harness';
+import { createCursorThrottle } from '../utils/throttle';
 
 /**
  * Hook for managing user presence and cursor synchronization via RTDB
@@ -26,7 +27,7 @@ export const usePresence = () => {
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isPresenceSetRef = useRef(false);
 
-  // Throttled cursor update function with offline handling
+  // Throttled cursor update function with offline handling - optimized to 20Hz
   const throttledUpdateCursor = useCallback(
     (x: number, y: number) => {
       if (!user) return;
@@ -44,6 +45,12 @@ export const usePresence = () => {
       perfMetrics.markEvent('cursorUpdateLocal');
     },
     [user]
+  );
+
+  // Create throttled version
+  const throttledCursorUpdate = useMemo(
+    () => createCursorThrottle(throttledUpdateCursor),
+    [throttledUpdateCursor]
   );
 
   // Set up presence when user is authenticated
@@ -121,8 +128,8 @@ export const usePresence = () => {
 
   // Update cursor position (throttled)
   const updateCursorPosition = useCallback((x: number, y: number) => {
-    throttledUpdateCursor(x, y);
-  }, [throttledUpdateCursor]);
+    throttledCursorUpdate(x, y);
+  }, [throttledCursorUpdate]);
 
   // Get active users count (excluding current user)
   const activeUsersCount = users.size;

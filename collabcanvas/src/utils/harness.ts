@@ -54,6 +54,8 @@ interface PerfMetricsPublicApi {
   trackShapeUpdate(shapeId: string, updatedAt: TimestampLike | null, isRemote: boolean): void;
   trackCursorUpdate(userId: string, lastSeen: TimestampLike | null): void;
   markEvent(name: string): void;
+  trackNetworkRequest(type: 'rtdb' | 'firestore', operation: string): void;
+  trackCursorUpdateFrequency(): void;
   reset(): void;
   exportSummary(): PerfMetricsSummary | null;
 }
@@ -76,6 +78,8 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
   private readonly eventCounts: Map<string, number> = new Map();
   private readonly shapeTimestamps: Map<string, number> = new Map();
   private readonly cursorTimestamps: Map<string, number> = new Map();
+  private readonly networkRequestCounts: Map<string, number> = new Map();
+  private readonly cursorUpdateTimestamps: number[] = [];
   private readonly SAMPLE_LIMIT = 5000;
 
   constructor(enabled: boolean) {
@@ -158,6 +162,27 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     this.eventCounts.set(name, current + 1);
   }
 
+  trackNetworkRequest(type: 'rtdb' | 'firestore', operation: string): void {
+    if (!this.enabled) return;
+    const key = `${type}_${operation}`;
+    const current = this.networkRequestCounts.get(key) ?? 0;
+    this.networkRequestCounts.set(key, current + 1);
+    this.markEvent('networkRequest');
+  }
+
+  trackCursorUpdateFrequency(): void {
+    if (!this.enabled) return;
+    const now = performance.now();
+    this.cursorUpdateTimestamps.push(now);
+    
+    // Keep only last 100 timestamps for frequency calculation
+    if (this.cursorUpdateTimestamps.length > 100) {
+      this.cursorUpdateTimestamps.shift();
+    }
+    
+    this.markEvent('cursorUpdateFrequency');
+  }
+
   reset(): void {
     if (!this.enabled) return;
     this.fpsSamples.length = 0;
@@ -166,6 +191,8 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     this.shapeTimestamps.clear();
     this.cursorTimestamps.clear();
     this.eventCounts.clear();
+    this.networkRequestCounts.clear();
+    this.cursorUpdateTimestamps.length = 0;
     this.startedAt = Date.now();
     this.markEvent('reset');
   }
@@ -234,6 +261,12 @@ const perfMetricsImpl: PerfMetricsPublicApi = {
   },
   markEvent(name: string) {
     metricsInternal.markEvent(name);
+  },
+  trackNetworkRequest(type: 'rtdb' | 'firestore', operation: string) {
+    metricsInternal.trackNetworkRequest(type, operation);
+  },
+  trackCursorUpdateFrequency() {
+    metricsInternal.trackCursorUpdateFrequency();
   },
   reset() {
     metricsInternal.reset();

@@ -9,7 +9,7 @@ import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
-import { throttle } from '../utils/throttle';
+import { createCursorThrottle, CursorInterpolator } from '../utils/throttle';
 import { perfMetrics } from '../utils/harness';
 
 interface CanvasProps {
@@ -35,6 +35,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
+  const cursorInterpolator = useRef(new CursorInterpolator());
+  const lastCursorUpdate = useRef({ x: 0, y: 0 });
 
   // Store state
   const { shapes, updateShapePosition } = useShapes();
@@ -56,8 +58,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     releaseShapeLock,
   } = useLocks();
 
-  // Throttled cursor update function
-  const throttledUpdateCursor = throttle(updateCursorPosition, 32); // 32ms = ~30Hz
+  // Throttled cursor update function - optimized to 20Hz (50ms)
+  const throttledUpdateCursor = createCursorThrottle(updateCursorPosition);
   // Update dimensions on mount and resize
   useEffect(() => {
     const updateDimensions = () => {
@@ -74,6 +76,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     
     return () => {
       window.removeEventListener('resize', updateDimensions);
+    };
+  }, []);
+
+  // Cleanup cursor interpolator on unmount
+  useEffect(() => {
+    const interpolator = cursorInterpolator.current;
+    return () => {
+      interpolator.destroy();
     };
   }, []);
 
@@ -177,15 +187,25 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     const stageX = (pointer.x - stagePos.x) / stageScale;
     const stageY = (pointer.y - stagePos.y) / stageScale;
 
-    // Always update cursor position for display (in stage coordinates)
-    setCursorPosition({
-      x: stageX,
-      y: stageY,
-    });
+    // Only update cursor position if it has actually changed (optimization)
+    if (cursorInterpolator.current.hasPositionChanged(stageX, stageY, 0.5)) {
+      // Update cursor position for display (in stage coordinates)
+      setCursorPosition({
+        x: stageX,
+        y: stageY,
+      });
 
-    // Update cursor position in RTDB (throttled to 30Hz) - only if user is authenticated
-    if (currentUser) {
-      throttledUpdateCursor(stageX, stageY);
+      // Update cursor position in RTDB (throttled to 20Hz) - only if user is authenticated
+      if (currentUser) {
+        throttledUpdateCursor(stageX, stageY);
+        perfMetrics.markEvent('cursorUpdateLocal');
+        perfMetrics.trackCursorUpdateFrequency();
+        perfMetrics.trackNetworkRequest('rtdb', 'cursorUpdate');
+      }
+
+      // Update interpolator with new position
+      cursorInterpolator.current.updateTargetPosition(stageX, stageY);
+      lastCursorUpdate.current = { x: stageX, y: stageY };
     }
 
     // Pan the canvas if dragging
