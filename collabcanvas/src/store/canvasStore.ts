@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 
@@ -17,7 +17,29 @@ interface CanvasState {
   setShapes: (shapes: Shape[]) => void;
   setShapesFromMap: (shapes: Map<string, Shape>) => void;
   
-  // Selection
+  // Multi-Select
+  selectedShapeIds: string[];
+  addToSelection: (id: string) => void;
+  removeFromSelection: (id: string) => void;
+  clearSelection: () => void;
+  selectShapes: (ids: string[]) => void;
+  
+  // Bulk Operations
+  deleteSelectedShapes: () => void;
+  duplicateSelectedShapes: () => void;
+  moveSelectedShapes: (deltaX: number, deltaY: number) => void;
+  rotateSelectedShapes: (angle: number) => void;
+  
+  // Transform Controls
+  transformControls: TransformControls;
+  updateTransformControls: (controls: Partial<TransformControls>) => void;
+  hideTransformControls: () => void;
+  
+  // Selection Box (for drag selection)
+  selectionBox: SelectionBox | null;
+  setSelectionBox: (box: SelectionBox | null) => void;
+  
+  // Legacy single selection (for backward compatibility)
   selectedShapeId: string | null;
   selectShape: (id: string) => void;
   deselectShape: () => void;
@@ -99,17 +121,192 @@ export const useCanvasStore = create<CanvasState>((set) => ({
       shapes: incomingShapes,
     })),
   
-  // Selection state
+  // Multi-Select state
+  selectedShapeIds: [],
+  
+  addToSelection: (id: string) =>
+    set((state) => {
+      if (state.selectedShapeIds.includes(id)) return state;
+      return {
+        selectedShapeIds: [...state.selectedShapeIds, id],
+        selectedShapeId: id, // Update legacy single selection
+      };
+    }),
+  
+  removeFromSelection: (id: string) =>
+    set((state) => {
+      const newSelection = state.selectedShapeIds.filter(shapeId => shapeId !== id);
+      return {
+        selectedShapeIds: newSelection,
+        selectedShapeId: newSelection.length > 0 ? newSelection[newSelection.length - 1] : null,
+      };
+    }),
+  
+  clearSelection: () =>
+    set(() => ({
+      selectedShapeIds: [],
+      selectedShapeId: null,
+      transformControls: {
+        isVisible: false,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        rotation: 0,
+        resizeHandles: [],
+      },
+    })),
+  
+  selectShapes: (ids: string[]) =>
+    set(() => ({
+      selectedShapeIds: ids,
+      selectedShapeId: ids.length > 0 ? ids[ids.length - 1] : null,
+    })),
+  
+  // Bulk Operations
+  deleteSelectedShapes: () =>
+    set((state) => {
+      const newShapes = new Map(state.shapes);
+      state.selectedShapeIds.forEach(id => {
+        newShapes.delete(id);
+      });
+      return {
+        shapes: newShapes,
+        selectedShapeIds: [],
+        selectedShapeId: null,
+        transformControls: {
+          isVisible: false,
+          x: 0,
+          y: 0,
+          width: 0,
+          height: 0,
+          rotation: 0,
+          resizeHandles: [],
+        },
+      };
+    }),
+  
+  duplicateSelectedShapes: () =>
+    set((state) => {
+      const newShapes = new Map(state.shapes);
+      const duplicatedIds: string[] = [];
+      
+      state.selectedShapeIds.forEach(id => {
+        const shape = state.shapes.get(id);
+        if (!shape) return;
+        
+        const duplicatedShape = {
+          ...shape,
+          id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+          x: shape.x + 20, // Offset by 20px
+          y: shape.y + 20,
+          createdAt: Date.now(),
+          updatedAt: Date.now(),
+          clientUpdatedAt: Date.now(),
+        };
+        
+        newShapes.set(duplicatedShape.id, duplicatedShape);
+        duplicatedIds.push(duplicatedShape.id);
+      });
+      
+      return {
+        shapes: newShapes,
+        selectedShapeIds: duplicatedIds,
+        selectedShapeId: duplicatedIds.length > 0 ? duplicatedIds[duplicatedIds.length - 1] : null,
+      };
+    }),
+  
+  moveSelectedShapes: (deltaX: number, deltaY: number) =>
+    set((state) => {
+      const newShapes = new Map(state.shapes);
+      
+      state.selectedShapeIds.forEach(id => {
+        const shape = state.shapes.get(id);
+        if (!shape) return;
+        
+        newShapes.set(id, {
+          ...shape,
+          x: shape.x + deltaX,
+          y: shape.y + deltaY,
+          updatedAt: Date.now(),
+          clientUpdatedAt: Date.now(),
+        });
+      });
+      
+      return { shapes: newShapes };
+    }),
+  
+  rotateSelectedShapes: (angle: number) =>
+    set((state) => {
+      const newShapes = new Map(state.shapes);
+      
+      state.selectedShapeIds.forEach(id => {
+        const shape = state.shapes.get(id);
+        if (!shape) return;
+        
+        const currentRotation = shape.rotation || 0;
+        const newRotation = currentRotation + angle;
+        
+        newShapes.set(id, {
+          ...shape,
+          rotation: newRotation,
+          updatedAt: Date.now(),
+          clientUpdatedAt: Date.now(),
+        });
+      });
+      
+      return { shapes: newShapes };
+    }),
+  
+  // Transform Controls
+  transformControls: {
+    isVisible: false,
+    x: 0,
+    y: 0,
+    width: 0,
+    height: 0,
+    rotation: 0,
+    resizeHandles: [],
+  },
+  
+  updateTransformControls: (controls: Partial<TransformControls>) =>
+    set((state) => ({
+      transformControls: { ...state.transformControls, ...controls },
+    })),
+  
+  hideTransformControls: () =>
+    set((state) => ({
+      transformControls: { ...state.transformControls, isVisible: false },
+    })),
+  
+  // Selection Box
+  selectionBox: null,
+  
+  setSelectionBox: (box: SelectionBox | null) =>
+    set(() => ({ selectionBox: box })),
+  
+  // Legacy single selection (for backward compatibility)
   selectedShapeId: null,
   
   selectShape: (id: string) =>
     set(() => ({
       selectedShapeId: id,
+      selectedShapeIds: [id],
     })),
   
   deselectShape: () =>
     set(() => ({
       selectedShapeId: null,
+      selectedShapeIds: [],
+      transformControls: {
+        isVisible: false,
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+        rotation: 0,
+        resizeHandles: [],
+      },
     })),
   
   // Locks state

@@ -55,8 +55,8 @@ service cloud.firestore {
             || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
             || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
       
-      // No delete operations in MVP
-      allow delete: if false;
+      // Delete: Allow authenticated users to delete shapes
+      allow delete: if request.auth != null;
     }
     
     // Deny all other paths

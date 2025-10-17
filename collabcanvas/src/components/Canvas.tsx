@@ -4,11 +4,14 @@ import Konva from 'konva';
 import { Shape } from './Shape';
 import { CursorOverlay } from './CursorOverlay';
 import { LockOverlay } from './LockOverlay';
+import { SelectionBox } from './SelectionBox';
+import { TransformControls } from './TransformControls';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
+import type { SelectionBox as SelectionBoxType } from '../types';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
@@ -35,6 +38,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const overlaysLayerRef = useRef<Konva.Layer>(null);
   const currentCursorRef = useRef<Konva.Circle>(null);
   const isDragging = useRef(false);
+  const isSelecting = useRef(false);
+  const selectionStart = useRef({ x: 0, y: 0 });
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
@@ -44,9 +49,18 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   // Store state
   const { shapes, updateShapePosition } = useShapes();
   const shapeMap = useCanvasStore((state) => state.shapes);
-  const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
+  const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
+  const addToSelection = useCanvasStore((state) => state.addToSelection);
+  const removeFromSelection = useCanvasStore((state) => state.removeFromSelection);
+  const clearSelection = useCanvasStore((state) => state.clearSelection);
+  const selectShapes = useCanvasStore((state) => state.selectShapes);
+  const selectionBox = useCanvasStore((state) => state.selectionBox);
+  const setSelectionBox = useCanvasStore((state) => state.setSelectionBox);
+  const transformControls = useCanvasStore((state) => state.transformControls);
+  const updateTransformControls = useCanvasStore((state) => state.updateTransformControls);
+  const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const currentUser = useCanvasStore((state) => state.currentUser);
   
   // Presence state
@@ -194,12 +208,78 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
   };
 
-  // Handle mouse down - start pan if clicking on empty space
+  // Handle keyboard events for arrow key movement
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      // Only handle arrow keys when canvas has focus
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+        return;
+      }
+
+      // Check if we have selected shapes
+      if (selectedShapeIds.length === 0) {
+        return;
+      }
+
+      e.preventDefault();
+      
+      const moveDistance = e.shiftKey ? 10 : 1;
+      switch (e.key) {
+        case 'ArrowUp':
+          moveSelectedShapes(0, -moveDistance);
+          break;
+        case 'ArrowDown':
+          moveSelectedShapes(0, moveDistance);
+          break;
+        case 'ArrowLeft':
+          moveSelectedShapes(-moveDistance, 0);
+          break;
+        case 'ArrowRight':
+          moveSelectedShapes(moveDistance, 0);
+          break;
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) {
+      container.addEventListener('keydown', handleKeyDown);
+      return () => container.removeEventListener('keydown', handleKeyDown);
+    }
+  }, [selectedShapeIds, moveSelectedShapes]);
+
+  // Handle mouse down - start pan if clicking on empty space, or start selection
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
     const clickedOnEmpty = e.target === stageRef.current;
+    const stage = stageRef.current;
+    if (!stage) return;
+    
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+    
+    // Convert pointer position to stage coordinates
+    const currentStagePos = stagePosRef.current;
+    const currentStageScale = stageScaleRef.current;
+    
+    const stageX = (pointer.x - currentStagePos.x) / currentStageScale;
+    const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
+    
     if (clickedOnEmpty) {
-      isDragging.current = true;
-      deselectShape();
+      // Check if Shift key is held for multi-select
+      if (e.evt.shiftKey) {
+        // Start drag selection
+        isSelecting.current = true;
+        selectionStart.current = { x: stageX, y: stageY };
+        setSelectionBox({
+          x: stageX,
+          y: stageY,
+          width: 0,
+          height: 0,
+        });
+      } else {
+        // Clear selection and start panning
+        clearSelection();
+        isDragging.current = true;
+      }
     }
   };
 
@@ -231,6 +311,22 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       updateCursorPosition(stageX, stageY);
     }
 
+    // Handle drag selection
+    if (isSelecting.current) {
+      const startX = selectionStart.current.x;
+      const startY = selectionStart.current.y;
+      
+      const selectionBox: SelectionBoxType = {
+        x: Math.min(startX, stageX),
+        y: Math.min(startY, stageY),
+        width: Math.abs(stageX - startX),
+        height: Math.abs(stageY - startY),
+      };
+      
+      setSelectionBox(selectionBox);
+      return;
+    }
+
     // Pan the canvas if dragging - imperative updates for performance
     if (isDragging.current) {
       const newPos = {
@@ -249,9 +345,45 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
   };
 
-  // Handle mouse up - stop panning
+  // Handle mouse up - stop panning and selection
   const handleMouseUp = () => {
+    if (isSelecting.current && selectionBox) {
+      // Find shapes that intersect with the selection box
+      const intersectingShapes = shapes.filter(shape => {
+        const shapeRight = shape.x + shape.w;
+        const shapeBottom = shape.y + shape.h;
+        const boxRight = selectionBox.x + selectionBox.width;
+        const boxBottom = selectionBox.y + selectionBox.height;
+        
+        return !(shape.x > boxRight || 
+                shapeRight < selectionBox.x || 
+                shape.y > boxBottom || 
+                shapeBottom < selectionBox.y);
+      });
+      
+      // Select intersecting shapes
+      if (intersectingShapes.length > 0) {
+        const shapeIds = intersectingShapes.map(shape => shape.id);
+        selectShapes(shapeIds);
+        
+        // Update transform controls
+        updateTransformControls({
+          isVisible: true,
+          x: Math.min(...intersectingShapes.map(s => s.x)),
+          y: Math.min(...intersectingShapes.map(s => s.y)),
+          width: Math.max(...intersectingShapes.map(s => s.x + s.w)) - Math.min(...intersectingShapes.map(s => s.x)),
+          height: Math.max(...intersectingShapes.map(s => s.y + s.h)) - Math.min(...intersectingShapes.map(s => s.y)),
+          rotation: 0,
+          resizeHandles: ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'],
+        });
+      }
+      
+      // Clear selection box
+      setSelectionBox(null);
+    }
+    
     isDragging.current = false;
+    isSelecting.current = false;
   };
 
   // Handle canvas click - deselect shapes when clicking empty space
@@ -263,8 +395,18 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   };
 
   // Handle shape selection
-  const handleShapeSelect = (shapeId: string) => {
-    selectShape(shapeId);
+  const handleShapeSelect = (shapeId: string, event?: Konva.KonvaEventObject<MouseEvent>) => {
+    if (event?.evt.shiftKey) {
+      // Multi-select: add to selection if not already selected, remove if already selected
+      if (selectedShapeIds.includes(shapeId)) {
+        removeFromSelection(shapeId);
+      } else {
+        addToSelection(shapeId);
+      }
+    } else {
+      // Single select: clear current selection and select this shape
+      selectShape(shapeId);
+    }
   };
 
   // Handle shape drag end - no additional action needed, Shape component handles it
@@ -290,6 +432,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       ref={containerRef}
       className="w-full h-full overflow-hidden"
       style={{ backgroundColor: '#F5F5F5' }}
+      tabIndex={0}
+      onFocus={() => console.log('Canvas focused')}
     >
       {dimensions.width > 0 && dimensions.height > 0 && (
         <Stage
@@ -355,14 +499,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           <Layer>
             {shapes.map((shape) => {
               const isLocked = isShapeLockedByOtherUser(shape.id);
-              const isSelected = selectedShapeId === shape.id;
+              const isSelected = selectedShapeIds.includes(shape.id);
               return (
                 <Shape
                   key={shape.id}
                   shape={shape}
                   isSelected={isSelected}
                   isLocked={isLocked}
-                  onSelect={() => handleShapeSelect(shape.id)}
+                  onSelect={(event) => handleShapeSelect(shape.id, event)}
                   onDragEnd={handleShapeDragEnd}
                   onUpdatePosition={async (nextX, nextY) => {
                     await updateShapePosition(shape.id, nextX, nextY);
@@ -371,6 +515,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   onReleaseLock={async () => releaseShapeLock(shape.id)}
                   isLockedByCurrentUser={() => isShapeLockedByCurrentUser(shape.id)}
                   isInteractionEnabled={Boolean(currentUser)}
+                  selectedShapeIds={selectedShapeIds}
+                  onMoveSelectedShapes={moveSelectedShapes}
                 />
               );
             })}
@@ -378,6 +524,23 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
           {/* Overlays layer - non-interactive */}
           <Layer ref={overlaysLayerRef} listening={false}>
+            {/* Selection box for drag selection */}
+            {selectionBox && <SelectionBox selectionBox={selectionBox} />}
+            
+            {/* Transform controls for selected shapes */}
+            <TransformControls 
+              transformControls={transformControls}
+              onResizeStart={(handle) => {
+                // TODO: Implement resize functionality
+                console.log('Resize start:', handle);
+              }}
+              onRotateStart={() => {
+                // Rotate selected shapes by 90 degrees
+                const rotateSelectedShapes = useCanvasStore.getState().rotateSelectedShapes;
+                rotateSelectedShapes(90);
+              }}
+            />
+            
             {Array.from(locks.entries()).map(([shapeId, lock]) => {
               const shape = shapeMap.get(shapeId);
               const isLockedByOther = isShapeLockedByOtherUser(shapeId);
