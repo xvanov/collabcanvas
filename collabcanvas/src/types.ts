@@ -5,9 +5,11 @@
 /**
  * Shape types
  */
+export type ShapeType = 'rect' | 'circle' | 'text' | 'line';
+
 export interface Shape {
   id: string;
-  type: 'rect';
+  type: ShapeType;
   x: number;
   y: number;
   w: number;
@@ -18,6 +20,12 @@ export interface Shape {
   updatedAt: number | null;
   updatedBy: string;
   clientUpdatedAt: number | null;
+  // Optional properties for different shape types
+  text?: string;
+  fontSize?: number;
+  strokeWidth?: number;
+  radius?: number;
+  points?: number[];
 }
 
 /**

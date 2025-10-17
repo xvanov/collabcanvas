@@ -13,6 +13,7 @@ interface CanvasState {
   shapes: Map<string, Shape>;
   createShape: (shape: Shape) => void;
   updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) => void;
+  updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) => void;
   setShapes: (shapes: Shape[]) => void;
   setShapesFromMap: (shapes: Map<string, Shape>) => void;
   
@@ -65,6 +66,22 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         ...shape,
         x,
         y,
+        updatedAt: Date.now(),
+        updatedBy,
+        clientUpdatedAt,
+      });
+      return { shapes: newShapes };
+    }),
+
+  updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) =>
+    set((state) => {
+      const shape = state.shapes.get(id);
+      if (!shape) return state;
+      
+      const newShapes = new Map(state.shapes);
+      newShapes.set(id, {
+        ...shape,
+        [property]: value,
         updatedAt: Date.now(),
         updatedBy,
         clientUpdatedAt,

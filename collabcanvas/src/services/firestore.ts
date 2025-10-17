@@ -21,7 +21,7 @@ const shapesCollection = collection(firestore, 'boards', BOARD_ID, 'shapes');
 */
 export interface FirestoreShape {
   id: string;
-  type: 'rect';
+  type: 'rect' | 'circle' | 'text' | 'line';
   x: number;
   y: number;
   w: number;
@@ -32,6 +32,12 @@ export interface FirestoreShape {
   updatedAt: FieldValue | number; // serverTimestamp or timestamp
   updatedBy: string;
   clientUpdatedAt: number;
+  // Optional properties for different shape types
+  text?: string;
+  fontSize?: number;
+  strokeWidth?: number;
+  radius?: number;
+  points?: number[];
 }
 
 export interface FirestoreShapeChange {
@@ -44,25 +50,57 @@ export interface FirestoreShapeChange {
  */
 export const createShape = async (
   shapeId: string,
+  shapeType: 'rect' | 'circle' | 'text' | 'line',
   x: number,
   y: number,
   userId: string
 ): Promise<void> => {
   const shapeRef = doc(shapesCollection, shapeId);
   
-  const shapeData: Omit<FirestoreShape, 'id'> = {
-    type: 'rect',
+  const baseShapeData = {
+    type: shapeType,
     x,
     y,
-    w: 100, // Fixed width
-    h: 100, // Fixed height
-    color: '#3B82F6', // Fixed blue color
+    w: 100,
+    h: 100,
+    color: '#3B82F6',
     createdAt: serverTimestamp(),
     createdBy: userId,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
     clientUpdatedAt: Date.now(),
   };
+
+  // Add type-specific properties
+  let shapeData: Omit<FirestoreShape, 'id'>;
+  switch (shapeType) {
+    case 'circle':
+      shapeData = {
+        ...baseShapeData,
+        radius: 50,
+      };
+      break;
+    case 'text':
+      shapeData = {
+        ...baseShapeData,
+        text: '',
+        fontSize: 16,
+        w: 200,
+        h: 50,
+      };
+      break;
+    case 'line':
+      shapeData = {
+        ...baseShapeData,
+        strokeWidth: 2,
+        points: [0, 0, 100, 0],
+        h: 0,
+      };
+      break;
+    default: // rect
+      shapeData = baseShapeData;
+      break;
+  }
 
   await setDoc(shapeRef, shapeData);
 };
@@ -83,6 +121,27 @@ export const updateShapePosition = async (
   await updateDoc(shapeRef, {
     x,
     y,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+    clientUpdatedAt: clientTimestamp,
+  });
+};
+
+/**
+ * Update shape properties in Firestore
+ * Updates any property of a shape (color, size, text, etc.)
+ */
+export const updateShapeProperty = async (
+  shapeId: string,
+  property: keyof FirestoreShape,
+  value: unknown,
+  userId: string,
+  clientTimestamp: number
+): Promise<void> => {
+  const shapeRef = doc(shapesCollection, shapeId);
+  
+  await updateDoc(shapeRef, {
+    [property]: value,
     updatedAt: serverTimestamp(),
     updatedBy: userId,
     clientUpdatedAt: clientTimestamp,

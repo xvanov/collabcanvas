@@ -1,19 +1,15 @@
 /**
- * Shape component for rendering and interacting with rectangles on the canvas
+ * Shape component for rendering and interacting with different shape types on the canvas
  * Supports drag-to-move interaction with boundary constraints and locking
  */
 
-import { memo, useCallback } from 'react';
-import { Rect } from 'react-konva';
+import { useCallback } from 'react';
+import { Rect, Circle, Text, Line } from 'react-konva';
 import type { KonvaEventObject } from 'konva/lib/Node';
+import type { Shape as ShapeType } from '../types';
 
 interface ShapeProps {
-  id: string;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  fill: string;
+  shape: ShapeType;
   isSelected: boolean;
   isLocked: boolean;
   onSelect: () => void;
@@ -26,15 +22,10 @@ interface ShapeProps {
 }
 
 /**
- * Rectangle shape component with drag interaction
+ * Multi-type shape component with drag interaction
  */
 function ShapeComponent({
-  id,
-  x,
-  y,
-  width,
-  height,
-  fill,
+  shape,
   isSelected,
   isLocked,
   onSelect,
@@ -88,36 +79,88 @@ function ShapeComponent({
   const stroke = isSelected ? '#1E40AF' : undefined;
   const strokeWidth = isSelected ? 3 : 0;
 
-  return (
-    <Rect
-      id={id}
-      x={x}
-      y={y}
-      width={width}
-      height={height}
-      fill={fill}
-      draggable={!isLocked && isInteractionEnabled}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-      onClick={handleClick}
-      onDragEnd={handleDragEnd}
-      onMouseUp={handleMouseUp}
-      // Cursor styles
-      onMouseEnter={(e) => {
-        const container = e.target.getStage()?.container();
-        if (container) {
-          container.style.cursor = isLocked ? 'not-allowed' : 'move';
-        }
-      }}
-      onMouseLeave={(e) => {
-        const container = e.target.getStage()?.container();
-        if (container) {
-          container.style.cursor = 'default';
-        }
-      }}
-    />
-  );
+  const commonProps = {
+    id: shape.id,
+    x: shape.x,
+    y: shape.y,
+    draggable: !isLocked && isInteractionEnabled,
+    stroke: stroke,
+    strokeWidth: strokeWidth,
+    onClick: handleClick,
+    onDragEnd: handleDragEnd,
+    onMouseUp: handleMouseUp,
+    // Cursor styles
+    onMouseEnter: (e: KonvaEventObject<MouseEvent>) => {
+      const container = e.target.getStage()?.container();
+      if (container) {
+        container.style.cursor = isLocked ? 'not-allowed' : 'move';
+      }
+    },
+    onMouseLeave: (e: KonvaEventObject<MouseEvent>) => {
+      const container = e.target.getStage()?.container();
+      if (container) {
+        container.style.cursor = 'default';
+      }
+    },
+  };
+
+  // Render different shape types based on shape.type
+  switch (shape.type) {
+    case 'rect':
+      return (
+        <Rect
+          {...commonProps}
+          width={shape.w}
+          height={shape.h}
+          fill={shape.color}
+        />
+      );
+
+    case 'circle':
+      return (
+        <Circle
+          {...commonProps}
+          radius={shape.radius || Math.min(shape.w, shape.h) / 2}
+          fill={shape.color}
+        />
+      );
+
+    case 'text':
+      return (
+        <Text
+          {...commonProps}
+          text={shape.text || 'Text'}
+          fontSize={shape.fontSize || 16}
+          fill={shape.color}
+          width={shape.w}
+          height={shape.h}
+          align="center"
+          verticalAlign="middle"
+        />
+      );
+
+    case 'line':
+      return (
+        <Line
+          {...commonProps}
+          points={shape.points || [0, 0, shape.w, 0]}
+          stroke={shape.color}
+          strokeWidth={shape.strokeWidth || 2}
+          fill={undefined}
+        />
+      );
+
+    default:
+      // Fallback to rectangle for unknown types
+      return (
+        <Rect
+          {...commonProps}
+          width={shape.w}
+          height={shape.h}
+          fill={shape.color}
+        />
+      );
+  }
 }
 
-export const Shape = memo(ShapeComponent);
-Shape.displayName = 'Shape';
+export const Shape = ShapeComponent;

@@ -10,40 +10,50 @@ service cloud.firestore {
       // Create: Validate shape schema and auth
       allow create: if request.auth != null
         // Validate shape type
-        && request.resource.data.type == 'rect'
-        // Validate fixed dimensions
-        && request.resource.data.w == 100
-        && request.resource.data.h == 100
-        // Validate fixed color
-        && request.resource.data.color == '#3B82F6'
+        && request.resource.data.type in ['rect', 'circle', 'text', 'line']
         // Validate position fields are numbers
         && request.resource.data.x is number
         && request.resource.data.y is number
+        && request.resource.data.w is number
+        && request.resource.data.h is number
+        // Validate color is string
+        && request.resource.data.color is string
         // Validate metadata
         && request.resource.data.createdBy == request.auth.uid
         && request.resource.data.updatedBy == request.auth.uid
         // Ensure server timestamps are used
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.clientUpdatedAt is number;
+        && request.resource.data.clientUpdatedAt is number
+        // Validate type-specific properties
+        && (request.resource.data.type == 'rect' 
+            || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
+            || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
+            || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
       
-      // Update: Only allow position updates by authenticated user
+      // Update: Allow position and property updates by authenticated user
       allow update: if request.auth != null
         // Only the user who last updated can update again
         && request.resource.data.updatedBy == request.auth.uid
-        // Validate that only position fields change
-        && request.resource.data.w == resource.data.w
-        && request.resource.data.h == resource.data.h
-        && request.resource.data.color == resource.data.color
+        // Validate that core fields don't change
         && request.resource.data.type == resource.data.type
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt
-        // Validate new position fields
+        // Validate position fields
         && request.resource.data.x is number
         && request.resource.data.y is number
+        && request.resource.data.w is number
+        && request.resource.data.h is number
+        // Validate color is string
+        && request.resource.data.color is string
         // Validate updatedAt timestamp
         && request.resource.data.updatedAt is timestamp
-        && request.resource.data.clientUpdatedAt is number;
+        && request.resource.data.clientUpdatedAt is number
+        // Validate type-specific properties remain valid
+        && (request.resource.data.type == 'rect' 
+            || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
+            || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
+            || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
       
       // No delete operations in MVP
       allow delete: if false;

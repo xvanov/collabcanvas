@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { Toolbar } from '../components/Toolbar';
 import Canvas from '../components/Canvas';
+import { ShapePropertiesPanel } from '../components/ShapePropertiesPanel';
 import { useCanvasStore } from '../store/canvasStore';
 import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
 import { useLocks } from '../hooks/useLocks';
 import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
+import type { Shape, ShapeType } from '../types';
 import { perfMetrics } from '../utils/harness';
 
 /**
@@ -69,15 +71,15 @@ export function Board() {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  const handleCreateShape = () => {
+  const handleCreateShape = (type: ShapeType) => {
     if (!user) return;
 
     // Get viewport center from Canvas component
     const center = canvasRef.current?.getViewportCenter() || { x: 200, y: 200 };
 
-    const newShape = {
+    const baseShape = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: 'rect' as const,
+      type,
       x: center.x - 50, // Center the 100px shape
       y: center.y - 50,
       w: 100,
@@ -90,7 +92,26 @@ export function Board() {
       clientUpdatedAt: Date.now(),
     };
 
-    createShape(newShape);
+    // Add type-specific properties
+    const shape: Shape = { ...baseShape };
+    switch (type) {
+      case 'circle':
+        shape.radius = 50;
+        break;
+      case 'text':
+        shape.text = '';
+        shape.fontSize = 16;
+        shape.w = 200;
+        shape.h = 50;
+        break;
+      case 'line':
+        shape.strokeWidth = 2;
+        shape.points = [0, 0, 100, 0];
+        shape.h = 0;
+        break;
+    }
+
+    createShape(shape);
   };
 
   return (
@@ -98,12 +119,15 @@ export function Board() {
       <Toolbar fps={fps} zoom={zoom} onCreateShape={handleCreateShape}>
         {/* Additional toolbar controls will be added in future PRs */}
       </Toolbar>
-      <div className="flex-1">
-        <Canvas 
-          ref={canvasRef}
-          onFpsUpdate={setFps} 
-          onZoomChange={setZoom} 
-        />
+      <div className="flex flex-1">
+        <div className="flex-1">
+          <Canvas 
+            ref={canvasRef}
+            onFpsUpdate={setFps} 
+            onZoomChange={setZoom} 
+          />
+        </div>
+        <ShapePropertiesPanel className="w-80" />
       </div>
       <DiagnosticsHud fps={fps} visible={showDiagnostics} />
     </div>

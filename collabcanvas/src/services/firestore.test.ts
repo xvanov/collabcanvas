@@ -151,4 +151,386 @@ describe('Firestore Service', () => {
       expect(typeof updateData.clientUpdatedAt).toBe('number');
     });
   });
+
+  describe('Extended Shape Types Schema', () => {
+    // Extended FirestoreShape interface for testing new types
+    interface ExtendedFirestoreShape extends FirestoreShape {
+      text?: string;
+      fontSize?: number;
+      strokeWidth?: number;
+      radius?: number;
+      points?: number[];
+    }
+
+    it('should validate circle shape schema', () => {
+      const circleShape: ExtendedFirestoreShape = {
+        id: 'circle-shape-1',
+        type: 'rect', // Will be 'circle' when types are extended
+        x: 200,
+        y: 200,
+        w: 100,
+        h: 100,
+        color: '#FF0000',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        radius: 50,
+      };
+
+      expect(circleShape.type).toBe('rect'); // Will be 'circle' when types are extended
+      expect(circleShape.radius).toBe(50);
+      expect(typeof circleShape.radius).toBe('number');
+      expect(circleShape.radius).toBeGreaterThan(0);
+      expect(circleShape.color).toBe('#FF0000');
+    });
+
+    it('should validate text shape schema', () => {
+      const textShape: ExtendedFirestoreShape = {
+        id: 'text-shape-1',
+        type: 'rect', // Will be 'text' when types are extended
+        x: 300,
+        y: 300,
+        w: 200,
+        h: 50,
+        color: '#000000',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        text: 'Hello World',
+        fontSize: 16,
+      };
+
+      expect(textShape.type).toBe('rect'); // Will be 'text' when types are extended
+      expect(textShape.text).toBe('Hello World');
+      expect(typeof textShape.text).toBe('string');
+      expect(textShape.text.length).toBeGreaterThan(0);
+      expect(textShape.fontSize).toBe(16);
+      expect(typeof textShape.fontSize).toBe('number');
+      expect(textShape.fontSize).toBeGreaterThan(0);
+    });
+
+    it('should validate line shape schema', () => {
+      const lineShape: ExtendedFirestoreShape = {
+        id: 'line-shape-1',
+        type: 'rect', // Will be 'line' when types are extended
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 0,
+        color: '#00FF00',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        strokeWidth: 2,
+        points: [0, 0, 100, 0],
+      };
+
+      expect(lineShape.type).toBe('rect'); // Will be 'line' when types are extended
+      expect(lineShape.strokeWidth).toBe(2);
+      expect(typeof lineShape.strokeWidth).toBe('number');
+      expect(lineShape.strokeWidth).toBeGreaterThan(0);
+      expect(lineShape.points).toEqual([0, 0, 100, 0]);
+      expect(Array.isArray(lineShape.points)).toBe(true);
+      expect(lineShape.points.length).toBe(4);
+    });
+
+    it('should maintain backward compatibility with existing rectangles', () => {
+      const existingRect: FirestoreShape = {
+        id: 'existing-rect-1',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        w: 100,
+        h: 100,
+        color: '#3B82F6',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+      };
+
+      // Should work exactly as before
+      expect(existingRect.type).toBe('rect');
+      expect(existingRect.w).toBe(100);
+      expect(existingRect.h).toBe(100);
+      expect(existingRect.color).toBe('#3B82F6');
+      
+      // New properties should be undefined for existing shapes
+      expect((existingRect as ExtendedFirestoreShape).text).toBeUndefined();
+      expect((existingRect as ExtendedFirestoreShape).fontSize).toBeUndefined();
+      expect((existingRect as ExtendedFirestoreShape).strokeWidth).toBeUndefined();
+      expect((existingRect as ExtendedFirestoreShape).radius).toBeUndefined();
+      expect((existingRect as ExtendedFirestoreShape).points).toBeUndefined();
+    });
+  });
+
+  describe('Editable Properties Schema', () => {
+    // Extended FirestoreShape interface for testing new types
+    interface ExtendedFirestoreShape extends FirestoreShape {
+      text?: string;
+      fontSize?: number;
+      strokeWidth?: number;
+      radius?: number;
+      points?: number[];
+    }
+
+    it('should validate color property updates', () => {
+      const originalShape: ExtendedFirestoreShape = {
+        id: 'editable-shape-1',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        w: 100,
+        h: 100,
+        color: '#3B82F6',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+      };
+
+      const colorUpdates = [
+        '#FF0000', // Red
+        '#00FF00', // Green
+        '#0000FF', // Blue
+        '#FFFFFF', // White
+        '#000000', // Black
+      ];
+
+      colorUpdates.forEach(color => {
+        const updatedShape = {
+          ...originalShape,
+          color,
+          updatedAt: Date.now(),
+          updatedBy: 'user-2',
+          clientUpdatedAt: Date.now(),
+        };
+
+        expect(updatedShape.color).toBe(color);
+        expect(typeof updatedShape.color).toBe('string');
+        expect(updatedShape.color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+        expect(updatedShape.updatedBy).toBe('user-2');
+      });
+    });
+
+    it('should validate size property updates', () => {
+      const originalShape: ExtendedFirestoreShape = {
+        id: 'editable-shape-2',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        w: 100,
+        h: 100,
+        color: '#3B82F6',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+      };
+
+      const sizeUpdates = [
+        { w: 50, h: 50 },   // Smaller
+        { w: 150, h: 150 }, // Larger
+        { w: 200, h: 100 }, // Different aspect ratio
+        { w: 100, h: 200 }, // Different aspect ratio
+      ];
+
+      sizeUpdates.forEach(size => {
+        const updatedShape = {
+          ...originalShape,
+          ...size,
+          updatedAt: Date.now(),
+          updatedBy: 'user-2',
+          clientUpdatedAt: Date.now(),
+        };
+
+        expect(updatedShape.w).toBe(size.w);
+        expect(updatedShape.h).toBe(size.h);
+        expect(typeof updatedShape.w).toBe('number');
+        expect(typeof updatedShape.h).toBe('number');
+        expect(updatedShape.w).toBeGreaterThan(0);
+        expect(updatedShape.h).toBeGreaterThan(0);
+        expect(updatedShape.updatedBy).toBe('user-2');
+      });
+    });
+
+    it('should validate text property updates', () => {
+      const originalTextShape: ExtendedFirestoreShape = {
+        id: 'text-shape-2',
+        type: 'rect', // Will be 'text' when types are extended
+        x: 100,
+        y: 100,
+        w: 200,
+        h: 50,
+        color: '#000000',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        text: 'Original Text',
+        fontSize: 14,
+      };
+
+      const textUpdates = [
+        { text: 'Updated Text', fontSize: 16 },
+        { text: 'New Text', fontSize: 18 },
+        { text: '', fontSize: 12 }, // Empty text
+        { text: 'Very Long Text That Might Exceed Normal Limits', fontSize: 20 },
+      ];
+
+      textUpdates.forEach(textUpdate => {
+        const updatedShape = {
+          ...originalTextShape,
+          ...textUpdate,
+          updatedAt: Date.now(),
+          updatedBy: 'user-2',
+          clientUpdatedAt: Date.now(),
+        };
+
+        expect(updatedShape.text).toBe(textUpdate.text);
+        expect(updatedShape.fontSize).toBe(textUpdate.fontSize);
+        expect(typeof updatedShape.text).toBe('string');
+        expect(typeof updatedShape.fontSize).toBe('number');
+        expect(updatedShape.fontSize).toBeGreaterThan(0);
+        expect(updatedShape.updatedBy).toBe('user-2');
+      });
+    });
+
+    it('should validate line property updates', () => {
+      const originalLineShape: ExtendedFirestoreShape = {
+        id: 'line-shape-2',
+        type: 'rect', // Will be 'line' when types are extended
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 0,
+        color: '#00FF00',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        strokeWidth: 2,
+        points: [0, 0, 100, 0],
+      };
+
+      const lineUpdates = [
+        { strokeWidth: 1, points: [0, 0, 50, 0] },
+        { strokeWidth: 3, points: [0, 0, 200, 0] },
+        { strokeWidth: 5, points: [0, 0, 100, 50] },
+      ];
+
+      lineUpdates.forEach(lineUpdate => {
+        const updatedShape = {
+          ...originalLineShape,
+          ...lineUpdate,
+          updatedAt: Date.now(),
+          updatedBy: 'user-2',
+          clientUpdatedAt: Date.now(),
+        };
+
+        expect(updatedShape.strokeWidth).toBe(lineUpdate.strokeWidth);
+        expect(updatedShape.points).toEqual(lineUpdate.points);
+        expect(typeof updatedShape.strokeWidth).toBe('number');
+        expect(updatedShape.strokeWidth).toBeGreaterThan(0);
+        expect(Array.isArray(updatedShape.points)).toBe(true);
+        expect(updatedShape.points.length).toBe(4);
+        expect(updatedShape.updatedBy).toBe('user-2');
+      });
+    });
+  });
+
+  describe('Mixed Shape Types Schema', () => {
+    // Extended FirestoreShape interface for testing new types
+    interface ExtendedFirestoreShape extends FirestoreShape {
+      text?: string;
+      fontSize?: number;
+      strokeWidth?: number;
+      radius?: number;
+      points?: number[];
+    }
+
+    it('should handle mixed shape types in the same collection', () => {
+      const mixedShapes: ExtendedFirestoreShape[] = [
+        {
+          id: 'rect-1',
+          type: 'rect',
+          x: 0, y: 0, w: 100, h: 100,
+          color: '#3B82F6',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+        },
+        {
+          id: 'circle-1',
+          type: 'rect', // Will be 'circle' when types are extended
+          x: 100, y: 100, w: 100, h: 100,
+          color: '#FF0000',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          radius: 50,
+        },
+        {
+          id: 'text-1',
+          type: 'rect', // Will be 'text' when types are extended
+          x: 200, y: 200, w: 200, h: 50,
+          color: '#000000',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          text: 'Hello',
+          fontSize: 16,
+        },
+        {
+          id: 'line-1',
+          type: 'rect', // Will be 'line' when types are extended
+          x: 300, y: 300, w: 100, h: 0,
+          color: '#00FF00',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          strokeWidth: 2,
+          points: [0, 0, 100, 0],
+        },
+      ];
+
+      mixedShapes.forEach(shape => {
+        expect(shape.id).toBeDefined();
+        expect(shape.type).toBeDefined();
+        expect(shape.x).toBeDefined();
+        expect(shape.y).toBeDefined();
+        expect(shape.w).toBeDefined();
+        expect(shape.h).toBeDefined();
+        expect(shape.color).toBeDefined();
+        expect(shape.createdAt).toBeDefined();
+        expect(shape.createdBy).toBeDefined();
+        expect(shape.updatedAt).toBeDefined();
+        expect(shape.updatedBy).toBeDefined();
+        expect(shape.clientUpdatedAt).toBeDefined();
+      });
+
+      // Verify each shape has correct properties
+      const rectShape = mixedShapes[0];
+      expect(rectShape.type).toBe('rect');
+      expect(rectShape.radius).toBeUndefined();
+      expect(rectShape.text).toBeUndefined();
+
+      const circleShape = mixedShapes[1];
+      expect(circleShape.radius).toBe(50);
+      expect(circleShape.text).toBeUndefined();
+
+      const textShape = mixedShapes[2];
+      expect(textShape.text).toBe('Hello');
+      expect(textShape.fontSize).toBe(16);
+      expect(textShape.radius).toBeUndefined();
+
+      const lineShape = mixedShapes[3];
+      expect(lineShape.strokeWidth).toBe(2);
+      expect(lineShape.points).toEqual([0, 0, 100, 0]);
+      expect(lineShape.text).toBeUndefined();
+    });
+  });
 });

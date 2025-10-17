@@ -359,12 +359,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               return (
                 <Shape
                   key={shape.id}
-                  id={shape.id}
-                  x={shape.x}
-                  y={shape.y}
-                  width={shape.w}
-                  height={shape.h}
-                  fill={shape.color}
+                  shape={shape}
                   isSelected={isSelected}
                   isLocked={isLocked}
                   onSelect={() => handleShapeSelect(shape.id)}
