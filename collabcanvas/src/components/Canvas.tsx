@@ -26,6 +26,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+  // Imperative stage position and scale to avoid React re-renders during pan/zoom
+  const stagePosRef = useRef({ x: 0, y: 0 });
+  const stageScaleRef = useRef(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
   // Imperative current-user cursor to avoid React re-renders on mousemove
@@ -35,6 +38,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
+  // Throttle React state updates during pan/zoom to prevent RAF queue buildup
+  const pendingStateUpdateRef = useRef<number | null>(null);
 
   // Store state
   const { shapes, updateShapePosition } = useShapes();
@@ -55,6 +60,26 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     acquireShapeLock,
     releaseShapeLock,
   } = useLocks();
+
+  // Throttled state update function to prevent RAF queue buildup in Chrome
+  const scheduleStateUpdate = (pos: { x: number; y: number }, scale: number) => {
+    if (pendingStateUpdateRef.current) {
+      cancelAnimationFrame(pendingStateUpdateRef.current);
+    }
+    
+    pendingStateUpdateRef.current = requestAnimationFrame(() => {
+      setStagePos(pos);
+      setStageScale(scale);
+      pendingStateUpdateRef.current = null;
+    });
+  };
+
+  // Initialize refs with initial state values
+  useEffect(() => {
+    stagePosRef.current = stagePos;
+    stageScaleRef.current = stageScale;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Cursor update function (throttling handled in usePresence)
   // Cache cursor for Firefox performance optimization
@@ -114,25 +139,28 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       if (rafId.current) {
         cancelAnimationFrame(rafId.current);
       }
+      if (pendingStateUpdateRef.current) {
+        cancelAnimationFrame(pendingStateUpdateRef.current);
+      }
     };
   }, [onFpsUpdate]);
 
-  // Handle wheel zoom
+  // Handle wheel zoom - imperative updates for performance
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
     
     const stage = stageRef.current;
     if (!stage) return;
 
-    const oldScale = stage.scaleX();
+    const oldScale = stageScaleRef.current;
     const pointer = stage.getPointerPosition();
     
     if (!pointer) return;
 
     // Calculate mouse position in stage coordinates
     const mousePointTo = {
-      x: (pointer.x - stage.x()) / oldScale,
-      y: (pointer.y - stage.y()) / oldScale,
+      x: (pointer.x - stagePosRef.current.x) / oldScale,
+      y: (pointer.y - stagePosRef.current.y) / oldScale,
     };
 
     // Zoom calculation
@@ -149,8 +177,16 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       y: pointer.y - mousePointTo.y * clampedScale,
     };
 
-    setStageScale(clampedScale);
-    setStagePos(newPos);
+    // Update refs imperatively
+    stagePosRef.current = newPos;
+    stageScaleRef.current = clampedScale;
+    
+    // Update stage directly without React re-render
+    stage.position(newPos);
+    stage.scale({ x: clampedScale, y: clampedScale });
+    
+    // Update React state only for UI display (throttled)
+    scheduleStateUpdate(newPos, clampedScale);
     
     // Notify parent of zoom change
     if (onZoomChange) {
@@ -177,11 +213,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     if (!pointer) return;
 
     // Convert pointer position to stage coordinates (accounting for pan and zoom)
-    const stagePos = stage.position();
-    const stageScale = stage.scaleX();
+    const currentStagePos = stagePosRef.current;
+    const currentStageScale = stageScaleRef.current;
     
-    const stageX = (pointer.x - stagePos.x) / stageScale;
-    const stageY = (pointer.y - stagePos.y) / stageScale;
+    const stageX = (pointer.x - currentStagePos.x) / currentStageScale;
+    const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
 
     // Imperatively update current user's cursor position to avoid React re-render
     if (currentCursorRef.current) {
@@ -195,12 +231,21 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       updateCursorPosition(stageX, stageY);
     }
 
-    // Pan the canvas if dragging
+    // Pan the canvas if dragging - imperative updates for performance
     if (isDragging.current) {
-      setStagePos((prev) => ({
-        x: prev.x + e.evt.movementX,
-        y: prev.y + e.evt.movementY,
-      }));
+      const newPos = {
+        x: stagePosRef.current.x + e.evt.movementX,
+        y: stagePosRef.current.y + e.evt.movementY,
+      };
+      
+      // Update refs imperatively
+      stagePosRef.current = newPos;
+      
+      // Update stage directly without React re-render
+      stage.position(newPos);
+      
+      // Update React state only for UI display (throttled)
+      scheduleStateUpdate(newPos, stageScaleRef.current);
     }
   };
 
@@ -251,10 +296,10 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           ref={stageRef}
           width={dimensions.width}
           height={dimensions.height}
-          x={stagePos.x}
-          y={stagePos.y}
-          scaleX={stageScale}
-          scaleY={stageScale}
+          x={stagePosRef.current.x}
+          y={stagePosRef.current.y}
+          scaleX={stageScaleRef.current}
+          scaleY={stageScaleRef.current}
           onWheel={handleWheel}
           onMouseDown={handleMouseDown}
           onMouseMove={handleMouseMove}
@@ -264,10 +309,10 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           {/* Grid layer - non-interactive */}
           <Layer listening={false} hitGraphEnabled={false}>
             {(() => {
-              const visibleWidth = dimensions.width / stageScale;
-              const visibleHeight = dimensions.height / stageScale;
-              const startX = -stagePos.x / stageScale;
-              const startY = -stagePos.y / stageScale;
+              const visibleWidth = dimensions.width / stageScaleRef.current;
+              const visibleHeight = dimensions.height / stageScaleRef.current;
+              const startX = -stagePosRef.current.x / stageScaleRef.current;
+              const startY = -stagePosRef.current.y / stageScaleRef.current;
               const endX = startX + visibleWidth;
               const endY = startY + visibleHeight;
               const gridSize = 50;
