@@ -12,13 +12,15 @@ interface ShapeProps {
   shape: ShapeType;
   isSelected: boolean;
   isLocked: boolean;
-  onSelect: () => void;
+  onSelect: (event?: KonvaEventObject<MouseEvent>) => void;
   onDragEnd: (x: number, y: number) => void;
   onUpdatePosition: (x: number, y: number) => Promise<void> | void;
   onAcquireLock: () => Promise<boolean>;
   onReleaseLock: () => Promise<void>;
   isLockedByCurrentUser: () => boolean;
   isInteractionEnabled: boolean;
+  selectedShapeIds: string[];
+  onMoveSelectedShapes: (deltaX: number, deltaY: number) => void;
 }
 
 /**
@@ -35,8 +37,10 @@ function ShapeComponent({
   onReleaseLock,
   isLockedByCurrentUser,
   isInteractionEnabled,
+  selectedShapeIds,
+  onMoveSelectedShapes,
 }: ShapeProps) {
-  const handleClick = useCallback(async () => {
+  const handleClick = useCallback(async (e: KonvaEventObject<MouseEvent>) => {
     if (!isInteractionEnabled) return;
 
     // If shape is locked by another user, don't allow selection
@@ -53,15 +57,25 @@ function ShapeComponent({
       }
     }
 
-    onSelect();
+    onSelect(e);
   }, [isInteractionEnabled, isLocked, isLockedByCurrentUser, onAcquireLock, onSelect]);
 
   const handleDragEnd = useCallback(async (e: KonvaEventObject<DragEvent>) => {
     const node = e.target;
     const pos = node.position();
     
-    // Update position with Firestore sync (throttled and optimistic)
-    await onUpdatePosition(pos.x, pos.y);
+    // Check if this shape is part of a multi-selection
+    if (selectedShapeIds.length > 1 && selectedShapeIds.includes(shape.id)) {
+      // Calculate the delta from the original position
+      const deltaX = pos.x - shape.x;
+      const deltaY = pos.y - shape.y;
+      
+      // Move all selected shapes by the same delta
+      onMoveSelectedShapes(deltaX, deltaY);
+    } else {
+      // Single shape drag - update position with Firestore sync
+      await onUpdatePosition(pos.x, pos.y);
+    }
     
     // Release lock when drag operation completes
     if (isLockedByCurrentUser()) {
@@ -69,7 +83,7 @@ function ShapeComponent({
     }
     
     onDragEnd(pos.x, pos.y);
-  }, [onUpdatePosition, isLockedByCurrentUser, onReleaseLock, onDragEnd]);
+  }, [onUpdatePosition, isLockedByCurrentUser, onReleaseLock, onDragEnd, selectedShapeIds, shape.id, shape.x, shape.y, onMoveSelectedShapes]);
 
   const handleMouseUp = useCallback(async () => {
     // Don't release lock on mouse up - only on drag end
@@ -83,6 +97,7 @@ function ShapeComponent({
     id: shape.id,
     x: shape.x,
     y: shape.y,
+    rotation: shape.rotation || 0,
     draggable: !isLocked && isInteractionEnabled,
     stroke: stroke,
     strokeWidth: strokeWidth,

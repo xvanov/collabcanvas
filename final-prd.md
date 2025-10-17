@@ -1,10 +1,12 @@
 # CollabCanvas – Final Product Requirements Document (PRD)
 
-> **Goal**: Transform the completed MVP into a high-scoring collaborative canvas application that maximizes rubric points through strategic feature implementation.
+> **Goal**: Transform the completed MVP into a high-scoring collaborative canvas application that maximizes rubric points (target: 100-105/105).
 
 ## Executive Summary
 
-CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure working at target performance levels. This final PRD outlines a strategic roadmap to achieve maximum rubric points (target: 85-95/100) by implementing high-ROI features that build upon the solid foundation.
+CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure working at target performance levels. This final PRD outlines a strategic roadmap to achieve maximum rubric points (target: 100-105/105) by implementing high-ROI features that build upon the solid foundation.
+
+**⚠️ RUBRIC BONUS POINTS**: The rubric allows for bonus points - you can score up to 105/100 by exceeding expectations in any section. All calculations below work toward the maximum achievable score.
 
 **Current Status**: ✅ MVP Complete (9/9 PRs done)
 - Real-time collaboration: ✅ Working
@@ -32,7 +34,7 @@ CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure work
 
 ### 🎯 Rubric Score Analysis
 
-**Current Estimated Score: 65-70/100**
+**Current Estimated Score: 45-52/100**
 
 | Section | Current Score | Max Possible | Gap Analysis |
 |---------|---------------|--------------|--------------|
@@ -49,35 +51,35 @@ CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure work
 
 ## 2) Strategic Feature Roadmap (ROI-Optimized)
 
-### Phase 1: High-ROI Canvas Features (Target: +15-18 points)
-**Estimated Effort**: 2-3 days | **Points**: 15-18 | **ROI**: Very High
+### Phase 1: High-ROI Canvas Features (Target: +10-12 points)
+**Points**: 10-12 | **ROI**: Very High
 
-#### 1.1 Additional Shape Types (6 points)
+#### 1.1 Additional Shape Types (4 points)
 - **Circles**: Add circle creation tool
 - **Text**: Add text input with basic formatting
 - **Lines**: Add line drawing tool
-- **Impact**: Moves from "Poor" to "Good" in Canvas Functionality
+- **Impact**: Moves from "Poor" to "Satisfactory" in Canvas Functionality
 
-#### 1.2 Shape Editing & Properties (4 points)
+#### 1.2 Shape Editing & Properties (3 points)
 - **Color Picker**: Allow shape color changes
 - **Size Editing**: Enable resizing (maintain aspect ratio)
 - **Text Editing**: Click-to-edit text content
 - **Impact**: Moves from "Basic" to "Good" functionality
 
-#### 1.3 Multi-Select & Operations (4 points)
+#### 1.3 Multi-Select & Operations (3 points)
 - **Shift+Click**: Multi-select shapes
 - **Delete Key**: Delete selected shapes
 - **Duplicate**: Ctrl+D to duplicate selected shapes
 - **Impact**: Essential for "Good" rating
 
-#### 1.4 Transform Operations (4 points)
+#### 1.4 Transform Operations (2 points)
 - **Resize Handles**: Visual resize controls
 - **Rotation**: Basic rotation (90° increments)
 - **Move with Arrow Keys**: Keyboard navigation
 - **Impact**: Completes "Good" functionality rating
 
-### Phase 2: Advanced Figma Features (Target: +10-12 points)
-**Estimated Effort**: 3-4 days | **Points**: 10-12 | **ROI**: High
+### Phase 2: Advanced Figma Features (Target: +12 points)
+**Points**: 12 | **ROI**: High
 
 #### 2.1 Tier 1 Features (6 points - pick 3)
 - **Color Picker with Recent Colors** (2 pts)
@@ -88,8 +90,8 @@ CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure work
 - **Layers Panel with Drag-to-Reorder** (3 pts)
 - **Alignment Tools** (align left/right/center) (3 pts)
 
-### Phase 3: AI Canvas Agent (Target: +15-20 points)
-**Estimated Effort**: 5-7 days | **Points**: 15-20 | **ROI**: Medium-High
+### Phase 3: AI Canvas Agent (Target: +25 points)
+**Points**: 25 | **ROI**: Medium-High
 
 #### 3.1 Basic AI Commands (10 points)
 - **Creation Commands**: "Create a red circle", "Add text saying Hello"
@@ -102,6 +104,11 @@ CollabCanvas MVP is **COMPLETE** with all core collaborative infrastructure work
 - **90%+ accuracy**
 - **Natural UX with feedback**
 - **Shared state integration**
+
+#### 3.3 Complex Command Execution (8 points)
+- **Multi-step operations work**
+- **Smart positioning and styling**
+- **Handles ambiguity well**
 
 ---
 
@@ -287,34 +294,10 @@ class AICommandParser {
 - **Phase 3**: 8+ AI command types, 90%+ accuracy
 
 ### Rubric Score Targets
-- **Current**: 65-70/100
-- **Phase 1 Complete**: 80-85/100
-- **Phase 2 Complete**: 90-95/100
-- **Phase 3 Complete**: 95-100/100
-
----
-
-## 6) Implementation Timeline
-
-### Week 1: Phase 1 (Canvas Features)
-- **Day 1-2**: Shape type system (circles, text, lines)
-- **Day 3-4**: Shape editing (color, size, text editing)
-- **Day 5**: Multi-select and bulk operations
-
-### Week 2: Phase 2 (Advanced Features)
-- **Day 1-2**: Color picker and recent colors
-- **Day 3-4**: Undo/redo system
-- **Day 5**: Keyboard shortcuts and alignment tools
-
-### Week 3: Phase 3 (AI Agent)
-- **Day 1-2**: Basic command parser
-- **Day 3-4**: AI service integration
-- **Day 5**: Complex command execution
-
-### Week 4: Polish & Testing
-- **Day 1-2**: Performance optimization
-- **Day 3-4**: Bug fixes and edge cases
-- **Day 5**: Final testing and deployment
+- **Current**: 45-52/105
+- **Phase 1 Complete**: 55-64/105
+- **Phase 2 Complete**: 71-80/105
+- **Phase 3 Complete**: 96-105/105
 
 ---
 
@@ -440,12 +423,10 @@ interface FeatureFlags {
 
 ## Summary
 
-This final PRD transforms the completed CollabCanvas MVP into a high-scoring collaborative canvas application. By focusing on high-ROI features that build upon the solid foundation, we can achieve 90-95/100 rubric points with strategic implementation of:
+This final PRD transforms the completed CollabCanvas MVP into a high-scoring collaborative canvas application. By focusing on high-ROI features that build upon the solid foundation, we can achieve 100-105/105 rubric points with strategic implementation of:
 
-1. **Canvas Feature Expansion** (15-18 points)
-2. **Advanced Figma Features** (10-12 points)  
-3. **AI Canvas Agent** (15-20 points)
+1. **Canvas Feature Expansion** (10-12 points)
+2. **Advanced Figma Features** (12 points)  
+3. **AI Canvas Agent** (25 points)
 
 The implementation is designed to maintain current performance levels while adding significant functionality that directly addresses rubric requirements. Each phase builds upon the previous, ensuring a stable evolution from MVP to full-featured application.
-
-**Next Steps**: Begin Phase 1 implementation with shape type system expansion, targeting completion within 1 week for maximum rubric impact.

@@ -10,6 +10,7 @@ import {
   createShape as createShapeInFirestore, 
   updateShapePosition as updateShapePositionInFirestore,
   updateShapeProperty as updateShapePropertyInFirestore,
+  deleteShape as deleteShapeInFirestore,
   subscribeToShapes,
   subscribeToShapesChanges,
   type FirestoreShape,
@@ -51,6 +52,8 @@ function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
     strokeWidth: firestoreShape.strokeWidth,
     radius: firestoreShape.radius,
     points: firestoreShape.points,
+    // Transform properties
+    rotation: firestoreShape.rotation,
   };
 }
 
@@ -288,6 +291,8 @@ export function useShapes() {
   const handleFirestoreUpdate = useCallback((firestoreShapes: FirestoreShape[]) => {
     if (isSyncing.current || !userIdRef.current) return;
     
+    console.log(`📥 Firestore update received: ${firestoreShapes.length} shapes`);
+    
     isSyncing.current = true;
     
     try {
@@ -464,10 +469,167 @@ export function useShapes() {
     }
   }, [user, shapes]);
 
+  /**
+   * Delete multiple shapes with optimistic updates and offline handling
+   */
+  const deleteShapes = useCallback(async (shapeIds: string[]) => {
+    if (!user) {
+      console.warn('Cannot delete shapes: user not authenticated');
+      return;
+    }
+
+    if (shapeIds.length === 0) return;
+
+    console.log(`🗑️ Deleting ${shapeIds.length} shapes:`, shapeIds);
+
+    // Optimistic update - remove from store immediately
+    const { deleteSelectedShapes: deleteSelectedShapesInStore } = useCanvasStore.getState();
+    deleteSelectedShapesInStore();
+    perfMetrics.markEvent('shapesDeleteLocal');
+    console.log('✅ Optimistic update: shapes removed from store');
+
+    // Delete from Firestore
+    const deletePromises = shapeIds.map(async (shapeId) => {
+      try {
+        await deleteShapeInFirestore(shapeId);
+        console.log(`✅ Deleted shape ${shapeId}`);
+      } catch (error) {
+        console.error(`❌ Failed to delete shape ${shapeId} in Firestore:`, error);
+        
+        // Queue for offline sync
+        offlineManager.queueDeleteShape(shapeId, user.uid);
+        console.log(`📝 Queued shape deletion for offline sync: ${shapeId}`);
+        throw error;
+      }
+    });
+
+    try {
+      await Promise.all(deletePromises);
+      console.log(`✅ Successfully deleted ${shapeIds.length} shapes`);
+    } catch (error) {
+      console.error('❌ Some shape deletions failed:', error);
+    }
+  }, [user]);
+
+  /**
+   * Duplicate multiple shapes with optimistic updates and offline handling
+   */
+  const duplicateShapes = useCallback(async (shapeIds: string[]) => {
+    if (!user) {
+      console.warn('Cannot duplicate shapes: user not authenticated');
+      return;
+    }
+
+    if (shapeIds.length === 0) return;
+
+    // Get the shapes to duplicate
+    const shapesToDuplicate = shapeIds
+      .map(id => shapes.get(id))
+      .filter((shape): shape is Shape => shape !== undefined);
+
+    if (shapesToDuplicate.length === 0) return;
+
+    // Create duplicated shapes with new IDs and offset positions
+    const duplicatedShapes: Shape[] = [];
+    const createPromises: Promise<void>[] = [];
+
+    shapesToDuplicate.forEach((shape, index) => {
+      const duplicatedShape: Shape = {
+        ...shape,
+        id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        x: shape.x + 20 + (index * 5), // Offset by 20px + small additional offset per shape
+        y: shape.y + 20 + (index * 5),
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        clientUpdatedAt: Date.now(),
+        createdBy: user.uid,
+        updatedBy: user.uid,
+      };
+
+      duplicatedShapes.push(duplicatedShape);
+
+      // Create in Firestore
+      const createPromise = createShapeInFirestore(
+        duplicatedShape.id,
+        duplicatedShape.type,
+        duplicatedShape.x,
+        duplicatedShape.y,
+        user.uid
+      ).catch(error => {
+        console.error(`❌ Failed to create duplicated shape ${duplicatedShape.id} in Firestore:`, error);
+        
+        // Queue for offline sync
+        offlineManager.queueCreateShape(
+          duplicatedShape.id,
+          duplicatedShape.type,
+          duplicatedShape.x,
+          duplicatedShape.y,
+          user.uid
+        );
+        console.log(`📝 Queued duplicated shape creation for offline sync: ${duplicatedShape.id}`);
+        throw error;
+      });
+
+      createPromises.push(createPromise);
+    });
+
+    // Optimistic update - add duplicated shapes to store immediately
+    duplicatedShapes.forEach(shape => {
+      createShapeInStore(shape);
+    });
+    perfMetrics.markEvent('shapesDuplicateLocal');
+
+    try {
+      await Promise.all(createPromises);
+      console.log(`✅ Successfully duplicated ${duplicatedShapes.length} shapes`);
+    } catch (error) {
+      console.error('❌ Some shape duplications failed:', error);
+    }
+  }, [user, shapes, createShapeInStore]);
+
+  /**
+   * Update shape rotation with Firestore sync
+   */
+  const updateShapeRotation = useCallback(async (
+    id: string,
+    rotation: number
+  ) => {
+    if (!user) {
+      console.warn('Cannot update shape rotation: user not authenticated');
+      return;
+    }
+
+    // Get the current shape
+    const currentShape = shapes.get(id);
+    if (!currentShape) {
+      console.warn(`Shape ${id} not found`);
+      return;
+    }
+
+    // Update the shape in the store
+    const clientTimestamp = Date.now();
+    
+    // Update store optimistically
+    const { updateShapeProperty: updateShapePropertyInStore } = useCanvasStore.getState();
+    updateShapePropertyInStore(id, 'rotation', rotation, user.uid, clientTimestamp);
+
+    try {
+      // Sync to Firestore
+      await updateShapePropertyInFirestore(id, 'rotation', rotation, user.uid, clientTimestamp);
+      console.log(`✅ Updated shape ${id} rotation to ${rotation}`);
+    } catch (error) {
+      console.error('❌ Failed to update shape rotation in Firestore:', error);
+      // Note: We could queue this for offline sync if needed
+    }
+  }, [user, shapes]);
+
   return {
     createShape,
     updateShapePosition,
     updateShapeProperty,
+    updateShapeRotation,
+    deleteShapes,
+    duplicateShapes,
     reloadShapesFromFirestore,
     shapes: Array.from(shapes.values()),
   };

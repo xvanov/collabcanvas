@@ -26,6 +26,8 @@ export interface Shape {
   strokeWidth?: number;
   radius?: number;
   points?: number[];
+  // Transform properties
+  rotation?: number;
 }
 
 /**
@@ -69,4 +71,40 @@ export interface ViewportState {
   scale: number;
   offsetX: number;
   offsetY: number;
+}
+
+/**
+ * Selection box for drag selection
+ */
+export interface SelectionBox {
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+}
+
+/**
+ * Transform operation types
+ */
+export type TransformOperation = 'move' | 'resize' | 'rotate';
+
+/**
+ * Resize handle positions
+ */
+export type ResizeHandle = 
+  | 'nw' | 'n' | 'ne'
+  | 'w' | 'e'
+  | 'sw' | 's' | 'se';
+
+/**
+ * Transform controls state
+ */
+export interface TransformControls {
+  isVisible: boolean;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  rotation: number;
+  resizeHandles: ResizeHandle[];
 }

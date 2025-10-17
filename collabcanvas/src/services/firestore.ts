@@ -3,6 +3,7 @@ import {
   doc,
   setDoc,
   updateDoc,
+  deleteDoc,
   onSnapshot,
   serverTimestamp,
   query,
@@ -38,6 +39,8 @@ export interface FirestoreShape {
   strokeWidth?: number;
   radius?: number;
   points?: number[];
+  // Transform properties
+  rotation?: number;
 }
 
 export interface FirestoreShapeChange {
@@ -146,6 +149,16 @@ export const updateShapeProperty = async (
     updatedBy: userId,
     clientUpdatedAt: clientTimestamp,
   });
+};
+
+/**
+ * Delete a shape from Firestore
+ */
+export const deleteShape = async (
+  shapeId: string
+): Promise<void> => {
+  const shapeRef = doc(shapesCollection, shapeId);
+  await deleteDoc(shapeRef);
 };
 
 /**

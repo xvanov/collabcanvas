@@ -11,7 +11,8 @@ import {
 } from './firebase';
 import { 
   createShape as createShapeInFirestore, 
-  updateShapePosition as updateShapePositionInFirestore
+  updateShapePosition as updateShapePositionInFirestore,
+  deleteShape as deleteShapeInFirestore
 } from './firestore';
 import { 
   acquireLock, 
@@ -42,6 +43,13 @@ export interface QueuedUpdatePosition {
   timestamp: number;
 }
 
+export interface QueuedDeleteShape {
+  type: 'deleteShape';
+  shapeId: string;
+  userId: string;
+  timestamp: number;
+}
+
 export interface QueuedLockOperation {
   type: 'acquireLock' | 'releaseLock';
   shapeId: string;
@@ -62,6 +70,7 @@ export interface QueuedPresenceUpdate {
 export type QueuedUpdate = 
   | QueuedCreateShape 
   | QueuedUpdatePosition 
+  | QueuedDeleteShape
   | QueuedLockOperation 
   | QueuedPresenceUpdate;
 
@@ -211,6 +220,21 @@ class OfflineManager {
   }
 
   /**
+   * Queue a shape deletion for later sync
+   */
+  public queueDeleteShape(shapeId: string, userId: string): void {
+    const update: QueuedDeleteShape = {
+      type: 'deleteShape',
+      shapeId,
+      userId,
+      timestamp: Date.now(),
+    };
+    
+    this.queuedUpdates.push(update);
+    console.log(`📝 Queued shape deletion: ${shapeId}`);
+  }
+
+  /**
    * Queue a lock operation for later sync
    */
   public queueLockOperation(
@@ -305,6 +329,10 @@ class OfflineManager {
         
       case 'updatePosition':
         await updateShapePositionInFirestore(update.shapeId, update.x, update.y, update.userId, update.timestamp);
+        break;
+        
+      case 'deleteShape':
+        await deleteShapeInFirestore(update.shapeId);
         break;
         
       case 'acquireLock':

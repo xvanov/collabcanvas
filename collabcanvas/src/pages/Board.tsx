@@ -21,7 +21,11 @@ export function Board() {
   const [zoom, setZoom] = useState<number>(1);
   const { user } = useAuth();
   const setCurrentUser = useCanvasStore((state) => state.setCurrentUser);
-  const { createShape, reloadShapesFromFirestore } = useShapes();
+  const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
+  const clearSelection = useCanvasStore((state) => state.clearSelection);
+  const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
+  const rotateSelectedShapes = useCanvasStore((state) => state.rotateSelectedShapes);
+  const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes();
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
@@ -58,18 +62,71 @@ export function Board() {
     if (typeof window === 'undefined') return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Prevent default behavior for our custom shortcuts
+      const isCustomShortcut = (
+        event.key === 'Delete' || 
+        event.key === 'Backspace' ||
+        (event.key.toLowerCase() === 'd' && event.ctrlKey) ||
+        (event.key.toLowerCase() === 'd' && event.metaKey) ||
+        (event.key.toLowerCase() === 'r' && event.ctrlKey) ||
+        (event.key.toLowerCase() === 'r' && event.metaKey) ||
+        event.key === 'Escape'
+      );
+
+      if (isCustomShortcut) {
+        event.preventDefault();
+      }
+
+      // Diagnostics toggle (Shift+D)
       if (event.key.toLowerCase() === 'd' && event.shiftKey) {
         setShowDiagnostics((prev) => {
           const next = !prev;
           window.localStorage.setItem('collabcanvas:diagnosticsHUD', next ? 'on' : 'off');
           return next;
         });
+        return;
+      }
+
+      // Only handle bulk operations if user is authenticated and has shapes selected
+      if (!user || selectedShapeIds.length === 0) {
+        return;
+      }
+
+      // Delete selected shapes
+      if (event.key === 'Delete' || event.key === 'Backspace') {
+        deleteShapes(selectedShapeIds);
+        return;
+      }
+
+      // Duplicate selected shapes (Ctrl+D or Cmd+D)
+      if (event.key.toLowerCase() === 'd' && (event.ctrlKey || event.metaKey)) {
+        duplicateShapes(selectedShapeIds);
+        return;
+      }
+
+      // Rotate selected shapes (Ctrl+R or Cmd+R)
+      if (event.key.toLowerCase() === 'r' && (event.ctrlKey || event.metaKey)) {
+        rotateSelectedShapes(90);
+        // Sync rotation to Firestore for each selected shape
+        selectedShapeIds.forEach(shapeId => {
+          const shape = useCanvasStore.getState().shapes.get(shapeId);
+          if (shape) {
+            updateShapeRotation(shapeId, shape.rotation || 0);
+          }
+        });
+        return;
+      }
+
+      // Handle Escape key to clear selection
+      if (event.key === 'Escape') {
+        clearSelection();
+        return;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, []);
+  }, [user, selectedShapeIds, deleteShapes, duplicateShapes, moveSelectedShapes, rotateSelectedShapes, clearSelection, updateShapeRotation]);
 
   const handleCreateShape = (type: ShapeType) => {
     if (!user) return;

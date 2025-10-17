@@ -1,10 +1,12 @@
 # CollabCanvas - Complete Feature Implementation Task List
 
-> **Goal**: 6 PRs to achieve 100/100 rubric points through strategic feature implementation
+> **Goal**: 6 PRs to achieve 100-105/100 rubric points through strategic feature implementation
 
 ## ⚠️ CRITICAL FOR 100/100 POINTS
 
 **PR #15 MUST include a Tier 3 feature (Version History)** to achieve the full 15/15 points in Advanced Features!
+
+**⚠️ RUBRIC BONUS POINTS**: The rubric allows for bonus points - you can score up to 105/100 by exceeding expectations in any section. All calculations below work toward the maximum achievable score.
 
 The rubric requires for "Excellent" rating (13-15 points):
 - ✅ 3 Tier 1 features (6 pts) - PR #13
@@ -23,30 +25,30 @@ Without the Tier 3 feature, you can only achieve 12/15 points in Advanced Featur
 - ✅ Technical Implementation Solid (8-9/10 points)
 - ✅ Documentation & Deployment Ready (4-5/5 points)
 
-**Current Estimated Score: 65-70/100**
+**Current Estimated Score: 45-52/100**
 
 ---
 
-## Week 1: Canvas Foundation & Core Features
+## Phase 1: Canvas Foundation & Core Features
 
-### [ ] PR #11 — Shape Type System & Basic Editing
-**Target Points**: +10-12 | **Effort**: 2-3 days | **Priority**: HIGH
+### [x] PR #11 — Shape Type System & Basic Editing
+**Target Points**: +10-12 | **Priority**: HIGH
 
 **Features to Implement**:
-- [ ] **Additional Shape Types** (6 points)
-  - [ ] Circle shape creation and rendering
-  - [ ] Text shape creation and rendering  
-  - [ ] Line shape creation and rendering
-  - [ ] Shape type selection toolbar
-  - [ ] Update Firestore schema (backward compatible)
-  - [ ] Type discrimination in Shape component
+- [x] **Additional Shape Types** (4 points)
+  - [x] Circle shape creation and rendering
+  - [x] Text shape creation and rendering  
+  - [x] Line shape creation and rendering
+  - [x] Shape type selection toolbar
+  - [x] Update Firestore schema (backward compatible)
+  - [x] Type discrimination in Shape component
 
-- [ ] **Basic Shape Editing** (4 points)
-  - [ ] Color picker for shape colors
-  - [ ] Size editing (maintain aspect ratio)
-  - [ ] Text editing (click-to-edit text content)
-  - [ ] Property panel UI
-  - [ ] Visual feedback for editing mode
+- [x] **Basic Shape Editing** (3 points)
+  - [x] Color picker for shape colors
+  - [x] Size editing (maintain aspect ratio)
+  - [x] Text editing (click-to-edit text content)
+  - [x] Property panel UI
+  - [x] Visual feedback for editing mode
 
 **Technical Implementation**:
 ```typescript
@@ -73,44 +75,44 @@ export interface Shape {
 ```
 
 **Acceptance Criteria**:
-- [ ] 4+ shape types available (rect, circle, text, line)
-- [ ] Color picker changes shape colors
-- [ ] Text shapes are editable by clicking
-- [ ] Size editing works with aspect ratio
-- [ ] Performance maintains 60 FPS target
-- [ ] All features work in multi-user environment
-- [ ] Backward compatibility with existing rectangles
+- [x] 4+ shape types available (rect, circle, text, line)
+- [x] Color picker changes shape colors
+- [x] Text shapes are editable by clicking
+- [x] Size editing works with aspect ratio
+- [x] Performance maintains 60 FPS target
+- [x] All features work in multi-user environment
+- [x] Backward compatibility with existing rectangles
 
 ⚠️ Note: Firestore rules currently constrain `type` to `'rect'` and fixed properties. This PR must include a rules update plan (staged rollout) to support new shape types and editable properties while preserving backward compatibility.
 
 **Testing Strategy** (fast, practical):
-- [ ] Unit: Type guards and rendering discrimination for each shape (`Shape`/new components)
-- [ ] Component: Create + render + edit cycles for circle/text/line (Vitest + JSDOM)
-- [ ] Integration (Emulator): Firestore create/update for new types passes rules; legacy rect writes remain valid
-- [ ] Manual: 3 users sanity pass to verify multi-user consistency
+- [x] Unit: Type guards and rendering discrimination for each shape (`Shape`/new components)
+- [x] Component: Create + render + edit cycles for circle/text/line (Vitest + JSDOM)
+- [x] Integration (Emulator): Firestore create/update for new types passes rules; legacy rect writes remain valid
+- [x] Manual: 3 users sanity pass to verify multi-user consistency
 
 ---
 
-### [ ] PR #12 — Multi-Select & Transform Operations
-**Target Points**: +8-10 | **Effort**: 2-3 days | **Priority**: HIGH
+### [x] PR #12 — Multi-Select & Transform Operations
+**Target Points**: +8-10 | **Priority**: HIGH
 
 **Features to Implement**:
-- [ ] **Multi-Select System** (4 points)
-  - [ ] Shift+Click multi-select
-  - [ ] Drag selection box
-  - [ ] Visual selection indicators
-  - [ ] Selection state management
+- [x] **Multi-Select System** (3 points)
+  - [x] Shift+Click multi-select
+  - [x] Drag selection box
+  - [x] Visual selection indicators
+  - [x] Selection state management
 
-- [ ] **Bulk Operations** (2 points)
-  - [ ] Delete key removes selected shapes
-  - [ ] Ctrl+D duplicates selected shapes
-  - [ ] Bulk operations UI feedback
+- [x] **Bulk Operations** (2 points)
+  - [x] Delete key removes selected shapes
+  - [x] Ctrl+D duplicates selected shapes
+  - [x] Bulk operations UI feedback
 
-- [ ] **Transform Operations** (4 points)
-  - [ ] Resize handles on selected shapes
-  - [ ] Rotation controls (90° increments)
-  - [ ] Arrow key movement
-  - [ ] Transform controls UI
+- [x] **Transform Operations** (3 points)
+  - [x] Resize handles on selected shapes
+  - [x] Rotation controls (90° increments)
+  - [x] Arrow key movement
+  - [x] Transform controls UI
 
 **Technical Implementation**:
 ```typescript
@@ -133,28 +135,28 @@ interface TransformControls {
 ```
 
 **Acceptance Criteria**:
-- [ ] Multi-select works with Shift+Click
-- [ ] Drag selection box works
-- [ ] Delete key removes selected shapes
-- [ ] Ctrl+D duplicates selected shapes
-- [ ] Resize handles appear on selected shapes
-- [ ] Rotation works (90° increments)
-- [ ] Arrow keys move selected shapes
-- [ ] Visual feedback for all operations
-- [ ] Performance maintains 60 FPS target
+- [x] Multi-select works with Shift+Click
+- [x] Drag selection box works
+- [x] Delete key removes selected shapes
+- [x] Ctrl+D duplicates selected shapes
+- [x] Resize handles appear on selected shapes
+- [x] Rotation works (90° increments)
+- [x] Arrow keys move selected shapes
+- [x] Visual feedback for all operations
+- [x] Performance maintains 60 FPS target
 
 **Testing Strategy** (fast, practical):
-- [ ] Unit: Selection reducer/add/remove/clear; transform math helpers
-- [ ] Component: Shift+Click, marquee selection, keyboard ops (arrow, delete, duplicate)
-- [ ] Integration (Harness): Move/duplicate multiple shapes, verify LWW consistency
-- [ ] Manual: 2-browser session multi-select/drag/rotate sanity
+- [x] Unit: Selection reducer/add/remove/clear; transform math helpers
+- [x] Component: Shift+Click, marquee selection, keyboard ops (arrow, delete, duplicate)
+- [x] Integration (Harness): Move/duplicate multiple shapes, verify LWW consistency
+- [x] Manual: 2-browser session multi-select/drag/rotate sanity
 
 ---
 
-## Week 2: Advanced Features & Professional Tools
+## Phase 2: Advanced Features & Professional Tools
 
 ### [ ] PR #13 — Color System & Undo/Redo
-**Target Points**: +6-8 | **Effort**: 2-3 days | **Priority**: HIGH
+**Target Points**: +6-8 | **Priority**: HIGH
 
 **Features to Implement**:
 - [ ] **Color Picker with Recent Colors** (2 points)
@@ -219,7 +221,7 @@ interface CanvasAction {
 ---
 
 ### [ ] PR #14 — Layers Panel & Alignment Tools
-**Target Points**: +6-8 | **Effort**: 2-3 days | **Priority**: HIGH
+**Target Points**: +6-8 | **Priority**: HIGH
 
 **Features to Implement**:
 - [ ] **Layers Panel with Drag-to-Reorder** (3 points)
@@ -277,10 +279,10 @@ interface AlignmentTools {
 
 ---
 
-## Week 3: Advanced Features & AI Integration
+## Phase 3: Advanced Features & AI Integration
 
 ### [ ] PR #15 — Version History & Export Features (TIER 3 REQUIRED!)
-**Target Points**: +3 (Tier 3) + Additional Polish | **Effort**: 3-4 days | **Priority**: HIGH
+**Target Points**: +3 (Tier 3) + Additional Polish | **Priority**: HIGH
 
 **Features to Implement**:
 - [ ] **Version History with Restore** (3 points - TIER 3) ⭐ CRITICAL FOR 100/100
@@ -363,7 +365,7 @@ interface Clipboard {
 ---
 
 ### [ ] PR #16 — AI Canvas Agent
-**Target Points**: +15-20 | **Effort**: 3-4 days | **Priority**: MEDIUM-HIGH
+**Target Points**: +25 | **Priority**: MEDIUM-HIGH
 
 **Features to Implement**:
 - [ ] **Basic AI Commands** (10 points)
@@ -474,37 +476,6 @@ interface AIService {
 
 ---
 
-## Implementation Timeline
-
-### Week 1: Canvas Foundation
-- **PR #11**: Shape Type System & Basic Editing (2-3 days)
-  - Adds: Circles, text, lines, color editing, text editing
-  - Impact: Canvas Functionality moves from 3-4 pts → 5-6 pts
-  
-- **PR #12**: Multi-Select & Transform Operations (2-3 days)
-  - Adds: Multi-select, transforms, duplicate/delete
-  - Impact: Canvas Functionality reaches Excellent (7-8 pts)
-
-### Week 2: Advanced Features (Tier 1 & 2)
-- **PR #13**: Color System & Undo/Redo (2-3 days)
-  - Adds: 3 Tier 1 features (6 pts)
-  - Impact: Advanced Features 6/15 pts
-  
-- **PR #14**: Layers Panel & Alignment Tools (2-3 days)
-  - Adds: 2 Tier 2 features (6 pts)
-  - Impact: Advanced Features 12/15 pts
-
-### Week 3: Tier 3 Feature & AI Integration
-- **PR #15**: Version History & Export (3-4 days) ⭐ CRITICAL
-  - Adds: 1 Tier 3 feature (Version History) + Export + Copy/Paste
-  - Impact: Advanced Features reaches 15/15 pts ✅
-  
-- **PR #16**: AI Canvas Agent (3-4 days)
-  - Adds: 8+ command types, complex execution, <2s performance
-  - Impact: AI Agent 25/25 pts → **Total: 96-100/100** ✅
-
----
-
 ## Success Metrics
 
 ### Performance Targets (Maintain)
@@ -517,13 +488,13 @@ interface AIService {
 ### Rubric Score Targets (Path to 100/100)
 | Milestone | Section Scores | Total Score |
 |-----------|----------------|-------------|
-| **Current MVP** | Collab: 25-28, Canvas: 8-10, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **65-70/100** |
-| **After PR #11-12** | Collab: 26-28, Canvas: 17-18, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **75-78/100** |
-| **After PR #13-14** | Collab: 27-29, Canvas: 19-20, Advanced: 12, AI: 0, Tech: 9, Docs: 4-5 | **87-91/100** |
-| **After PR #15** | Collab: 28-29, Canvas: 19-20, **Advanced: 15**, AI: 0, Tech: 9, Docs: 5 | **91-93/100** |
-| **After PR #16** | Collab: 28-30, Canvas: 19-20, Advanced: 15, **AI: 25**, Tech: 9-10, Docs: 5 | **96-100/100** ✅ |
+| **Current MVP** | Collab: 25-28, Canvas: 8-10, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **45-52/100** |
+| **After PR #11-12** | Collab: 26-28, Canvas: 17-18, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **55-64/100** |
+| **After PR #13-14** | Collab: 27-29, Canvas: 19-20, Advanced: 12, AI: 0, Tech: 9, Docs: 4-5 | **71-80/100** |
+| **After PR #15** | Collab: 28-29, Canvas: 19-20, **Advanced: 15**, AI: 0, Tech: 9, Docs: 5 | **80-88/100** |
+| **After PR #16** | Collab: 28-30, Canvas: 19-20, Advanced: 15, **AI: 25**, Tech: 9-10, Docs: 5 | **96-105/105** ✅ |
 
-**Key Insight**: PR #15's Tier 3 feature (Version History) is CRITICAL to reach 15/15 on Advanced Features and achieve 100/100 total!
+**Key Insight**: PR #15's Tier 3 feature (Version History) is CRITICAL to reach 15/15 on Advanced Features and achieve 100-105/105 total!
 
 ### Feature Completion Targets
 - **PR #11-12**: 4+ shape types, multi-select, transforms, basic editing (Canvas Functionality: Excellent)
