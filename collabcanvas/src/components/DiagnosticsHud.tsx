@@ -55,7 +55,9 @@ export function DiagnosticsHud({ fps, visible }: DiagnosticsHudProps) {
 
     const updateMetrics = () => {
       const summary = perfMetrics.exportSummary();
+      console.log('Diagnostics HUD - PerfMetrics Summary:', summary);
       if (!summary) {
+        console.log('Diagnostics HUD - No summary available, using default metrics');
         setMetrics(DEFAULT_METRICS);
         return;
       }
@@ -70,6 +72,12 @@ export function DiagnosticsHud({ fps, visible }: DiagnosticsHudProps) {
         eventCounts: summary.metadata.eventCounts,
       };
 
+      console.log('Diagnostics HUD - Raw latency samples:', {
+        shapeLatencySamples: summary.shapeLatencySamples.slice(0, 10), // First 10 samples
+        cursorLatencySamples: summary.cursorLatencySamples.slice(0, 10), // First 10 samples
+        shapeP95: percentile(summary.shapeLatencySamples, 95),
+        cursorP95: percentile(summary.cursorLatencySamples, 95),
+      });
       setMetrics(nextMetrics);
     };
 
@@ -106,11 +114,21 @@ export function DiagnosticsHud({ fps, visible }: DiagnosticsHudProps) {
         </div>
         <div className="flex justify-between">
           <dt>P95 Shape Latency</dt>
-          <dd>{metrics.shapeLatencyP95.toFixed(1)} ms</dd>
+          <dd>{metrics.shapeLatencyP95 < 1 ? '<1.0' : metrics.shapeLatencyP95.toFixed(1)} ms</dd>
         </div>
         <div className="flex justify-between">
           <dt>P95 Cursor Latency</dt>
-          <dd>{metrics.cursorLatencyP95.toFixed(1)} ms</dd>
+          <dd>
+            {metrics.cursorSamples === 0 
+              ? 'N/A (single user)' 
+              : metrics.cursorLatencyP95 < 1 
+                ? '<1.0' 
+                : metrics.cursorLatencyP95.toFixed(1)
+            } ms
+            {metrics.cursorSamples === 0 && metrics.eventCounts?.cursorUpdateLocal > 0 && (
+              <span className="text-xs text-yellow-400 ml-1">(RTDB disabled)</span>
+            )}
+          </dd>
         </div>
         <div className="flex justify-between">
           <dt>Shapes</dt>

@@ -62,8 +62,8 @@ flowchart TB
 ### Firestore (Persistent Data)
 
 ```
-shapes/{shapeId}
-  ├── id: string (auto-generated)
+boards/{boardId}/shapes/{shapeId}
+  ├── id: string (document id)
   ├── type: 'rect' (fixed for MVP)
   ├── x: number (position)
   ├── y: number (position)
@@ -73,7 +73,8 @@ shapes/{shapeId}
   ├── createdAt: serverTimestamp
   ├── createdBy: userId
   ├── updatedAt: serverTimestamp
-  └── updatedBy: userId
+  ├── updatedBy: userId
+  └── clientUpdatedAt: number (client send timestamp for LWW)
 ```
 
 **Key Decisions:**
@@ -101,7 +102,7 @@ locks/
 ```
 
 **Key Decisions:**
-- RTDB for < 50ms latency requirements
+- RTDB for < 50ms latency requirements (target)
 - Auto-cleanup using `.onDisconnect()`
 - Lock timeout after 30 seconds of inactivity
 
@@ -172,14 +173,14 @@ interface CanvasStore {
 
 **usePresence** (PR #6)
 - RTDB listener for all user presence
-- Updates cursor positions at ≈60Hz
+- Updates cursor positions targeting < 50ms end-to-end latency (optimize throttles accordingly)
 - Auto-cleanup with `.onDisconnect()`
 - Assigns random colors to users
 
 **useLocks** (PR #7)
 - RTDB listener for shape locks
 - First-click locking mechanism
-- Auto-release on mouse up, disconnect, or 30s timeout
+- Auto-release on drag end, disconnect, or 30s timeout
 - Prevents simultaneous movement conflicts
 
 ### Services Layer
@@ -189,9 +190,10 @@ interface CanvasStore {
 - Export auth, firestore, rtdb instances
 
 **firestore.ts**
-- `createShape(shape: Shape): Promise<void>`
-- `updateShapePosition(id: string, x: number, y: number): Promise<void>`
-- `listenToShapes(callback: (shapes: Shape[]) => void): Unsubscribe`
+- `createShape(id: string, x: number, y: number, userId: string): Promise<void>`
+- `updateShapePosition(id: string, x: number, y: number, userId: string, clientTimestamp: number): Promise<void>`
+- `subscribeToShapes(callback: (shapes: FirestoreShape[]) => void): Unsubscribe`
+- `subscribeToShapesChanges(callback: (changes: FirestoreShapeChange[]) => void): Unsubscribe`
 
 **rtdb.ts**
 - `updatePresence(userId: string, data: PresenceData): Promise<void>`
@@ -263,10 +265,10 @@ sequenceDiagram
     participant RTDB
     participant OtherUsers
     
-    loop Every ~16ms (60Hz)
+    loop Target: < 50ms end-to-end latency
         User->>UI: Move mouse
-        UI->>RTDB: Update cursor position (throttled)
-        RTDB-->>OtherUsers: Cursor update (< 50ms)
+        UI->>RTDB: Update cursor position (throttled appropriately)
+        RTDB-->>OtherUsers: Cursor update propagated
         OtherUsers->>OtherUsers: Render cursor at new position
     end
 ```
@@ -324,7 +326,7 @@ sequenceDiagram
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-    match /shapes/{shapeId} {
+    match /boards/{boardId}/shapes/{shapeId} {
       // Auth required for all operations
       allow read: if request.auth != null;
       allow create: if request.auth != null
@@ -342,6 +344,10 @@ service cloud.firestore {
         && request.resource.data.type == resource.data.type
         && request.resource.data.createdBy == resource.data.createdBy
         && request.resource.data.createdAt == resource.data.createdAt;
+    }
+    // Deny all other paths
+    match /{document=**} {
+      allow read, write: if false;
     }
   }
 }

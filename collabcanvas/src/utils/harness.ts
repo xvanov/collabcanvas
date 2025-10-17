@@ -92,12 +92,16 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     }
     this.fpsSamples.push(value);
     this.markEvent('fpsSample');
+    console.log(`PerfMetrics: Recorded FPS ${value}, total samples: ${this.fpsSamples.length}`);
   }
 
   trackShapeUpdate(shapeId: string, updatedAt: TimestampLike | null, isRemote: boolean): void {
     if (!this.enabled || !shapeId) return;
     const timestamp = timestampLikeToMillis(updatedAt);
-    if (timestamp === null) return;
+    if (timestamp === null) {
+      console.log(`PerfMetrics: Shape update ${shapeId} - timestamp is null`);
+      return;
+    }
     const lastRecorded = this.shapeTimestamps.get(shapeId);
     if (lastRecorded && lastRecorded >= timestamp) {
       return; // already recorded this update
@@ -121,12 +125,16 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     }
     this.shapeLatencySamples.push(latency);
     this.markEvent(isRemote ? 'shapeUpdateRemote' : 'shapeUpdateLocal');
+    console.log(`PerfMetrics: Tracked shape update ${shapeId}, latency: ${latency}ms, total samples: ${this.shapeLatencySamples.length}`);
   }
 
   trackCursorUpdate(userId: string, lastSeen: TimestampLike | null): void {
     if (!this.enabled || !userId) return;
     const timestamp = timestampLikeToMillis(lastSeen);
-    if (timestamp === null) return;
+    if (timestamp === null) {
+      console.log(`PerfMetrics: Cursor update ${userId} - timestamp is null`);
+      return;
+    }
     const lastRecorded = this.cursorTimestamps.get(userId);
     if (lastRecorded && lastRecorded >= timestamp) {
       return;
@@ -150,6 +158,7 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     }
     this.cursorLatencySamples.push(latency);
     this.markEvent('cursorUpdateRemote');
+    console.log(`PerfMetrics: Tracked cursor update ${userId}, latency: ${latency}ms, total samples: ${this.cursorLatencySamples.length}`);
   }
 
   markEvent(name: string): void {
@@ -171,11 +180,13 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
   }
 
   exportSummary(): PerfMetricsSummary | null {
+    console.log('exportSummary called, enabled:', this.enabled);
     if (!this.enabled) {
+      console.log('exportSummary returning null - metrics not enabled');
       return null;
     }
 
-    return {
+    const summary = {
       metadata: {
         enabled: this.enabled,
         runId: this.runId,
@@ -190,6 +201,9 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
       shapeLatencySamples: [...this.shapeLatencySamples],
       cursorLatencySamples: [...this.cursorLatencySamples],
     };
+    
+    console.log('exportSummary returning:', summary);
+    return summary;
   }
 }
 
@@ -197,14 +211,31 @@ const isBrowser = typeof window !== 'undefined';
 const harnessFlag = isBrowser
   ? (() => {
       const params = new URLSearchParams(window.location.search);
-      if (params.has('perfHarness')) return true;
-      return import.meta.env.VITE_ENABLE_PERF_HARNESS === 'true';
+      const hasPerfHarness = params.has('perfHarness');
+      const hasEnvVar = import.meta.env.VITE_ENABLE_PERF_HARNESS === 'true';
+      const isDev = import.meta.env.DEV;
+      
+      console.log('Harness initialization:', {
+        hasPerfHarness,
+        hasEnvVar,
+        isDev,
+        finalFlag: hasPerfHarness || hasEnvVar || isDev
+      });
+      
+      if (hasPerfHarness) return true;
+      if (hasEnvVar) return true;
+      // Enable metrics in development mode for Diagnostics HUD
+      if (isDev) return true;
+      return false;
     })()
   : false;
 
 const harnessUser: User | null = isBrowser && harnessFlag
   ? (() => {
       const params = new URLSearchParams(window.location.search);
+      // Only create harness user if explicitly requested via URL params
+      if (!params.has('perfHarness')) return null;
+      
       const uid = params.get('hUser') ?? `harness-${Math.random().toString(36).slice(2, 10)}`;
       const name = params.get('hName') ?? `Harness ${uid}`;
       const email = params.get('hEmail') ?? `${uid}@perf.local`;

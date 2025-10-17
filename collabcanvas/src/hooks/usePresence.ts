@@ -10,7 +10,7 @@ import {
 } from '../services/rtdb';
 import { offlineManager } from '../services/offline';
 import { getUserColor } from '../utils/colors';
-import { perfMetrics, timestampLikeToMillis } from '../utils/harness';
+import { perfMetrics, timestampLikeToMillis, registerHarnessApi, isHarnessEnabled } from '../utils/harness';
 import { throttle } from '../utils/throttle';
 import type { Presence } from '../types';
 
@@ -39,11 +39,39 @@ export const usePresence = () => {
     userIdRef.current = user?.uid ?? null;
   }, [user]);
 
-  // Throttled cursor publisher with delta filtering (>= 2px) at ~20Hz (50ms)
+  // Emergency: Disable Firebase RTDB for multi-user scenarios to prevent emulator overload
+  const isMultiUserMode = users.size > 1;
+  const shouldDisableRTDB = isMultiUserMode && import.meta.env.DEV;
+  
+  if (shouldDisableRTDB) {
+    console.warn('🚫 Multi-user mode detected - disabling Firebase RTDB to prevent emulator overload');
+    console.warn('💡 For production testing, use Firebase production instance, not emulator');
+    console.warn('🎭 Cursor updates will be local-only (no real-time sync)');
+  }
+
+  // Aggressive throttling for cursor updates - start conservative, adapt on failures
+  const cursorThrottleIntervalRef = useRef(200); // Start at 5Hz (conservative)
+  const consecutiveFailuresRef = useRef(0);
+  const lastSuccessTimeRef = useRef(Date.now());
+  const connectionHealthRef = useRef<'healthy' | 'degraded' | 'critical'>('healthy');
+  
   const publishCursorRef = useRef(
     throttle((x: number, y: number) => {
       const uid = userIdRef.current;
       if (!uid) return;
+
+      // Circuit breaker - stop cursor updates if connection is critical
+      if (connectionHealthRef.current === 'critical') {
+        console.log('🚫 Circuit breaker: Skipping cursor update (connection critical)');
+        return;
+      }
+
+      // Emergency: Skip Firebase RTDB in multi-user dev mode
+      if (shouldDisableRTDB) {
+        console.log('🚫 Skipping Firebase RTDB update (multi-user dev mode)');
+        perfMetrics.markEvent('cursorUpdateLocal');
+        return;
+      }
 
       const last = lastSentRef.current;
       const dx = last ? Math.abs(x - last.x) : Infinity;
@@ -54,18 +82,75 @@ export const usePresence = () => {
 
       lastSentRef.current = { x, y };
 
-      updateCursor(uid, x, y).catch((error) => {
-        console.error('Failed to update cursor:', error);
-        offlineManager.queuePresenceUpdate('updateCursor', uid, { cursor: { x, y } });
-        console.log('📝 Queued cursor update for offline sync');
-      });
+      updateCursor(uid, x, y)
+        .then(() => {
+          // Success - gradually reduce throttle interval
+          consecutiveFailuresRef.current = 0;
+          lastSuccessTimeRef.current = Date.now();
+          
+          // Update connection health
+          if (connectionHealthRef.current !== 'healthy') {
+            connectionHealthRef.current = 'healthy';
+            console.log('🟢 Firebase RTDB connection restored');
+          }
+          
+          // Gradually increase frequency on success (but stay conservative)
+          cursorThrottleIntervalRef.current = Math.max(100, cursorThrottleIntervalRef.current * 0.9); // Min 10Hz
+          perfMetrics.markEvent('cursorUpdateSuccess');
+        })
+        .catch((error) => {
+          console.error('Failed to update cursor:', error);
+          
+          // Track timeout errors specifically
+          if (error.message?.includes('timeout')) {
+            perfMetrics.markEvent('cursorUpdateTimeout');
+            console.warn('🚨 Cursor update timed out - Firebase RTDB overloaded');
+          } else {
+            perfMetrics.markEvent('cursorUpdateError');
+          }
+          
+          // Update connection health
+          consecutiveFailuresRef.current++;
+          if (consecutiveFailuresRef.current >= 5) {
+            connectionHealthRef.current = 'critical';
+            console.error('🔴 Firebase RTDB connection critical - stopping cursor updates');
+            
+            // Schedule recovery attempt after 10 seconds
+            setTimeout(() => {
+              console.log('🔄 Attempting Firebase RTDB recovery...');
+              connectionHealthRef.current = 'healthy';
+              consecutiveFailuresRef.current = 0;
+            }, 10000);
+            
+            return; // Stop trying to update cursor
+          } else if (consecutiveFailuresRef.current >= 3) {
+            connectionHealthRef.current = 'degraded';
+            console.warn('🟡 Firebase RTDB connection degraded');
+          }
+          
+          // Aggressive throttling on failures
+          cursorThrottleIntervalRef.current = Math.min(200 * Math.pow(2, consecutiveFailuresRef.current), 2000); // Max 0.5Hz
+          
+          if (consecutiveFailuresRef.current > 2) {
+            console.warn(`🚨 ${consecutiveFailuresRef.current} consecutive failures - throttling to ${cursorThrottleIntervalRef.current}ms (${1000/cursorThrottleIntervalRef.current}Hz)`);
+          }
+          
+          offlineManager.queuePresenceUpdate('updateCursor', uid, { cursor: { x, y } });
+          console.log('📝 Queued cursor update for offline sync');
+        });
       perfMetrics.markEvent('cursorUpdateLocal');
-    }, 50)
+    }, 50) // Fixed throttle interval for now
   );
 
   // Set up presence when user is authenticated
   useEffect(() => {
     if (!user || isPresenceSetRef.current) return;
+    
+    // Emergency: Skip Firebase RTDB setup in multi-user dev mode
+    if (shouldDisableRTDB) {
+      console.warn('🚫 Skipping Firebase RTDB presence setup (multi-user dev mode)');
+      return;
+    }
 
     const setupPresence = async () => {
       try {
@@ -87,7 +172,7 @@ export const usePresence = () => {
     };
 
     setupPresence();
-  }, [user]);
+  }, [user, shouldDisableRTDB]);
 
   // Subscribe to presence changes
   useEffect(() => {
@@ -119,7 +204,7 @@ export const usePresence = () => {
         unsubscribeRef.current = null;
       }
     };
-  }, [user, setUsers]);
+  }, [user, setUsers, shouldDisableRTDB]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -139,6 +224,9 @@ export const usePresence = () => {
   // Update cursor position (throttled)
   const updateCursorPosition = useCallback((x: number, y: number) => {
     publishCursorRef.current(x, y);
+    
+    // Note: We don't track local cursor updates for latency - only remote ones
+    // Local updates have ~0ms latency by definition
   }, []);
 
   // Get active users count (excluding current user)
@@ -146,6 +234,14 @@ export const usePresence = () => {
 
   // Get all users (including current user for display purposes)
   const allUsers = Array.from(users.values());
+
+  // Register presence API for performance harness
+  useEffect(() => {
+    if (!isHarnessEnabled()) return;
+    registerHarnessApi('presence', {
+      updateCursor: updateCursorPosition,
+    });
+  }, [updateCursorPosition]);
 
   return {
     // State

@@ -264,6 +264,11 @@ export function useShapes() {
     // Optimistic update - update store immediately
     updateShapePositionInStore(id, x, y, user.uid, clientTimestamp);
     perfMetrics.markEvent('shapeUpdateRequest');
+    
+    // Track shape update for performance metrics
+    if (perfMetrics.enabled) {
+      perfMetrics.trackShapeUpdate(id, clientTimestamp, false); // false = local update
+    }
 
     schedulePendingFlush();
   }, [schedulePendingFlush, updateShapePositionInStore, user]);

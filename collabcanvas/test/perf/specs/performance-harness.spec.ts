@@ -168,6 +168,39 @@ test('collabcanvas sustains PRD performance targets under load', async ({ browse
 
   await Promise.all(pages.map((page) => page.waitForTimeout(2_000)));
 
+  // Simulate cursor movements between clients to generate cursor samples
+  await Promise.all(
+    pages.map((page) =>
+      page.evaluate(
+        async ({ iterations, amplitude }) => {
+          const harness = window.__perfHarness;
+          const api = harness?.apis?.presence as {
+            updateCursor: (x: number, y: number) => Promise<void>;
+          } | undefined;
+          if (!api) {
+            throw new Error('Harness presence API unavailable');
+          }
+
+          // Simulate cursor movements for each client (reduced intensity)
+          for (let i = 0; i < Math.min(iterations, 20); i++) { // Limit to 20 cursor movements max
+            // Move cursor in a circular pattern to generate realistic movement
+            const angle = (i / Math.min(iterations, 20)) * 2 * Math.PI;
+            const radius = amplitude / 4; // Smaller radius
+            const x = Math.cos(angle) * radius + 400; // Center around 400,400
+            const y = Math.sin(angle) * radius + 400;
+            
+            await api.updateCursor(x, y);
+            await new Promise((resolve) => setTimeout(resolve, 100)); // Reduced to 10Hz cursor updates
+          }
+        },
+        { iterations: MOVE_ITERATIONS, amplitude: MOVE_AMPLITUDE }
+      )
+    )
+  );
+
+  await Promise.all(pages.map((page) => page.waitForTimeout(2_000)));
+
+  // Simulate shape movements to generate shape samples
   await Promise.all(
     pages.map((page) =>
       page.evaluate(
