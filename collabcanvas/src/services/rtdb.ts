@@ -1,6 +1,7 @@
 import {
   ref,
   set,
+  update,
   onValue,
   onDisconnect,
   remove,
@@ -60,19 +61,28 @@ export const setPresence = async (
 };
 
 /**
- * Update user cursor position
+ * Update user cursor position (optimized single write with timeout)
  */
 export const updateCursor = async (
   userId: string,
   x: number,
   y: number
 ): Promise<void> => {
-  const cursorRef = ref(rtdb, `presence/${userId}/cursor`);
-  await set(cursorRef, { x, y });
+  const presenceRef = ref(rtdb, `presence/${userId}`);
   
-  // Update lastSeen timestamp
-  const lastSeenRef = ref(rtdb, `presence/${userId}/lastSeen`);
-  await set(lastSeenRef, serverTimestamp());
+  // Add timeout protection to prevent hangs - reduced to 2 seconds for faster failure
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error('Cursor update timeout after 2 seconds')), 2000);
+  });
+  
+  const updatePromise = update(presenceRef, {
+    'cursor/x': x,
+    'cursor/y': y,
+    'lastSeen': serverTimestamp(),
+  });
+  
+  // Race between update and timeout
+  await Promise.race([updatePromise, timeoutPromise]);
 };
 
 /**

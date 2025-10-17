@@ -307,7 +307,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           onClick={handleStageClick}
         >
           {/* Grid layer - non-interactive */}
-          <Layer listening={false} hitGraphEnabled={false}>
+          <Layer listening={false}>
             {(() => {
               const visibleWidth = dimensions.width / stageScaleRef.current;
               const visibleHeight = dimensions.height / stageScaleRef.current;
@@ -382,7 +382,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           </Layer>
 
           {/* Overlays layer - non-interactive */}
-          <Layer ref={overlaysLayerRef} listening={false} hitGraphEnabled={false}>
+          <Layer ref={overlaysLayerRef} listening={false}>
             {Array.from(locks.entries()).map(([shapeId, lock]) => {
               const shape = shapeMap.get(shapeId);
               const isLockedByOther = isShapeLockedByOtherUser(shapeId);
