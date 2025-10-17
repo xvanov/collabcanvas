@@ -101,11 +101,12 @@ describe('Offline Handling & Resync', () => {
   describe('Queued Updates', () => {
     it('should queue shape creation when offline', () => {
       const shapeId = 'test-shape-1';
+      const shapeType = 'rect';
       const x = 100;
       const y = 200;
       const userId = 'user-123';
 
-      offlineManager.queueCreateShape(shapeId, x, y, userId);
+      offlineManager.queueCreateShape(shapeId, shapeType, x, y, userId);
 
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
       
@@ -114,6 +115,7 @@ describe('Offline Handling & Resync', () => {
       expect(updates[0]).toEqual({
         type: 'createShape',
         shapeId,
+        shapeType,
         x,
         y,
         userId,
@@ -241,7 +243,7 @@ describe('Offline Handling & Resync', () => {
   describe('Queue Management', () => {
     it('should clear all queued updates', () => {
       // Add some updates
-      offlineManager.queueCreateShape('shape-1', 100, 200, 'user-1');
+      offlineManager.queueCreateShape('shape-1', 'rect', 100, 200, 'user-1');
       offlineManager.queueUpdatePosition('shape-2', 150, 250, 'user-1', Date.now());
       offlineManager.queueLockOperation('acquireLock', 'shape-3', 'user-1', 'User');
 
@@ -257,7 +259,7 @@ describe('Offline Handling & Resync', () => {
     it('should track queued updates count correctly', () => {
       expect(offlineManager.getQueuedUpdatesCount()).toBe(0);
 
-      offlineManager.queueCreateShape('shape-1', 100, 200, 'user-1');
+      offlineManager.queueCreateShape('shape-1', 'rect', 100, 200, 'user-1');
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
 
       offlineManager.queueUpdatePosition('shape-2', 150, 250, 'user-1', Date.now());
@@ -301,7 +303,7 @@ describe('Offline Handling & Resync', () => {
       const userId = 'user-123';
 
       // Add different types of updates
-      offlineManager.queueCreateShape('shape-1', 100, 200, userId);
+      offlineManager.queueCreateShape('shape-1', 'rect', 100, 200, userId);
       offlineManager.queueUpdatePosition('shape-2', 150, 250, userId, Date.now());
       offlineManager.queueLockOperation('acquireLock', 'shape-3', userId, 'User');
       offlineManager.queuePresenceUpdate('setPresence', userId, { name: 'User', color: '#FF0000' });

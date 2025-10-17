@@ -26,6 +26,7 @@ import {
 export interface QueuedCreateShape {
   type: 'createShape';
   shapeId: string;
+  shapeType: 'rect' | 'circle' | 'text' | 'line';
   x: number;
   y: number;
   userId: string;
@@ -172,10 +173,11 @@ class OfflineManager {
   /**
    * Queue a shape creation for later sync
    */
-  public queueCreateShape(shapeId: string, x: number, y: number, userId: string): void {
+  public queueCreateShape(shapeId: string, shapeType: 'rect' | 'circle' | 'text' | 'line', x: number, y: number, userId: string): void {
     const update: QueuedCreateShape = {
       type: 'createShape',
       shapeId,
+      shapeType,
       x,
       y,
       userId,
@@ -298,7 +300,7 @@ class OfflineManager {
   private async processSingleUpdate(update: QueuedUpdate): Promise<void> {
     switch (update.type) {
       case 'createShape':
-        await createShapeInFirestore(update.shapeId, update.x, update.y, update.userId);
+        await createShapeInFirestore(update.shapeId, update.shapeType, update.x, update.y, update.userId);
         break;
         
       case 'updatePosition':

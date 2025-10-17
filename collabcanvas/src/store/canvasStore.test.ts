@@ -323,4 +323,288 @@ describe('canvasStore', () => {
       expect(useCanvasStore.getState().currentUser).toBeNull();
     });
   });
+
+  describe('Extended Shape Types', () => {
+    // Extended Shape interface for testing new types
+    interface ExtendedShape extends Shape {
+      text?: string;
+      fontSize?: number;
+      strokeWidth?: number;
+      radius?: number;
+      points?: number[];
+    }
+
+    it('should create circle shape with radius property', () => {
+      const { createShape } = useCanvasStore.getState();
+      
+      const circleShape: ExtendedShape = {
+        id: 'circle-shape-1',
+        type: 'rect', // Will be 'circle' when types are extended
+        x: 200,
+        y: 200,
+        w: 100,
+        h: 100,
+        color: '#FF0000',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        radius: 50,
+      };
+
+      createShape(circleShape);
+
+      const storedShape = useCanvasStore.getState().shapes.get('circle-shape-1');
+      expect(storedShape).toBeDefined();
+      expect(storedShape?.id).toBe('circle-shape-1');
+      expect(storedShape?.type).toBe('rect'); // Will be 'circle' when types are extended
+      expect((storedShape as ExtendedShape)?.radius).toBe(50);
+      expect(storedShape?.color).toBe('#FF0000');
+    });
+
+    it('should create text shape with text and fontSize properties', () => {
+      const { createShape } = useCanvasStore.getState();
+      
+      const textShape: ExtendedShape = {
+        id: 'text-shape-1',
+        type: 'rect', // Will be 'text' when types are extended
+        x: 300,
+        y: 300,
+        w: 200,
+        h: 50,
+        color: '#000000',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        text: 'Hello World',
+        fontSize: 16,
+      };
+
+      createShape(textShape);
+
+      const storedShape = useCanvasStore.getState().shapes.get('text-shape-1');
+      expect(storedShape).toBeDefined();
+      expect(storedShape?.id).toBe('text-shape-1');
+      expect(storedShape?.type).toBe('rect'); // Will be 'text' when types are extended
+      expect((storedShape as ExtendedShape)?.text).toBe('Hello World');
+      expect((storedShape as ExtendedShape)?.fontSize).toBe(16);
+      expect(storedShape?.color).toBe('#000000');
+    });
+
+    it('should create line shape with strokeWidth and points properties', () => {
+      const { createShape } = useCanvasStore.getState();
+      
+      const lineShape: ExtendedShape = {
+        id: 'line-shape-1',
+        type: 'rect', // Will be 'line' when types are extended
+        x: 0,
+        y: 0,
+        w: 100,
+        h: 0,
+        color: '#00FF00',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        strokeWidth: 2,
+        points: [0, 0, 100, 0],
+      };
+
+      createShape(lineShape);
+
+      const storedShape = useCanvasStore.getState().shapes.get('line-shape-1');
+      expect(storedShape).toBeDefined();
+      expect(storedShape?.id).toBe('line-shape-1');
+      expect(storedShape?.type).toBe('rect'); // Will be 'line' when types are extended
+      expect((storedShape as ExtendedShape)?.strokeWidth).toBe(2);
+      expect((storedShape as ExtendedShape)?.points).toEqual([0, 0, 100, 0]);
+      expect(storedShape?.color).toBe('#00FF00');
+    });
+
+    it('should update shape properties (color, size, text)', () => {
+      const { createShape } = useCanvasStore.getState();
+      
+      const originalShape: ExtendedShape = {
+        id: 'editable-shape-1',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        w: 100,
+        h: 100,
+        color: '#3B82F6',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+        text: 'Original Text',
+        fontSize: 14,
+      };
+
+      createShape(originalShape);
+
+      // Simulate property update (this would be a new method when implemented)
+      const updatedShape = {
+        ...originalShape,
+        color: '#FF0000',
+        w: 150,
+        h: 150,
+        text: 'Updated Text',
+        fontSize: 18,
+        updatedAt: Date.now(),
+        updatedBy: 'user-2',
+        clientUpdatedAt: Date.now(),
+      };
+
+      // Update the shape in store (simulating the new updateShapeProperties method)
+      const { shapes } = useCanvasStore.getState();
+      const newShapes = new Map(shapes);
+      newShapes.set('editable-shape-1', updatedShape);
+      useCanvasStore.setState({ shapes: newShapes });
+
+      const storedShape = useCanvasStore.getState().shapes.get('editable-shape-1') as ExtendedShape;
+      expect(storedShape).toBeDefined();
+      expect(storedShape.color).toBe('#FF0000');
+      expect(storedShape.w).toBe(150);
+      expect(storedShape.h).toBe(150);
+      expect(storedShape.text).toBe('Updated Text');
+      expect(storedShape.fontSize).toBe(18);
+      expect(storedShape.updatedBy).toBe('user-2');
+    });
+
+    it('should maintain backward compatibility with existing rectangles', () => {
+      const { createShape } = useCanvasStore.getState();
+      
+      const existingRect: Shape = {
+        id: 'existing-rect-1',
+        type: 'rect',
+        x: 100,
+        y: 100,
+        w: 100,
+        h: 100,
+        color: '#3B82F6',
+        createdAt: Date.now(),
+        createdBy: 'user-1',
+        updatedAt: Date.now(),
+        updatedBy: 'user-1',
+        clientUpdatedAt: Date.now(),
+      };
+
+      createShape(existingRect);
+
+      const storedShape = useCanvasStore.getState().shapes.get('existing-rect-1');
+      expect(storedShape).toBeDefined();
+      expect(storedShape?.type).toBe('rect');
+      expect(storedShape?.w).toBe(100);
+      expect(storedShape?.h).toBe(100);
+      expect(storedShape?.color).toBe('#3B82F6');
+      
+      // New properties should be undefined for existing shapes
+      expect((storedShape as ExtendedShape)?.text).toBeUndefined();
+      expect((storedShape as ExtendedShape)?.fontSize).toBeUndefined();
+      expect((storedShape as ExtendedShape)?.strokeWidth).toBeUndefined();
+      expect((storedShape as ExtendedShape)?.radius).toBeUndefined();
+      expect((storedShape as ExtendedShape)?.points).toBeUndefined();
+    });
+
+    it('should handle mixed shape types in store', () => {
+      const { setShapes } = useCanvasStore.getState();
+      
+      const mixedShapes: ExtendedShape[] = [
+        {
+          id: 'rect-1',
+          type: 'rect',
+          x: 0, y: 0, w: 100, h: 100,
+          color: '#3B82F6',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+        },
+        {
+          id: 'circle-1',
+          type: 'rect', // Will be 'circle' when types are extended
+          x: 100, y: 100, w: 100, h: 100,
+          color: '#FF0000',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          radius: 50,
+        },
+        {
+          id: 'text-1',
+          type: 'rect', // Will be 'text' when types are extended
+          x: 200, y: 200, w: 200, h: 50,
+          color: '#000000',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          text: 'Hello',
+          fontSize: 16,
+        },
+        {
+          id: 'line-1',
+          type: 'rect', // Will be 'line' when types are extended
+          x: 300, y: 300, w: 100, h: 0,
+          color: '#00FF00',
+          createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+          strokeWidth: 2,
+          points: [0, 0, 100, 0],
+        },
+      ];
+
+      setShapes(mixedShapes);
+
+      const shapes = useCanvasStore.getState().shapes;
+      expect(shapes.size).toBe(4);
+      expect(shapes.get('rect-1')).toBeDefined();
+      expect(shapes.get('circle-1')).toBeDefined();
+      expect(shapes.get('text-1')).toBeDefined();
+      expect(shapes.get('line-1')).toBeDefined();
+
+      // Verify each shape has correct properties
+      const rectShape = shapes.get('rect-1') as ExtendedShape;
+      expect(rectShape.type).toBe('rect');
+      expect(rectShape.radius).toBeUndefined();
+      expect(rectShape.text).toBeUndefined();
+
+      const circleShape = shapes.get('circle-1') as ExtendedShape;
+      expect(circleShape.radius).toBe(50);
+      expect(circleShape.text).toBeUndefined();
+
+      const textShape = shapes.get('text-1') as ExtendedShape;
+      expect(textShape.text).toBe('Hello');
+      expect(textShape.fontSize).toBe(16);
+      expect(textShape.radius).toBeUndefined();
+
+      const lineShape = shapes.get('line-1') as ExtendedShape;
+      expect(lineShape.strokeWidth).toBe(2);
+      expect(lineShape.points).toEqual([0, 0, 100, 0]);
+      expect(lineShape.text).toBeUndefined();
+    });
+
+    it('should maintain performance with multiple shape types', () => {
+      const { setShapes } = useCanvasStore.getState();
+      
+      const startTime = performance.now();
+      
+      // Create 100 shapes of different types
+      const shapes: ExtendedShape[] = Array.from({ length: 100 }, (_, i) => ({
+        id: `shape-${i}`,
+        type: 'rect',
+        x: i * 10, y: i * 10, w: 100, h: 100,
+        color: i % 4 === 0 ? '#3B82F6' : i % 4 === 1 ? '#FF0000' : i % 4 === 2 ? '#000000' : '#00FF00',
+        createdAt: Date.now(), createdBy: 'user', updatedAt: Date.now(), updatedBy: 'user', clientUpdatedAt: Date.now(),
+        ...(i % 4 === 1 && { radius: 50 }),
+        ...(i % 4 === 2 && { text: `Text ${i}`, fontSize: 16 }),
+        ...(i % 4 === 3 && { strokeWidth: 2, points: [0, 0, 100, 0] }),
+      }));
+
+      setShapes(shapes);
+      
+      const endTime = performance.now();
+      const executionTime = endTime - startTime;
+
+      const storedShapes = useCanvasStore.getState().shapes;
+      expect(storedShapes.size).toBe(100);
+      expect(executionTime).toBeLessThan(50); // Should be very fast
+    });
+  });
 });

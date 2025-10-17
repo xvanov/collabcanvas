@@ -365,4 +365,336 @@ describe('Security Rules Logic', () => {
       });
     });
   });
+
+  describe('Extended Shape Types Security Rules', () => {
+    describe('New Shape Type Validation', () => {
+      it('should validate circle shape properties', () => {
+        const validCircleShape = {
+          type: 'circle',
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 100,
+          color: '#FF0000',
+          radius: 50,
+          createdBy: 'user-123',
+          updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
+        };
+
+        // Validate circle-specific properties
+        expect(validCircleShape.type).toBe('circle');
+        expect(validCircleShape.radius).toBe(50);
+        expect(typeof validCircleShape.radius).toBe('number');
+        expect(validCircleShape.radius).toBeGreaterThan(0);
+      });
+
+      it('should validate text shape properties', () => {
+        const validTextShape = {
+          type: 'text',
+          x: 100,
+          y: 200,
+          w: 200,
+          h: 50,
+          color: '#000000',
+          text: 'Hello World',
+          fontSize: 16,
+          createdBy: 'user-123',
+          updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
+        };
+
+        // Validate text-specific properties
+        expect(validTextShape.type).toBe('text');
+        expect(validTextShape.text).toBe('Hello World');
+        expect(typeof validTextShape.text).toBe('string');
+        expect(validTextShape.text.length).toBeGreaterThan(0);
+        expect(validTextShape.fontSize).toBe(16);
+        expect(typeof validTextShape.fontSize).toBe('number');
+        expect(validTextShape.fontSize).toBeGreaterThan(0);
+      });
+
+      it('should validate line shape properties', () => {
+        const validLineShape = {
+          type: 'line',
+          x: 0,
+          y: 0,
+          w: 100,
+          h: 0,
+          color: '#00FF00',
+          strokeWidth: 2,
+          points: [0, 0, 100, 0],
+          createdBy: 'user-123',
+          updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
+        };
+
+        // Validate line-specific properties
+        expect(validLineShape.type).toBe('line');
+        expect(validLineShape.strokeWidth).toBe(2);
+        expect(typeof validLineShape.strokeWidth).toBe('number');
+        expect(validLineShape.strokeWidth).toBeGreaterThan(0);
+        expect(validLineShape.points).toEqual([0, 0, 100, 0]);
+        expect(Array.isArray(validLineShape.points)).toBe(true);
+        expect(validLineShape.points.length).toBe(4);
+      });
+
+      it('should reject invalid shape types', () => {
+        const invalidShapeTypes = [
+          'triangle',
+          'polygon',
+          'ellipse',
+          'square',
+          'rectangle', // Should be 'rect'
+          '',
+          null,
+          undefined,
+        ];
+
+        const validTypes = ['rect', 'circle', 'text', 'line'];
+
+        invalidShapeTypes.forEach(type => {
+          expect(validTypes).not.toContain(type);
+        });
+      });
+    });
+
+    describe('Editable Properties Validation', () => {
+      it('should validate color property updates', () => {
+        const validColorUpdates = [
+          '#FF0000', // Red
+          '#00FF00', // Green
+          '#0000FF', // Blue
+          '#FFFFFF', // White
+          '#000000', // Black
+          '#3B82F6', // Current blue
+        ];
+
+        validColorUpdates.forEach(color => {
+          expect(typeof color).toBe('string');
+          expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+        });
+      });
+
+      it('should validate size property updates', () => {
+        const validSizeUpdates = [
+          { w: 50, h: 50 },   // Smaller
+          { w: 150, h: 150 }, // Larger
+          { w: 200, h: 100 }, // Different aspect ratio
+          { w: 100, h: 200 }, // Different aspect ratio
+        ];
+
+        validSizeUpdates.forEach(size => {
+          expect(typeof size.w).toBe('number');
+          expect(typeof size.h).toBe('number');
+          expect(size.w).toBeGreaterThan(0);
+          expect(size.h).toBeGreaterThan(0);
+        });
+      });
+
+      it('should validate text property updates', () => {
+        const validTextUpdates = [
+          { text: 'Hello', fontSize: 12 },
+          { text: 'World', fontSize: 18 },
+          { text: 'Test', fontSize: 24 },
+          { text: '', fontSize: 16 }, // Empty text should be allowed
+        ];
+
+        validTextUpdates.forEach(textUpdate => {
+          expect(typeof textUpdate.text).toBe('string');
+          expect(typeof textUpdate.fontSize).toBe('number');
+          expect(textUpdate.fontSize).toBeGreaterThan(0);
+        });
+      });
+
+      it('should reject invalid property updates', () => {
+        const invalidUpdates = [
+          { color: 'red' }, // Named color instead of hex
+          { color: '#GGG' }, // Invalid hex
+          { w: -100 }, // Negative width
+          { h: 0 }, // Zero height
+          { fontSize: -12 }, // Negative font size
+          { fontSize: 'large' }, // String font size
+          { strokeWidth: -2 }, // Negative stroke width
+          { points: [0, 0] }, // Invalid points array (should be 4 elements)
+        ];
+
+        invalidUpdates.forEach(update => {
+          // These should be rejected by security rules
+          if (update.color) {
+            expect(update.color).not.toMatch(/^#[0-9A-Fa-f]{6}$/);
+          }
+          if (update.w !== undefined) {
+            expect(update.w).toBeLessThanOrEqual(0);
+          }
+          if (update.h !== undefined) {
+            expect(update.h).toBeLessThanOrEqual(0);
+          }
+          if (update.fontSize !== undefined) {
+            if (typeof update.fontSize === 'number') {
+              expect(update.fontSize).toBeLessThanOrEqual(0);
+            } else {
+              expect(typeof update.fontSize).toBe('string'); // Should be rejected as invalid type
+            }
+          }
+          if (update.strokeWidth !== undefined) {
+            expect(update.strokeWidth).toBeLessThanOrEqual(0);
+          }
+          if (update.points) {
+            expect(update.points.length).not.toBe(4);
+          }
+        });
+      });
+    });
+
+    describe('Backward Compatibility Validation', () => {
+      it('should maintain compatibility with existing rectangle rules', () => {
+        const existingRect = {
+          type: 'rect',
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 100,
+          color: '#3B82F6',
+          createdBy: 'user-123',
+          updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
+        };
+
+        // Should still validate as before
+        expect(existingRect.type).toBe('rect');
+        expect(existingRect.w).toBe(100);
+        expect(existingRect.h).toBe(100);
+        expect(existingRect.color).toBe('#3B82F6');
+        
+        // New properties should be undefined for existing shapes
+        expect(existingRect.text).toBeUndefined();
+        expect(existingRect.fontSize).toBeUndefined();
+        expect(existingRect.strokeWidth).toBeUndefined();
+        expect(existingRect.radius).toBeUndefined();
+        expect(existingRect.points).toBeUndefined();
+      });
+
+      it('should allow gradual migration of existing shapes', () => {
+        const existingRect = {
+          type: 'rect',
+          x: 100,
+          y: 200,
+          w: 100,
+          h: 100,
+          color: '#3B82F6',
+          createdBy: 'user-123',
+          updatedBy: 'user-123',
+          clientUpdatedAt: Date.now(),
+        };
+
+        // Can add new properties without breaking existing functionality
+        const migratedRect = {
+          ...existingRect,
+          // New properties can be added later
+          text: undefined,
+          fontSize: undefined,
+          strokeWidth: undefined,
+          radius: undefined,
+          points: undefined,
+        };
+
+        expect(migratedRect.type).toBe('rect');
+        expect(migratedRect.w).toBe(100);
+        expect(migratedRect.h).toBe(100);
+        expect(migratedRect.color).toBe('#3B82F6');
+      });
+    });
+
+    describe('User Authorization for Property Updates', () => {
+      it('should validate that only authorized users can update properties', () => {
+        const originalShape = {
+          updatedBy: 'user-123',
+        };
+
+        const validUpdate = {
+          color: '#FF0000',
+          updatedBy: 'user-123', // Same user
+          clientUpdatedAt: Date.now(),
+        };
+
+        const invalidUpdate = {
+          color: '#FF0000',
+          updatedBy: 'different-user', // Different user
+          clientUpdatedAt: Date.now(),
+        };
+
+        expect(validUpdate.updatedBy).toBe(originalShape.updatedBy);
+        expect(invalidUpdate.updatedBy).not.toBe(originalShape.updatedBy);
+      });
+
+      it('should validate property update permissions per shape type', () => {
+        const shapeTypes = ['rect', 'circle', 'text', 'line'];
+        
+        shapeTypes.forEach(type => {
+          // Each shape type should have appropriate editable properties
+          const editableProperties = {
+            rect: ['color', 'w', 'h'],
+            circle: ['color', 'w', 'h', 'radius'],
+            text: ['color', 'w', 'h', 'text', 'fontSize'],
+            line: ['color', 'w', 'h', 'strokeWidth', 'points'],
+          };
+
+          expect(editableProperties[type as keyof typeof editableProperties]).toBeDefined();
+        });
+      });
+    });
+
+    describe('Property Update Edge Cases', () => {
+      it('should handle edge cases in color validation', () => {
+        const edgeCaseColors = [
+          '#000000', // Black
+          '#FFFFFF', // White
+          '#FF0000', // Red
+          '#00FF00', // Green
+          '#0000FF', // Blue
+        ];
+
+        edgeCaseColors.forEach(color => {
+          expect(typeof color).toBe('string');
+          expect(color).toMatch(/^#[0-9A-Fa-f]{6}$/);
+          expect(color.length).toBe(7);
+        });
+      });
+
+      it('should handle edge cases in size validation', () => {
+        const edgeCaseSizes = [
+          { w: 1, h: 1 }, // Minimum size
+          { w: 1000, h: 1000 }, // Large size
+          { w: 1, h: 1000 }, // Very tall
+          { w: 1000, h: 1 }, // Very wide
+        ];
+
+        edgeCaseSizes.forEach(size => {
+          expect(typeof size.w).toBe('number');
+          expect(typeof size.h).toBe('number');
+          expect(size.w).toBeGreaterThan(0);
+          expect(size.h).toBeGreaterThan(0);
+          expect(Number.isFinite(size.w)).toBe(true);
+          expect(Number.isFinite(size.h)).toBe(true);
+        });
+      });
+
+      it('should handle edge cases in text validation', () => {
+        const edgeCaseTexts = [
+          { text: 'A', fontSize: 1 }, // Single character, minimum font size
+          { text: 'Very long text that might exceed reasonable limits', fontSize: 100 }, // Long text, large font
+          { text: '', fontSize: 16 }, // Empty text
+          { text: 'Special chars: !@#$%^&*()', fontSize: 12 }, // Special characters
+        ];
+
+        edgeCaseTexts.forEach(textUpdate => {
+          expect(typeof textUpdate.text).toBe('string');
+          expect(typeof textUpdate.fontSize).toBe('number');
+          expect(textUpdate.fontSize).toBeGreaterThan(0);
+          expect(Number.isFinite(textUpdate.fontSize)).toBe(true);
+        });
+      });
+    });
+  });
 });

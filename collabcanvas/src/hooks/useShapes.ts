@@ -9,6 +9,7 @@ import { useAuth } from './useAuth';
 import { 
   createShape as createShapeInFirestore, 
   updateShapePosition as updateShapePositionInFirestore,
+  updateShapeProperty as updateShapePropertyInFirestore,
   subscribeToShapes,
   subscribeToShapesChanges,
   type FirestoreShape,
@@ -44,6 +45,12 @@ function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
     updatedAt: updatedAtMillis,
     updatedBy: firestoreShape.updatedBy,
     clientUpdatedAt,
+    // Optional properties for different shape types
+    text: firestoreShape.text,
+    fontSize: firestoreShape.fontSize,
+    strokeWidth: firestoreShape.strokeWidth,
+    radius: firestoreShape.radius,
+    points: firestoreShape.points,
   };
 }
 
@@ -102,12 +109,12 @@ export function useShapes() {
 
     try {
       // Sync to Firestore
-      await createShapeInFirestore(shape.id, shape.x, shape.y, user.uid);
+      await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, user.uid);
     } catch (error) {
       console.error('❌ Failed to create shape in Firestore:', error);
       
       // Queue for offline sync
-      offlineManager.queueCreateShape(shape.id, shape.x, shape.y, user.uid);
+      offlineManager.queueCreateShape(shape.id, shape.type, shape.x, shape.y, user.uid);
       console.log(`📝 Queued shape creation for offline sync: ${shape.id}`);
     }
   }, [user, createShapeInStore]);
@@ -423,9 +430,44 @@ export function useShapes() {
     });
   }, [createShape, updateShapePosition, reloadShapesFromFirestore]);
 
+  const updateShapeProperty = useCallback(async (
+    id: string,
+    property: keyof Shape,
+    value: unknown
+  ) => {
+    if (!user) {
+      console.warn('Cannot update shape property: user not authenticated');
+      return;
+    }
+
+    // Get the current shape
+    const currentShape = shapes.get(id);
+    if (!currentShape) {
+      console.warn(`Shape ${id} not found`);
+      return;
+    }
+
+    // Update the shape in the store
+    const clientTimestamp = Date.now();
+    
+    // Update store optimistically
+    const { updateShapeProperty: updateShapePropertyInStore } = useCanvasStore.getState();
+    updateShapePropertyInStore(id, property, value, user.uid, clientTimestamp);
+
+    try {
+      // Sync to Firestore
+      await updateShapePropertyInFirestore(id, property, value, user.uid, clientTimestamp);
+      console.log(`✅ Updated shape ${id} property ${property} to ${value}`);
+    } catch (error) {
+      console.error('❌ Failed to update shape property in Firestore:', error);
+      // Note: We could queue this for offline sync if needed
+    }
+  }, [user, shapes]);
+
   return {
     createShape,
     updateShapePosition,
+    updateShapeProperty,
     reloadShapesFromFirestore,
     shapes: Array.from(shapes.values()),
   };
