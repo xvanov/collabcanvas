@@ -11,15 +11,20 @@ interface ToolbarProps {
   fps?: number;
   zoom?: number;
   onCreateShape?: (type: ShapeType) => void;
+  onToggleLayers?: () => void;
+  onToggleAlignment?: () => void;
+  onToggleGrid?: () => void;
 }
 
 /**
  * Toolbar component
  * Top navigation bar with user authentication info, FPS counter, zoom level, and shape creation controls
  */
-export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
+export function Toolbar({ children, fps, zoom, onCreateShape, onToggleLayers, onToggleAlignment, onToggleGrid }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
+  const gridState = useCanvasStore((state) => state.gridState);
+  const toggleGrid = useCanvasStore((state) => state.toggleGrid);
   const { activeUsersCount } = usePresence();
   const { 
     connectionStatus, 
@@ -39,6 +44,9 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
     }
 
     // Fallback: create at origin
+    // Get the current active layer ID
+    const activeLayerId = useCanvasStore.getState().activeLayerId;
+    
     const baseShape: Shape = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -52,6 +60,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
       updatedAt: Date.now(),
       updatedBy: currentUser.uid,
       clientUpdatedAt: Date.now(),
+      layerId: activeLayerId, // Assign to the currently active layer
     };
 
     // Add type-specific properties
@@ -137,6 +146,55 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
         </div>
 
         {children}
+
+        {/* Professional Tools */}
+        <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
+          <button
+            onClick={onToggleLayers}
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              onToggleLayers ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+            title="Toggle Layers Panel"
+            disabled={!onToggleLayers}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+            </svg>
+            Layers
+          </button>
+
+          <button
+            onClick={onToggleAlignment}
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              onToggleAlignment ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-400 cursor-not-allowed'
+            }`}
+            title="Toggle Alignment Toolbar"
+            disabled={!onToggleAlignment}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+            Align
+          </button>
+
+          <button
+            onClick={() => {
+              toggleGrid();
+              if (onToggleGrid) onToggleGrid();
+            }}
+            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              gridState.isVisible 
+                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+            }`}
+            title={`${gridState.isVisible ? 'Hide' : 'Show'} Grid`}
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+            </svg>
+            Grid
+          </button>
+        </div>
       </div>
       <div className="flex items-center gap-6">
         {/* Connection Status */}

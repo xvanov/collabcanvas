@@ -5,6 +5,7 @@ import { ShapePropertiesPanel } from '../components/ShapePropertiesPanel';
 import { useCanvasStore } from '../store/canvasStore';
 import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
+import { useLayers } from '../hooks/useLayers';
 import { useLocks } from '../hooks/useLocks';
 import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
@@ -19,6 +20,8 @@ import { perfMetrics } from '../utils/harness';
 export function Board() {
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
+  const [showLayersPanel, setShowLayersPanel] = useState(false);
+  const [showAlignmentToolbar, setShowAlignmentToolbar] = useState(false);
   const { user } = useAuth();
   const setCurrentUser = useCanvasStore((state) => state.setCurrentUser);
   const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
@@ -26,6 +29,7 @@ export function Board() {
   const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const rotateSelectedShapes = useCanvasStore((state) => state.rotateSelectedShapes);
   const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes();
+  useLayers(); // Initialize layer synchronization
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
@@ -62,6 +66,11 @@ export function Board() {
     if (typeof window === 'undefined') return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Don't handle keys if user is typing in an input field
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
       // Prevent default behavior for our custom shortcuts
       const isCustomShortcut = (
         event.key === 'Delete' || 
@@ -134,6 +143,9 @@ export function Board() {
     // Get viewport center from Canvas component
     const center = canvasRef.current?.getViewportCenter() || { x: 200, y: 200 };
 
+    // Get the current active layer ID
+    const activeLayerId = useCanvasStore.getState().activeLayerId;
+
     const baseShape = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -147,6 +159,7 @@ export function Board() {
       updatedAt: Date.now(),
       updatedBy: user.uid,
       clientUpdatedAt: Date.now(),
+      layerId: activeLayerId, // Assign to the currently active layer
     };
 
     // Add type-specific properties
@@ -173,7 +186,13 @@ export function Board() {
 
   return (
     <div className="flex h-screen flex-col">
-      <Toolbar fps={fps} zoom={zoom} onCreateShape={handleCreateShape}>
+      <Toolbar 
+        fps={fps} 
+        zoom={zoom} 
+        onCreateShape={handleCreateShape}
+        onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
+        onToggleAlignment={() => setShowAlignmentToolbar(!showAlignmentToolbar)}
+      >
         {/* Additional toolbar controls will be added in future PRs */}
       </Toolbar>
       <div className="flex flex-1">
@@ -181,7 +200,11 @@ export function Board() {
           <Canvas 
             ref={canvasRef}
             onFpsUpdate={setFps} 
-            onZoomChange={setZoom} 
+            onZoomChange={setZoom}
+            showLayersPanel={showLayersPanel}
+            showAlignmentToolbar={showAlignmentToolbar}
+            onCloseLayersPanel={() => setShowLayersPanel(false)}
+            onCloseAlignmentToolbar={() => setShowAlignmentToolbar(false)}
           />
         </div>
         <ShapePropertiesPanel className="w-80" />

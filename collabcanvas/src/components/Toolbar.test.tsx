@@ -58,13 +58,26 @@ describe('Toolbar Component', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: mockCurrentUser,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: mockCurrentUser,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
   });
 
   it('should render Create Rectangle button', () => {
@@ -96,13 +109,26 @@ describe('Toolbar Component', () => {
   });
 
   it('should disable Create Rectangle button when no current user', () => {
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: null,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: null,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
 
     render(<Toolbar fps={60} zoom={1} />);
     
@@ -111,13 +137,26 @@ describe('Toolbar Component', () => {
   });
 
   it('should not call createShape when button is clicked without current user', () => {
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: null,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: null,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
 
     render(<Toolbar fps={60} zoom={1} />);
     
@@ -175,13 +214,26 @@ describe('Toolbar Component - Shape Type Selection', () => {
   beforeEach(() => {
     vi.clearAllMocks();
     
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: mockCurrentUser,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: mockCurrentUser,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
   });
 
   it('should render shape type selection buttons', () => {
@@ -281,13 +333,26 @@ describe('Toolbar Component - Shape Type Selection', () => {
   });
 
   it('should disable all shape creation buttons when no current user', () => {
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: null,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: null,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
 
     render(<Toolbar fps={60} zoom={1} />);
     
@@ -300,13 +365,26 @@ describe('Toolbar Component - Shape Type Selection', () => {
   });
 
   it('should not call createShape when buttons are clicked without current user', () => {
+    const mockState = {
+      createShape: mockCreateShape,
+      currentUser: null,
+      activeLayerId: 'default-layer',
+      gridState: {
+        isVisible: false,
+        isSnapEnabled: false,
+        size: 20,
+        color: '#E5E7EB',
+        opacity: 0.5,
+      },
+      toggleGrid: vi.fn(),
+    };
+    
     (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation((selector: (state: unknown) => unknown) => {
-      const mockState = {
-        createShape: mockCreateShape,
-        currentUser: null,
-      };
       return selector(mockState);
     });
+    
+    // Add getState method to the mock
+    (useCanvasStore as unknown as { getState: () => typeof mockState }).getState = vi.fn(() => mockState);
 
     render(<Toolbar fps={60} zoom={1} />);
     
