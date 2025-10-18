@@ -102,7 +102,7 @@ export class CanvasExportService implements ExportService {
   /**
    * Export selected shapes as SVG
    */
-  private async exportSelectedShapesAsSVG(tempStage: any, options: ExportOptions, bounds: any, padding: number): Promise<Blob> {
+  private async exportSelectedShapesAsSVG(tempStage: Konva.Stage, options: ExportOptions, bounds: { x: number; y: number; width: number; height: number }, padding: number): Promise<Blob> {
     const { width, height, includeBackground } = options;
     
     // Calculate export dimensions
@@ -119,9 +119,9 @@ export class CanvasExportService implements ExportService {
     
     // Convert each layer to SVG, adjusting for bounds
     const layers = tempStage.getLayers();
-    layers.forEach((layer: any) => {
+    layers.forEach((layer: Konva.Layer) => {
       const children = layer.getChildren();
-      children.forEach((child: any) => {
+      children.forEach((child: Konva.Node) => {
         // Adjust coordinates relative to bounds
         const adjustedChild = this.adjustNodeForBounds(child, bounds, padding);
         svgContent += this.nodeToSVG(adjustedChild);
@@ -137,57 +137,58 @@ export class CanvasExportService implements ExportService {
   /**
    * Adjust node coordinates for bounds-based export
    */
-  private adjustNodeForBounds(node: any, bounds: any, padding: number): any {
+  private adjustNodeForBounds(node: Konva.Node, bounds: { x: number; y: number; width: number; height: number }, padding: number): Konva.Node {
     const attrs = node.getAttrs();
     const adjustedAttrs = { ...attrs };
     
     // Adjust position relative to bounds
-    adjustedAttrs.x = attrs.x - bounds.x + padding;
-    adjustedAttrs.y = attrs.y - bounds.y + padding;
+    adjustedAttrs.x = (attrs.x || 0) - bounds.x + padding;
+    adjustedAttrs.y = (attrs.y || 0) - bounds.y + padding;
     
-    // Create a temporary node with adjusted attributes for SVG conversion
-    return {
-      getClassName: () => node.getClassName(),
-      getAttrs: () => adjustedAttrs
-    };
+    // Create a clone of the node with adjusted attributes
+    const adjustedNode = node.clone();
+    adjustedNode.setAttrs(adjustedAttrs);
+    return adjustedNode;
   }
 
   /**
    * Convert a Konva node to SVG string
    */
-  private nodeToSVG(node: any): string {
+  private nodeToSVG(node: Konva.Node): string {
     const nodeType = node.getClassName();
     const attrs = node.getAttrs();
     
     switch (nodeType) {
       case 'Rect':
-        return `<rect x="${attrs.x}" y="${attrs.y}" width="${attrs.width}" height="${attrs.height}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${attrs.x + attrs.width/2} ${attrs.y + attrs.height/2})"/>`;
+        return `<rect x="${attrs.x || 0}" y="${attrs.y || 0}" width="${attrs.width || 0}" height="${attrs.height || 0}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${(attrs.x || 0) + (attrs.width || 0)/2} ${(attrs.y || 0) + (attrs.height || 0)/2})"/>`;
       
       case 'Circle':
-        return `<circle cx="${attrs.x}" cy="${attrs.y}" r="${attrs.radius}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${attrs.x} ${attrs.y})"/>`;
+        return `<circle cx="${attrs.x || 0}" cy="${attrs.y || 0}" r="${attrs.radius || 0}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})"/>`;
       
       case 'Text':
-        return `<text x="${attrs.x}" y="${attrs.y + attrs.fontSize}" font-family="${attrs.fontFamily || 'Arial'}" font-size="${attrs.fontSize || 12}" fill="${attrs.fill || 'black'}" transform="rotate(${attrs.rotation || 0} ${attrs.x} ${attrs.y})">${attrs.text || ''}</text>`;
+        return `<text x="${attrs.x || 0}" y="${(attrs.y || 0) + (attrs.fontSize || 12)}" font-family="${attrs.fontFamily || 'Arial'}" font-size="${attrs.fontSize || 12}" fill="${attrs.fill || 'black'}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})">${attrs.text || ''}</text>`;
       
-      case 'Line':
+      case 'Line': {
         const points = attrs.points || [];
         const pointsString = points.map((point: number, index: number) => {
           if (index % 2 === 0) {
-            return `${point + attrs.x}`;
+            return `${point + (attrs.x || 0)}`;
           } else {
-            return `${point + attrs.y}`;
+            return `${point + (attrs.y || 0)}`;
           }
         }).join(' ');
-        return `<polyline points="${pointsString}" fill="${attrs.fill || 'none'}" stroke="${attrs.stroke || 'black'}" stroke-width="${attrs.strokeWidth || 1}" transform="rotate(${attrs.rotation || 0} ${attrs.x} ${attrs.y})"/>`;
+        return `<polyline points="${pointsString}" fill="${attrs.fill || 'none'}" stroke="${attrs.stroke || 'black'}" stroke-width="${attrs.strokeWidth || 1}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})"/>`;
+      }
       
-      case 'Group':
-        let groupContent = `<g transform="translate(${attrs.x}, ${attrs.y}) rotate(${attrs.rotation || 0})">`;
-        const children = node.getChildren();
-        children.forEach((child: any) => {
+      case 'Group': {
+        let groupContent = `<g transform="translate(${attrs.x || 0}, ${attrs.y || 0}) rotate(${attrs.rotation || 0})">`;
+        const children = (node as Konva.Group).getChildren();
+        children.forEach((child: Konva.Node) => {
           groupContent += this.nodeToSVG(child);
         });
         groupContent += '</g>';
         return groupContent;
+      }
       
       default:
         console.warn(`Unsupported node type for SVG export: ${nodeType}`);
