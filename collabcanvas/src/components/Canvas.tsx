@@ -6,6 +6,9 @@ import { CursorOverlay } from './CursorOverlay';
 import { LockOverlay } from './LockOverlay';
 import { SelectionBox } from './SelectionBox';
 import { TransformControls } from './TransformControls';
+import { LayersPanel } from './LayersPanel';
+import { AlignmentToolbar } from './AlignmentToolbar';
+import { SnapIndicators } from './SnapIndicators';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
@@ -16,6 +19,10 @@ import type { SelectionBox as SelectionBoxType } from '../types';
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
   onZoomChange?: (scale: number) => void;
+  showLayersPanel?: boolean;
+  showAlignmentToolbar?: boolean;
+  onCloseLayersPanel?: () => void;
+  onCloseAlignmentToolbar?: () => void;
 }
 
 export interface CanvasHandle {
@@ -26,7 +33,7 @@ export interface CanvasHandle {
  * Main canvas component with Konva integration
  * Supports pan (click and drag) and zoom (mouse wheel) at 60 FPS
  */
-const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChange }, ref) => {
+const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChange, showLayersPanel = false, showAlignmentToolbar = false, onCloseLayersPanel, onCloseAlignmentToolbar }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -35,6 +42,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const stageScaleRef = useRef(1);
   const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
   const [stageScale, setStageScale] = useState(1);
+  // Mouse position for snap indicators
+  const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   // Imperative current-user cursor to avoid React re-renders on mousemove
   const overlaysLayerRef = useRef<Konva.Layer>(null);
   const currentCursorRef = useRef<Konva.Circle>(null);
@@ -63,6 +72,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const updateTransformControls = useCanvasStore((state) => state.updateTransformControls);
   const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const currentUser = useCanvasStore((state) => state.currentUser);
+  const activeLayerId = useCanvasStore((state) => state.activeLayerId);
+  const layers = useCanvasStore((state) => state.layers);
+  const gridState = useCanvasStore((state) => state.gridState);
+  
+  // Debug: Track activeLayerId changes
+  useEffect(() => {
+    console.log('🔄 activeLayerId changed to:', activeLayerId);
+  }, [activeLayerId]);
   
   // Presence state
   const { users: otherUsers, updateCursorPosition } = usePresence();
@@ -312,6 +329,12 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       updateCursorPosition(stageX, stageY);
     }
 
+    // Update mouse position for snap indicators
+    setMousePosition({
+      x: stageX,
+      y: stageY,
+    });
+
     // Handle drag selection
     if (isSelecting.current) {
       const startX = selectionStart.current.x;
@@ -455,13 +478,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           {/* Grid layer - non-interactive */}
           <Layer listening={false}>
             {(() => {
+              if (!gridState.isVisible) return null;
+              
               const visibleWidth = dimensions.width / stageScaleRef.current;
               const visibleHeight = dimensions.height / stageScaleRef.current;
               const startX = -stagePosRef.current.x / stageScaleRef.current;
               const startY = -stagePosRef.current.y / stageScaleRef.current;
               const endX = startX + visibleWidth;
               const endY = startY + visibleHeight;
-              const gridSize = 50;
+              const gridSize = gridState.size;
               const firstX = Math.floor(startX / gridSize) * gridSize;
               const firstY = Math.floor(startY / gridSize) * gridSize;
               const verticalLines = Math.ceil((endX - firstX) / gridSize) + 1;
@@ -474,8 +499,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                       <Line
                         key={`v-${i}`}
                         points={[x, startY - gridSize, x, endY + gridSize]}
-                        stroke="#E0E0E0"
+                        stroke={gridState.color}
                         strokeWidth={1 / stageScale}
+                        opacity={gridState.opacity}
                         listening={false}
                       />
                     );
@@ -486,8 +512,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                       <Line
                         key={`h-${i}`}
                         points={[startX - gridSize, y, endX + gridSize, y]}
-                        stroke="#E0E0E0"
+                        stroke={gridState.color}
                         strokeWidth={1 / stageScale}
+                        opacity={gridState.opacity}
                         listening={false}
                       />
                     );
@@ -502,12 +529,46 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             {shapes.map((shape) => {
               const isLocked = isShapeLockedByOtherUser(shape.id);
               const isSelected = selectedShapeIds.includes(shape.id);
+              // Handle shapes without layerId (created before layer system) - assign them to default layer
+              const shapeLayerId = shape.layerId || 'default-layer';
+              const isInActiveLayer = shapeLayerId === activeLayerId;
+              
+              // Debug: Log shape rendering info
+              if (shape.id.includes('8vuzjs6fj')) { // Log for the specific shape from your example
+                console.log('🎨 Rendering shape:', {
+                  shapeId: shape.id,
+                  shapeLayerId,
+                  activeLayerId,
+                  isInActiveLayer,
+                  layers: layers.map(l => ({ id: l.id, name: l.name }))
+                });
+              }
+              
+              // Find the layer to check its visibility and lock status
+              const layer = layers.find(l => l.id === shapeLayerId);
+              const isLayerVisible = layer ? layer.visible : true; // Default to visible if layer not found
+              const isLayerLocked = layer ? layer.locked : false; // Default to unlocked if layer not found
+              
+              // Calculate opacity based on layer visibility and active layer
+              let opacity = 1;
+              if (!isLayerVisible) {
+                opacity = 0; // Completely hide if layer is invisible
+              } else if (!isInActiveLayer) {
+                opacity = 0.3; // Dim if not in active layer
+              }
+              
+              // Check if shape should be locked (either by user or by layer)
+              const isShapeLockedByLayer = isLayerLocked;
+              const isShapeLockedByUser = isLocked;
+              const isShapeLocked = isShapeLockedByUser || isShapeLockedByLayer;
+              
               return (
                 <Shape
                   key={shape.id}
                   shape={shape}
                   isSelected={isSelected}
-                  isLocked={isLocked}
+                  isLocked={isShapeLocked}
+                  opacity={opacity}
                   onSelect={(event) => handleShapeSelect(shape.id, event)}
                   onDragEnd={handleShapeDragEnd}
                   onUpdatePosition={async (nextX, nextY) => {
@@ -576,6 +637,30 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           </Layer>
         </Stage>
       )}
+
+      {/* Snap Indicators */}
+      <SnapIndicators
+        mousePosition={mousePosition}
+        viewport={{
+          width: dimensions.width,
+          height: dimensions.height,
+          offsetX: stagePos.x,
+          offsetY: stagePos.y,
+          scale: stageScale,
+        }}
+      />
+
+      {/* Layers Panel */}
+      <LayersPanel
+        isVisible={showLayersPanel}
+        onClose={onCloseLayersPanel || (() => {})}
+      />
+
+      {/* Alignment Toolbar */}
+      <AlignmentToolbar
+        isVisible={showAlignmentToolbar}
+        onClose={onCloseAlignmentToolbar || (() => {})}
+      />
     </div>
   );
 });

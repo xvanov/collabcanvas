@@ -230,27 +230,27 @@ interface CanvasAction {
 
 ---
 
-### [ ] PR #14 — Layers Panel & Alignment Tools
+### [x] PR #14 — Layers Panel & Alignment Tools
 **Target Points**: +6-8 | **Priority**: HIGH
 
 **Features to Implement**:
-- [ ] **Layers Panel with Drag-to-Reorder** (3 points)
-  - [ ] Layers panel UI
-  - [ ] Shape hierarchy display
-  - [ ] Drag-to-reorder functionality
-  - [ ] Z-index management
-  - [ ] Layer visibility controls
+- [x] **Layers Panel with Drag-to-Reorder** (3 points)
+  - [x] Layers panel UI
+  - [x] Shape hierarchy display
+  - [x] Drag-to-reorder functionality
+  - [x] Z-index management
+  - [x] Layer visibility controls
 
-- [ ] **Alignment Tools** (3 points)
-  - [ ] Align left/right/center
-  - [ ] Distribute evenly
-  - [ ] Alignment toolbar
-  - [ ] Smart guides during alignment
+- [x] **Alignment Tools** (3 points)
+  - [x] Align left/right/center
+  - [x] Distribute evenly
+  - [x] Alignment toolbar
+  - [x] Smart guides during alignment
 
-- [ ] **Additional Professional Features** (2 points)
-  - [ ] Snap-to-grid functionality
-  - [ ] Grid toggle
-  - [ ] Snap indicators
+- [x] **Additional Professional Features** (2 points)
+  - [x] Snap-to-grid functionality
+  - [x] Grid toggle
+  - [x] Snap indicators
 
 **Technical Implementation**:
 ```typescript
@@ -274,18 +274,18 @@ interface AlignmentTools {
 ```
 
 **Acceptance Criteria**:
-- [ ] Layers panel shows shape hierarchy
-- [ ] Drag-to-reorder works
-- [ ] Alignment tools work for selected shapes
-- [ ] Snap-to-grid works during drag
-- [ ] Grid can be toggled on/off
-- [ ] All features maintain real-time sync
+- [x] Layers panel shows shape hierarchy
+- [x] Drag-to-reorder works
+- [x] Alignment tools work for selected shapes
+- [x] Snap-to-grid works during drag
+- [x] Grid can be toggled on/off
+- [x] All features maintain real-time sync
 
 **Testing Strategy** (fast, practical):
-- [ ] Unit: Layer ordering reducers; alignment math (left/center/right, distribute)
-- [ ] Component: Drag-to-reorder calls correct actions; guides toggle
-- [ ] Integration (Harness): Reorder + align in one client reflects correctly in peer
-- [ ] Manual: Snap-to-grid feel check under pan/zoom
+- [x] Unit: Layer ordering reducers; alignment math (left/center/right, distribute)
+- [x] Component: Drag-to-reorder calls correct actions; guides toggle
+- [x] Integration (Harness): Reorder + align in one client reflects correctly in peer
+- [x] Manual: Snap-to-grid feel check under pan/zoom
 
 ---
 
@@ -431,7 +431,7 @@ interface AIService {
 - 🎯 3+ shape types (rect, circle, text, line) - PR #11 (target)
 - 🎯 Text with formatting - PR #11 (target)
 - 🎯 Multi-select (shift-click, drag selection) - PR #12 (target)
-- 🎯 Layer management - PR #14 (target)
+- ✅ Layer management - PR #14 ✅ COMPLETED
 - 🎯 Transform operations (move, resize, rotate) - PR #12 (target)
 - 🎯 Duplicate/delete - PR #12 (target)
 
@@ -449,8 +449,8 @@ interface AIService {
 - ✅ Keyboard shortcuts for operations (2 pts) - PR #13 ✅ COMPLETE
 
 **Tier 2 Features** (6 points max - need 2 features):
-- ✅ Layers panel with drag-to-reorder (3 pts) - PR #14
-- ✅ Alignment tools (3 pts) - PR #14
+- ✅ Layers panel with drag-to-reorder (3 pts) - PR #14 ✅ COMPLETED
+- ✅ Alignment tools (3 pts) - PR #14 ✅ COMPLETED
 
 **Tier 3 Features** (3 points max - need 1 feature):
 - ✅ **Version history with restore capability (3 pts) - PR #15** ⭐ CRITICAL FOR 100/100
@@ -485,7 +485,7 @@ interface AIService {
 |-----------|----------------|-------------|
 | **Current MVP** | Collab: 25-28, Canvas: 8-10, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **45-52/100** |
 | **After PR #11-12** | Collab: 26-28, Canvas: 17-18, Advanced: 0, AI: 0, Tech: 8-9, Docs: 4-5 | **55-64/100** |
-| **After PR #13-14** | Collab: 27-29, Canvas: 19-20, Advanced: 12, AI: 0, Tech: 9, Docs: 4-5 | **71-80/100** |
+| **After PR #13-14** | Collab: 27-29, Canvas: 19-20, Advanced: 12, AI: 0, Tech: 9, Docs: 4-5 | **71-80/100** ✅ COMPLETED |
 | **After PR #15** | Collab: 28-29, Canvas: 19-20, **Advanced: 15**, AI: 0, Tech: 9, Docs: 5 | **80-88/100** |
 | **After PR #16** | Collab: 28-30, Canvas: 19-20, Advanced: 15, **AI: 25**, Tech: 9-10, Docs: 5 | **96-105/105** ✅ |
 
@@ -493,7 +493,7 @@ interface AIService {
 
 ### Feature Completion Targets
 - **PR #11-12**: 4+ shape types, multi-select, transforms, basic editing (Canvas Functionality: Excellent)
-- **PR #13-14**: 3 Tier 1 features + 2 Tier 2 features (12/15 Advanced Features points)
+- **PR #13-14**: 3 Tier 1 features + 2 Tier 2 features (12/15 Advanced Features points) ✅ COMPLETED
 - **PR #15**: 1 Tier 3 feature (Version History) + Export + Copy/Paste (15/15 Advanced Features points)
 - **PR #16**: AI agent with 8+ command types, 90%+ accuracy, <2s responses (25/25 AI points)
 

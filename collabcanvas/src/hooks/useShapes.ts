@@ -46,6 +46,8 @@ function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
     updatedAt: updatedAtMillis,
     updatedBy: firestoreShape.updatedBy,
     clientUpdatedAt,
+    // Layer management
+    layerId: firestoreShape.layerId,
     // Optional properties for different shape types
     text: firestoreShape.text,
     fontSize: firestoreShape.fontSize,
@@ -114,13 +116,15 @@ export function useShapes() {
     perfMetrics.markEvent('shapeCreateLocal');
 
     try {
-      // Sync to Firestore
-      await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, user.uid);
+      // Sync to Firestore - ensure layerId is valid
+      const layerId = shape.layerId || 'default-layer';
+      await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, user.uid, layerId);
     } catch (error) {
       console.error('❌ Failed to create shape in Firestore:', error);
       
-      // Queue for offline sync
-      offlineManager.queueCreateShape(shape.id, shape.type, shape.x, shape.y, user.uid);
+      // Queue for offline sync - ensure layerId is valid
+      const layerId = shape.layerId || 'default-layer';
+      offlineManager.queueCreateShape(shape.id, shape.type, shape.x, shape.y, user.uid, layerId);
       console.log(`📝 Queued shape creation for offline sync: ${shape.id}`);
     }
   }, [user, createShapeInStore]);
@@ -589,7 +593,8 @@ export function useShapes() {
         duplicatedShape.type,
         duplicatedShape.x,
         duplicatedShape.y,
-        user.uid
+        user.uid,
+        duplicatedShape.layerId
       ).catch(error => {
         console.error(`❌ Failed to create duplicated shape ${duplicatedShape.id} in Firestore:`, error);
         
@@ -599,7 +604,8 @@ export function useShapes() {
           duplicatedShape.type,
           duplicatedShape.x,
           duplicatedShape.y,
-          user.uid
+          user.uid,
+          duplicatedShape.layerId
         );
         console.log(`📝 Queued duplicated shape creation for offline sync: ${duplicatedShape.id}`);
         throw error;

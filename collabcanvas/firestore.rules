@@ -25,6 +25,8 @@ service cloud.firestore {
         && request.resource.data.createdAt is timestamp
         && request.resource.data.updatedAt is timestamp
         && request.resource.data.clientUpdatedAt is number
+        // Validate layerId is string (optional)
+        && (request.resource.data.layerId == null || request.resource.data.layerId is string)
         // Validate type-specific properties
         && (request.resource.data.type == 'rect' 
             || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
@@ -56,6 +58,24 @@ service cloud.firestore {
             || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
       
       // Delete: Allow authenticated users to delete shapes
+      allow delete: if request.auth != null;
+    }
+    
+    // Global board layers collection
+    match /boards/{boardId}/layers/{layerId} {
+      // Auth required for all operations
+      allow read: if request.auth != null;
+      
+      // Create: Basic validation
+      allow create: if request.auth != null
+        && request.resource.data.name is string
+        && request.resource.data.createdBy == request.auth.uid;
+      
+      // Update: Basic validation
+      allow update: if request.auth != null
+        && request.resource.data.updatedBy == request.auth.uid;
+      
+      // Delete: Allow authenticated users to delete layers
       allow delete: if request.auth != null;
     }
     

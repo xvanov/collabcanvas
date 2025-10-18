@@ -20,6 +20,8 @@ export interface Shape {
   updatedAt: number | null;
   updatedBy: string;
   clientUpdatedAt: number | null;
+  // Layer management
+  layerId?: string;
   // Optional properties for different shape types
   text?: string;
   fontSize?: number;
@@ -191,4 +193,57 @@ export interface HistoryState {
   present: CanvasAction | null;
   future: CanvasAction[];
   maxHistorySize: number;
+}
+
+/**
+ * Layer management types
+ */
+export interface Layer {
+  id: string;
+  name: string;
+  shapes: string[];
+  visible: boolean;
+  locked: boolean;
+  order: number;
+}
+
+/**
+ * Alignment operation types
+ */
+export type AlignmentType = 'left' | 'center' | 'right' | 'top' | 'middle' | 'bottom' | 'distribute-horizontal' | 'distribute-vertical';
+
+/**
+ * Alignment tools state
+ */
+export interface AlignmentTools {
+  alignLeft: () => void;
+  alignCenter: () => void;
+  alignRight: () => void;
+  alignTop: () => void;
+  alignMiddle: () => void;
+  alignBottom: () => void;
+  distributeHorizontally: () => void;
+  distributeVertically: () => void;
+}
+
+/**
+ * Grid state
+ */
+export interface GridState {
+  isVisible: boolean;
+  isSnapEnabled: boolean;
+  size: number;
+  color: string;
+  opacity: number;
+}
+
+/**
+ * Snap indicators for visual feedback
+ */
+export interface SnapIndicator {
+  type: 'horizontal' | 'vertical' | 'corner';
+  x: number;
+  y: number;
+  length: number;
+  visible: boolean;
 }

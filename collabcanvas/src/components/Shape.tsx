@@ -12,6 +12,7 @@ interface ShapeProps {
   shape: ShapeType;
   isSelected: boolean;
   isLocked: boolean;
+  opacity?: number;
   onSelect: (event?: KonvaEventObject<MouseEvent>) => void;
   onDragEnd: (x: number, y: number) => void;
   onUpdatePosition: (x: number, y: number) => Promise<void> | void;
@@ -30,6 +31,7 @@ function ShapeComponent({
   shape,
   isSelected,
   isLocked,
+  opacity = 1,
   onSelect,
   onDragEnd,
   onUpdatePosition,
@@ -101,6 +103,7 @@ function ShapeComponent({
     draggable: !isLocked && isInteractionEnabled,
     stroke: stroke,
     strokeWidth: strokeWidth,
+    opacity: opacity,
     onClick: handleClick,
     onDragEnd: handleDragEnd,
     onMouseUp: handleMouseUp,
