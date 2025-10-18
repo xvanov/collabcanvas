@@ -32,7 +32,7 @@ jobs:
         run: npm test
         working-directory: collabcanvas
       
-      - name: Create .env file
+      - name: Create .env.production file
         run: |
           cat > .env.production << EOF
           VITE_FIREBASE_API_KEY=${{ secrets.FIREBASE_API_KEY }}
@@ -44,8 +44,8 @@ jobs:
           VITE_FIREBASE_APP_ID=${{ secrets.FIREBASE_APP_ID }}
           VITE_USE_FIREBASE_EMULATORS=false
           EOF
-          echo "Created .env file"
-          cat .env
+          echo "Created .env.production file"
+          cat .env.production
         working-directory: collabcanvas
       
       - name: Build production bundle
