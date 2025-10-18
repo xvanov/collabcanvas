@@ -4,22 +4,40 @@ import ZoomIndicator from './ZoomIndicator';
 import { useCanvasStore } from '../store/canvasStore';
 import { usePresence } from '../hooks/usePresence';
 import { useOffline } from '../hooks/useOffline';
-import type { Shape, ShapeType } from '../types';
+import type { Shape, ShapeType, ExportOptions } from '../types';
+import { useState } from 'react';
+import { ExportDialog } from './ExportDialog';
+import { ShortcutsHelp } from './ShortcutsHelp';
+import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
+import { createExportService } from '../services/exportService';
+import Konva from 'konva';
 
 interface ToolbarProps {
   children?: React.ReactNode;
   fps?: number;
   zoom?: number;
   onCreateShape?: (type: ShapeType) => void;
+  stageRef?: Konva.Stage | null; // Konva Stage reference for export
 }
 
 /**
  * Toolbar component
  * Top navigation bar with user authentication info, FPS counter, zoom level, and shape creation controls
  */
-export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
+export function Toolbar({ children, fps, zoom, onCreateShape, stageRef }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
+  const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
+  const shapes = useCanvasStore((state) => state.shapes);
+  const undo = useCanvasStore((state) => state.undo);
+  const redo = useCanvasStore((state) => state.redo);
+  const canUndo = useCanvasStore((state) => state.canUndo);
+  const canRedo = useCanvasStore((state) => state.canRedo);
+  const deleteSelectedShapes = useCanvasStore((state) => state.deleteSelectedShapes);
+  const duplicateSelectedShapes = useCanvasStore((state) => state.duplicateSelectedShapes);
+  const clearSelection = useCanvasStore((state) => state.clearSelection);
+  const selectShapes = useCanvasStore((state) => state.selectShapes);
+  
   const { activeUsersCount } = usePresence();
   const { 
     connectionStatus, 
@@ -28,6 +46,44 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
     queuedUpdatesCount,
     retryQueuedUpdates 
   } = useOffline();
+
+  // Export dialog state
+  const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
+  const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
+
+  // Export functionality
+  const handleExport = async (options: ExportOptions) => {
+    if (!stageRef || !currentUser) return;
+
+    try {
+      const exportService = createExportService(stageRef);
+      
+      let blob: Blob;
+      if (options.selectedOnly && selectedShapeIds.length > 0) {
+        blob = await exportService.exportSelectedShapes(options, selectedShapeIds);
+      } else {
+        blob = await exportService.exportCanvas(options);
+      }
+      
+      const filename = exportService.generateFilename(options);
+      exportService.downloadBlob(blob, filename);
+    } catch (error) {
+      console.error('Export failed:', error);
+      // TODO: Show error toast
+    }
+  };
+
+  // Keyboard shortcuts
+  useKeyboardShortcuts({
+    onUndo: canUndo() ? undo : undefined,
+    onRedo: canRedo() ? redo : undefined,
+    onExport: () => setIsExportDialogOpen(true),
+    onShowShortcuts: () => setIsShortcutsHelpOpen(true),
+    onDelete: selectedShapeIds.length > 0 ? deleteSelectedShapes : undefined,
+    onDuplicate: selectedShapeIds.length > 0 ? duplicateSelectedShapes : undefined,
+    onSelectAll: () => selectShapes(Array.from(shapes.keys())),
+    onClearSelection: clearSelection,
+  });
 
   const handleCreateShape = (type: ShapeType) => {
     if (!currentUser) return;
@@ -136,6 +192,69 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
           ))}
         </div>
 
+        {/* Separator */}
+        <div className="h-6 w-px bg-gray-300"></div>
+
+        {/* Edit Actions */}
+        <div className="flex items-center gap-2">
+          {/* Undo Button */}
+          <button
+            onClick={undo}
+            disabled={!canUndo() || !currentUser}
+            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Undo (Cmd+Z)"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+            </svg>
+            Undo
+          </button>
+
+          {/* Redo Button */}
+          <button
+            onClick={redo}
+            disabled={!canRedo() || !currentUser}
+            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Redo (Cmd+Shift+Z)"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+            </svg>
+            Redo
+          </button>
+        </div>
+
+        {/* Separator */}
+        <div className="h-6 w-px bg-gray-300"></div>
+
+        {/* Export Actions */}
+        <div className="flex items-center gap-2">
+          {/* Export Button */}
+          <button
+            onClick={() => setIsExportDialogOpen(true)}
+            disabled={!currentUser || !stageRef}
+            className="flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+            title="Export Canvas (Cmd+E)"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            </svg>
+            Export
+          </button>
+
+          {/* Shortcuts Help Button */}
+          <button
+            onClick={() => setIsShortcutsHelpOpen(true)}
+            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+            title="Show Keyboard Shortcuts (Cmd+/)"
+          >
+            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            Help
+          </button>
+        </div>
+
         {children}
       </div>
       <div className="flex items-center gap-6">
@@ -169,6 +288,20 @@ export function Toolbar({ children, fps, zoom, onCreateShape }: ToolbarProps) {
         {fps !== undefined && <FPSCounter fps={fps} />}
         <AuthButton />
       </div>
+
+      {/* Export Dialog */}
+      <ExportDialog
+        isOpen={isExportDialogOpen}
+        onClose={() => setIsExportDialogOpen(false)}
+        onExport={handleExport}
+        hasSelectedShapes={selectedShapeIds.length > 0}
+      />
+
+      {/* Shortcuts Help Dialog */}
+      <ShortcutsHelp
+        isOpen={isShortcutsHelpOpen}
+        onClose={() => setIsShortcutsHelpOpen(false)}
+      />
     </div>
   );
 }

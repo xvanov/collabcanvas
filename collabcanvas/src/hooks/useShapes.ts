@@ -94,6 +94,9 @@ export function useShapes() {
   // Track shapes we're currently updating to ignore our own updates from Firestore
   const updatingShapes = useRef<Set<string>>(new Set());
   
+  // Track shapes we've locally deleted to prevent them from being re-added by Firestore
+  const locallyDeletedShapes = useRef<Set<string>>(new Set());
+  
   // Track pending writes to prevent duplicates (LWW semantics)
   const pendingWrites = useRef<Map<string, { timestamp: number; promise: Promise<void> }>>(new Map());
 
@@ -322,6 +325,12 @@ export function useShapes() {
       localShapes.forEach((firestoreShape) => {
         const localShape = mergedShapes.get(firestoreShape.id);
         
+        // Skip shapes we've locally deleted to prevent them from reappearing
+        if (locallyDeletedShapes.current.has(firestoreShape.id)) {
+          console.log(`🚫 Ignoring Firestore update for locally deleted shape: ${firestoreShape.id}`);
+          return;
+        }
+        
         if (!localShape) {
           // New shape from Firestore
           mergedShapes.set(firestoreShape.id, firestoreShape);
@@ -371,6 +380,14 @@ export function useShapes() {
 
       if (change.type === 'removed') {
         merged.delete(local.id);
+        // Remove from locally deleted set since Firestore confirms the deletion
+        locallyDeletedShapes.current.delete(local.id);
+        continue;
+      }
+
+      // Skip shapes we've locally deleted to prevent them from reappearing
+      if (locallyDeletedShapes.current.has(local.id)) {
+        console.log(`🚫 Ignoring Firestore ${change.type} for locally deleted shape: ${local.id}`);
         continue;
       }
 
@@ -482,9 +499,25 @@ export function useShapes() {
 
     console.log(`🗑️ Deleting ${shapeIds.length} shapes:`, shapeIds);
 
+    // Track these shapes as locally deleted to prevent them from reappearing
+    shapeIds.forEach(shapeId => {
+      locallyDeletedShapes.current.add(shapeId);
+    });
+
     // Optimistic update - remove from store immediately
-    const { deleteSelectedShapes: deleteSelectedShapesInStore } = useCanvasStore.getState();
-    deleteSelectedShapesInStore();
+    const { shapes: currentShapes, setShapesFromMap, selectedShapeIds, clearSelection } = useCanvasStore.getState();
+    const newShapes = new Map(currentShapes);
+    shapeIds.forEach(shapeId => {
+      newShapes.delete(shapeId);
+    });
+    setShapesFromMap(newShapes);
+    
+    // Clear selection if any of the deleted shapes were selected
+    const deletedShapesWereSelected = shapeIds.some(id => selectedShapeIds.includes(id));
+    if (deletedShapesWereSelected) {
+      clearSelection();
+    }
+    
     perfMetrics.markEvent('shapesDeleteLocal');
     console.log('✅ Optimistic update: shapes removed from store');
 
@@ -493,6 +526,8 @@ export function useShapes() {
       try {
         await deleteShapeInFirestore(shapeId);
         console.log(`✅ Deleted shape ${shapeId}`);
+        // Remove from locally deleted set since Firestore confirms the deletion
+        locallyDeletedShapes.current.delete(shapeId);
       } catch (error) {
         console.error(`❌ Failed to delete shape ${shapeId} in Firestore:`, error);
         

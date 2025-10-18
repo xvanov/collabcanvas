@@ -62,6 +62,16 @@ describe('Toolbar Component', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: mockCurrentUser,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
@@ -100,6 +110,16 @@ describe('Toolbar Component', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: null,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
@@ -115,6 +135,16 @@ describe('Toolbar Component', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: null,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
@@ -179,6 +209,16 @@ describe('Toolbar Component - Shape Type Selection', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: mockCurrentUser,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
@@ -285,6 +325,16 @@ describe('Toolbar Component - Shape Type Selection', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: null,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
@@ -304,6 +354,16 @@ describe('Toolbar Component - Shape Type Selection', () => {
       const mockState = {
         createShape: mockCreateShape,
         currentUser: null,
+        selectedShapeIds: [],
+        shapes: new Map(),
+        undo: vi.fn(),
+        redo: vi.fn(),
+        canUndo: vi.fn(() => false),
+        canRedo: vi.fn(() => false),
+        deleteSelectedShapes: vi.fn(),
+        duplicateSelectedShapes: vi.fn(),
+        clearSelection: vi.fn(),
+        selectShapes: vi.fn(),
       };
       return selector(mockState);
     });
