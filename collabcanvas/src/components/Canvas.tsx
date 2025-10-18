@@ -20,6 +20,7 @@ interface CanvasProps {
 
 export interface CanvasHandle {
   getViewportCenter: () => { x: number; y: number };
+  getStage: () => Konva.Stage | null;
 }
 /**
  * Main canvas component with Konva integration
@@ -426,6 +427,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
       return { x: centerX, y: centerY };
     },
+    getStage: () => stageRef.current,
   }));
   return (
     <div

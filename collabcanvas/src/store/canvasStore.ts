@@ -4,9 +4,11 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
+import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
+import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore } from '../services/firestore';
 
 interface CanvasState {
   // Shapes
@@ -16,6 +18,16 @@ interface CanvasState {
   updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) => void;
   setShapes: (shapes: Shape[]) => void;
   setShapesFromMap: (shapes: Map<string, Shape>) => void;
+  
+  // History (Undo/Redo)
+  history: HistoryState;
+  historyService: HistoryService; // HistoryService instance
+  pushAction: (action: CanvasAction) => void;
+  undo: () => void;
+  redo: () => void;
+  canUndo: () => boolean;
+  canRedo: () => boolean;
+  clearHistory: () => void;
   
   // Multi-Select
   selectedShapeIds: string[];
@@ -67,21 +79,251 @@ interface CanvasState {
   setQueuedUpdatesCount: (count: number) => void;
 }
 
-export const useCanvasStore = create<CanvasState>((set) => ({
+export const useCanvasStore = create<CanvasState>((set, get) => {
+  // Initialize history service
+  const historyService = createHistoryService(50);
+  
+  // Set up history service callback
+  historyService.setOnActionApplied(async (action: CanvasAction) => {
+    const state = get();
+    const currentUser = state.currentUser;
+    
+    if (!currentUser) return;
+    
+    // Apply the action to the store
+    switch (action.type) {
+      case 'CREATE':
+        if (action.shapeId && action.data) {
+          const newShapes = new Map(state.shapes);
+          // Handle both direct shape data and wrapped shape data
+          const shapeData = action.data as CreateActionData | Shape;
+          const shape = 'shape' in shapeData ? shapeData.shape : shapeData;
+          
+          // Mark this shape as created by undo/redo to prevent Firestore conflicts
+          const shapeWithUndoFlag = {
+            ...shape,
+            _isUndoRedoAction: true,
+            updatedAt: Date.now(),
+            updatedBy: currentUser.uid,
+            clientUpdatedAt: Date.now(),
+          };
+          newShapes.set(action.shapeId, shapeWithUndoFlag);
+          set({ shapes: newShapes });
+          
+          // Also sync the restored shape to Firestore so other clients know about it
+          try {
+            await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentUser.uid);
+            console.log(`✅ Synced restored shape ${action.shapeId} to Firestore`);
+          } catch (error) {
+            console.error(`❌ Failed to sync restored shape ${action.shapeId} to Firestore:`, error);
+          }
+        }
+        break;
+        
+      case 'DELETE':
+        if (action.shapeId) {
+          const newShapes = new Map(state.shapes);
+          newShapes.delete(action.shapeId);
+          set({ shapes: newShapes });
+        }
+        break;
+        
+      case 'UPDATE':
+        if (action.shapeId && action.data) {
+          const shape = state.shapes.get(action.shapeId);
+          if (shape) {
+            const newShapes = new Map(state.shapes);
+            const updateData = action.data as UpdateActionData;
+            newShapes.set(action.shapeId, {
+              ...shape,
+              [updateData.property]: updateData.newValue,
+              updatedAt: Date.now(),
+              updatedBy: currentUser.uid,
+              clientUpdatedAt: Date.now(),
+            });
+            set({ shapes: newShapes });
+          }
+        }
+        break;
+        
+      case 'MOVE':
+        if (action.shapeId && action.data) {
+          const shape = state.shapes.get(action.shapeId);
+          if (shape) {
+            const newShapes = new Map(state.shapes);
+            const moveData = action.data as MoveActionData;
+            newShapes.set(action.shapeId, {
+              ...shape,
+              x: moveData.x,
+              y: moveData.y,
+              updatedAt: Date.now(),
+              updatedBy: currentUser.uid,
+              clientUpdatedAt: Date.now(),
+            });
+            set({ shapes: newShapes });
+          }
+        }
+        break;
+        
+      case 'BULK_DELETE':
+        if (action.shapeIds) {
+          const newShapes = new Map(state.shapes);
+          action.shapeIds.forEach(id => newShapes.delete(id));
+          set({ 
+            shapes: newShapes,
+            selectedShapeIds: [],
+            selectedShapeId: null,
+          });
+        }
+        break;
+        
+      case 'BULK_DUPLICATE':
+        if (action.shapeIds && action.data) {
+          const newShapes = new Map(state.shapes);
+          const duplicatedIds: string[] = [];
+          // Handle both direct shape array and wrapped shape data
+          const duplicateData = action.data as BulkDuplicateActionData | Shape[];
+          const shapes = 'duplicatedShapes' in duplicateData ? duplicateData.duplicatedShapes : duplicateData;
+          
+          shapes.forEach((shape: Shape) => {
+            const duplicatedShape = {
+              ...shape,
+              id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+              x: shape.x + 20,
+              y: shape.y + 20,
+              createdAt: Date.now(),
+              updatedAt: Date.now(),
+              clientUpdatedAt: Date.now(),
+            };
+            newShapes.set(duplicatedShape.id, duplicatedShape);
+            duplicatedIds.push(duplicatedShape.id);
+          });
+          
+          set({
+            shapes: newShapes,
+            selectedShapeIds: duplicatedIds,
+            selectedShapeId: duplicatedIds.length > 0 ? duplicatedIds[duplicatedIds.length - 1] : null,
+          });
+        }
+        break;
+        
+      case 'BULK_MOVE':
+        if (action.shapeIds && action.data) {
+          const newShapes = new Map(state.shapes);
+          const moveData = action.data as BulkMoveActionData;
+          action.shapeIds.forEach(id => {
+            const shape = state.shapes.get(id);
+            if (shape) {
+              newShapes.set(id, {
+                ...shape,
+                x: shape.x + moveData.deltaX,
+                y: shape.y + moveData.deltaY,
+                updatedAt: Date.now(),
+                updatedBy: currentUser.uid,
+                clientUpdatedAt: Date.now(),
+              });
+            }
+          });
+          set({ shapes: newShapes });
+        }
+        break;
+        
+      case 'BULK_ROTATE':
+        if (action.shapeIds && action.data) {
+          const newShapes = new Map(state.shapes);
+          const rotateData = action.data as BulkRotateActionData;
+          action.shapeIds.forEach(id => {
+            const shape = state.shapes.get(id);
+            if (shape) {
+              const currentRotation = shape.rotation || 0;
+              newShapes.set(id, {
+                ...shape,
+                rotation: currentRotation + rotateData.angle,
+                updatedAt: Date.now(),
+                updatedBy: currentUser.uid,
+                clientUpdatedAt: Date.now(),
+              });
+            }
+          });
+          set({ shapes: newShapes });
+        }
+        break;
+    }
+  });
+
+  return {
   // Shapes state
   shapes: new Map<string, Shape>(),
+    
+    // History state
+    history: {
+      past: [],
+      present: null,
+      future: [],
+      maxHistorySize: 50,
+    },
+    historyService,
+    
+    pushAction: (action: CanvasAction) => {
+      historyService.pushAction(action);
+      set(() => ({
+        history: historyService.getHistoryState(),
+      }));
+    },
+    
+    undo: () => {
+      const undoneAction = historyService.undo();
+      if (undoneAction) {
+        set(() => ({
+          history: historyService.getHistoryState(),
+        }));
+      }
+    },
+    
+    redo: () => {
+      const redoneAction = historyService.redo();
+      if (redoneAction) {
+        set(() => ({
+          history: historyService.getHistoryState(),
+        }));
+      }
+    },
+    
+    canUndo: () => historyService.canUndo(),
+    canRedo: () => historyService.canRedo(),
+    
+    clearHistory: () => {
+      historyService.clearHistory();
+      set(() => ({
+        history: historyService.getHistoryState(),
+      }));
+    },
   
   createShape: (shape: Shape) =>
     set((state) => {
       const newShapes = new Map(state.shapes);
       newShapes.set(shape.id, shape);
-      return { shapes: newShapes };
+        
+        // Push create action to history
+        if (state.currentUser) {
+          const action = createAction.create(shape.id, shape, state.currentUser.uid);
+          historyService.pushAction(action);
+        }
+        
+        return { 
+          shapes: newShapes,
+          history: historyService.getHistoryState(),
+        };
     }),
 
   updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) =>
     set((state) => {
       const shape = state.shapes.get(id);
       if (!shape) return state;
+      
+      // Store previous position for undo
+      const previousX = shape.x;
+      const previousY = shape.y;
       
       const newShapes = new Map(state.shapes);
       newShapes.set(id, {
@@ -92,13 +334,26 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         updatedBy,
         clientUpdatedAt,
       });
-      return { shapes: newShapes };
+      
+      // Push move action to history
+      if (state.currentUser && (x !== previousX || y !== previousY)) {
+        const action = createAction.move(id, x, y, previousX, previousY, state.currentUser.uid);
+        historyService.pushAction(action);
+      }
+      
+      return { 
+        shapes: newShapes,
+        history: historyService.getHistoryState(),
+      };
     }),
 
   updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) =>
     set((state) => {
       const shape = state.shapes.get(id);
       if (!shape) return state;
+      
+      // Store previous value for undo
+      const previousValue = shape[property];
       
       const newShapes = new Map(state.shapes);
       newShapes.set(id, {
@@ -108,7 +363,17 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         updatedBy,
         clientUpdatedAt,
       });
-      return { shapes: newShapes };
+      
+      // Push update action to history
+      if (state.currentUser && value !== previousValue) {
+        const action = createAction.update(id, property, value, previousValue, state.currentUser.uid);
+        historyService.pushAction(action);
+      }
+      
+      return { 
+        shapes: newShapes,
+        history: historyService.getHistoryState(),
+      };
     }),
   
   setShapes: (shapes: Shape[]) =>
@@ -166,10 +431,35 @@ export const useCanvasStore = create<CanvasState>((set) => ({
   // Bulk Operations
   deleteSelectedShapes: () =>
     set((state) => {
+      const deletedShapes: Shape[] = [];
+      state.selectedShapeIds.forEach(id => {
+        const shape = state.shapes.get(id);
+        if (shape) {
+          deletedShapes.push(shape);
+        }
+      });
+      
       const newShapes = new Map(state.shapes);
       state.selectedShapeIds.forEach(id => {
         newShapes.delete(id);
       });
+      
+      // Push bulk delete action to history
+      if (state.currentUser && deletedShapes.length > 0) {
+        const action = createAction.bulkDelete(state.selectedShapeIds, deletedShapes, state.currentUser.uid);
+        historyService.pushAction(action);
+        
+        // Also delete from Firestore to ensure sync
+        state.selectedShapeIds.forEach(async (shapeId) => {
+          try {
+            await deleteShapeInFirestore(shapeId);
+            console.log(`✅ Deleted shape ${shapeId} from Firestore`);
+          } catch (error) {
+            console.error(`❌ Failed to delete shape ${shapeId} from Firestore:`, error);
+          }
+        });
+      }
+      
       return {
         shapes: newShapes,
         selectedShapeIds: [],
@@ -183,6 +473,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
           rotation: 0,
           resizeHandles: [],
         },
+        history: historyService.getHistoryState(),
       };
     }),
   
@@ -190,6 +481,7 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     set((state) => {
       const newShapes = new Map(state.shapes);
       const duplicatedIds: string[] = [];
+      const duplicatedShapes: Shape[] = [];
       
       state.selectedShapeIds.forEach(id => {
         const shape = state.shapes.get(id);
@@ -207,12 +499,20 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         
         newShapes.set(duplicatedShape.id, duplicatedShape);
         duplicatedIds.push(duplicatedShape.id);
+        duplicatedShapes.push(duplicatedShape);
       });
+      
+      // Push bulk duplicate action to history
+      if (state.currentUser && duplicatedShapes.length > 0) {
+        const action = createAction.bulkDuplicate(state.selectedShapeIds, duplicatedShapes, state.currentUser.uid);
+        historyService.pushAction(action);
+      }
       
       return {
         shapes: newShapes,
         selectedShapeIds: duplicatedIds,
         selectedShapeId: duplicatedIds.length > 0 ? duplicatedIds[duplicatedIds.length - 1] : null,
+        history: historyService.getHistoryState(),
       };
     }),
   
@@ -233,7 +533,16 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         });
       });
       
-      return { shapes: newShapes };
+      // Push bulk move action to history
+      if (state.currentUser && state.selectedShapeIds.length > 0) {
+        const action = createAction.bulkMove(state.selectedShapeIds, deltaX, deltaY, state.currentUser.uid);
+        historyService.pushAction(action);
+      }
+      
+      return { 
+        shapes: newShapes,
+        history: historyService.getHistoryState(),
+      };
     }),
   
   rotateSelectedShapes: (angle: number) =>
@@ -255,7 +564,16 @@ export const useCanvasStore = create<CanvasState>((set) => ({
         });
       });
       
-      return { shapes: newShapes };
+      // Push bulk rotate action to history
+      if (state.currentUser && state.selectedShapeIds.length > 0) {
+        const action = createAction.bulkRotate(state.selectedShapeIds, angle, state.currentUser.uid);
+        historyService.pushAction(action);
+      }
+      
+      return { 
+        shapes: newShapes,
+        history: historyService.getHistoryState(),
+      };
     }),
   
   // Transform Controls
@@ -384,7 +702,8 @@ export const useCanvasStore = create<CanvasState>((set) => ({
     set(() => ({
       queuedUpdatesCount: count,
     })),
-}));
+  };
+});
 
 if (typeof window !== 'undefined' && isHarnessEnabled()) {
   const storeApi = {

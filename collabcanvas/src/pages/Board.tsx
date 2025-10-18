@@ -10,6 +10,7 @@ import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
 import type { Shape, ShapeType } from '../types';
 import { perfMetrics } from '../utils/harness';
+import Konva from 'konva';
 
 /**
  * Board page (main canvas view)
@@ -28,7 +29,7 @@ export function Board() {
   const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes();
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
-  const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number } } | null>(null);
+  const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number }; getStage: () => Konva.Stage | null } | null>(null);
   const showDiagnosticsDefault = useMemo(() => {
     if (typeof window === 'undefined') return perfMetrics.enabled;
     const params = new URLSearchParams(window.location.search);
@@ -173,7 +174,12 @@ export function Board() {
 
   return (
     <div className="flex h-screen flex-col">
-      <Toolbar fps={fps} zoom={zoom} onCreateShape={handleCreateShape}>
+      <Toolbar 
+        fps={fps} 
+        zoom={zoom} 
+        onCreateShape={handleCreateShape}
+        stageRef={canvasRef.current?.getStage()}
+      >
         {/* Additional toolbar controls will be added in future PRs */}
       </Toolbar>
       <div className="flex flex-1">
