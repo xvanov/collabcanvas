@@ -31,6 +31,7 @@ export interface QueuedCreateShape {
   x: number;
   y: number;
   userId: string;
+  layerId?: string;
   timestamp: number;
 }
 
@@ -182,7 +183,7 @@ class OfflineManager {
   /**
    * Queue a shape creation for later sync
    */
-  public queueCreateShape(shapeId: string, shapeType: 'rect' | 'circle' | 'text' | 'line', x: number, y: number, userId: string): void {
+  public queueCreateShape(shapeId: string, shapeType: 'rect' | 'circle' | 'text' | 'line', x: number, y: number, userId: string, layerId?: string): void {
     const update: QueuedCreateShape = {
       type: 'createShape',
       shapeId,
@@ -190,6 +191,7 @@ class OfflineManager {
       x,
       y,
       userId,
+      layerId,
       timestamp: Date.now(),
     };
     
