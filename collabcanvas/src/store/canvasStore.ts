@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
@@ -77,6 +77,31 @@ interface CanvasState {
   setConnectionState: (state: ConnectionState) => void;
   queuedUpdatesCount: number;
   setQueuedUpdatesCount: (count: number) => void;
+  
+  // Layers Management
+  layers: Layer[];
+  activeLayerId: string;
+  createLayer: (name: string, id?: string) => void;
+  updateLayer: (id: string, updates: Partial<Layer>) => void;
+  deleteLayer: (id: string) => void;
+  reorderLayers: (layerIds: string[]) => void;
+  moveShapeToLayer: (shapeId: string, layerId: string) => void;
+  toggleLayerVisibility: (id: string) => void;
+  toggleLayerLock: (id: string) => void;
+  setActiveLayer: (id: string) => void;
+  setLayers: (layers: Layer[]) => void;
+  
+  // Alignment Tools
+  alignSelectedShapes: (alignment: AlignmentType) => void;
+  distributeSelectedShapes: (direction: 'horizontal' | 'vertical') => void;
+  
+  // Grid and Snap
+  gridState: GridState;
+  snapIndicators: SnapIndicator[];
+  toggleGrid: () => void;
+  toggleSnap: () => void;
+  updateGridSize: (size: number) => void;
+  setSnapIndicators: (indicators: SnapIndicator[]) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => {
@@ -302,16 +327,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
   createShape: (shape: Shape) =>
     set((state) => {
       const newShapes = new Map(state.shapes);
-      newShapes.set(shape.id, shape);
+      const shapeWithLayer = { ...shape, layerId: shape.layerId || state.activeLayerId };
+      newShapes.set(shape.id, shapeWithLayer);
         
         // Push create action to history
         if (state.currentUser) {
-          const action = createAction.create(shape.id, shape, state.currentUser.uid);
+          const action = createAction.create(shape.id, shapeWithLayer, state.currentUser.uid);
           historyService.pushAction(action);
         }
         
+        // Add shape to active layer
+        const updatedLayers = state.layers.map(layer => 
+          layer.id === state.activeLayerId 
+            ? { ...layer, shapes: [...layer.shapes, shape.id] }
+            : layer
+        );
+        
         return { 
           shapes: newShapes,
+          layers: updatedLayers,
           history: historyService.getHistoryState(),
         };
     }),
@@ -702,6 +736,259 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     set(() => ({
       queuedUpdatesCount: count,
     })),
+
+  // Layers Management
+  layers: [],
+  activeLayerId: 'default-layer',
+  
+  createLayer: (name: string, id?: string) =>
+    set((state) => {
+      const newLayer: Layer = {
+        id: id || `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        name,
+        shapes: [],
+        visible: true,
+        locked: false,
+        order: state.layers.length,
+      };
+      
+      return {
+        layers: [...state.layers, newLayer],
+        activeLayerId: newLayer.id,
+      };
+    }),
+  
+  updateLayer: (id: string, updates: Partial<Layer>) =>
+    set((state) => ({
+      layers: state.layers.map(layer => 
+        layer.id === id ? { ...layer, ...updates } : layer
+      ),
+    })),
+  
+  deleteLayer: (id: string) =>
+    set((state) => {
+      if (state.layers.length <= 1) return state; // Don't delete the last layer
+      
+      const layerToDelete = state.layers.find(layer => layer.id === id);
+      if (!layerToDelete) return state;
+      
+      // Move all shapes from deleted layer to the first remaining layer
+      const remainingLayers = state.layers.filter(layer => layer.id !== id);
+      const targetLayer = remainingLayers[0];
+      
+      if (targetLayer) {
+        const updatedShapes = new Map(state.shapes);
+        layerToDelete.shapes.forEach(shapeId => {
+          const shape = updatedShapes.get(shapeId);
+          if (shape) {
+            updatedShapes.set(shapeId, { ...shape, layerId: targetLayer.id });
+          }
+        });
+        
+        const updatedLayers = remainingLayers.map(layer => 
+          layer.id === targetLayer.id 
+            ? { ...layer, shapes: [...layer.shapes, ...layerToDelete.shapes] }
+            : layer
+        );
+        
+        return {
+          shapes: updatedShapes,
+          layers: updatedLayers,
+          activeLayerId: state.activeLayerId === id ? targetLayer.id : state.activeLayerId,
+        };
+      }
+      
+      return {
+        layers: remainingLayers,
+        activeLayerId: state.activeLayerId === id ? remainingLayers[0]?.id || 'default-layer' : state.activeLayerId,
+      };
+    }),
+  
+  reorderLayers: (layerIds: string[]) =>
+    set((state) => ({
+      layers: layerIds.map((id, index) => {
+        const layer = state.layers.find(l => l.id === id);
+        return layer ? { ...layer, order: index } : null;
+      }).filter(Boolean) as Layer[],
+    })),
+  
+  moveShapeToLayer: (shapeId: string, layerId: string) =>
+    set((state) => {
+      const shape = state.shapes.get(shapeId);
+      if (!shape) return state;
+      
+      const updatedShapes = new Map(state.shapes);
+      updatedShapes.set(shapeId, { ...shape, layerId });
+      
+      const updatedLayers = state.layers.map(layer => ({
+        ...layer,
+        shapes: layer.id === layerId 
+          ? [...layer.shapes.filter(id => id !== shapeId), shapeId]
+          : layer.shapes.filter(id => id !== shapeId)
+      }));
+      
+      return {
+        shapes: updatedShapes,
+        layers: updatedLayers,
+      };
+    }),
+  
+  toggleLayerVisibility: (id: string) =>
+    set((state) => ({
+      layers: state.layers.map(layer => 
+        layer.id === id ? { ...layer, visible: !layer.visible } : layer
+      ),
+    })),
+  
+  toggleLayerLock: (id: string) =>
+    set((state) => ({
+      layers: state.layers.map(layer => 
+        layer.id === id ? { ...layer, locked: !layer.locked } : layer
+      ),
+    })),
+  
+  setActiveLayer: (id: string) =>
+    set(() => ({ activeLayerId: id })),
+  
+  setLayers: (layers: Layer[]) =>
+    set(() => ({ layers })),
+
+  // Alignment Tools
+  alignSelectedShapes: (alignment: AlignmentType) =>
+    set((state) => {
+      if (state.selectedShapeIds.length < 2) return state;
+      
+      const selectedShapes = state.selectedShapeIds
+        .map(id => state.shapes.get(id))
+        .filter(Boolean) as Shape[];
+      
+      if (selectedShapes.length < 2) return state;
+      
+      const updatedShapes = new Map(state.shapes);
+      
+      // Calculate alignment bounds
+      const bounds = selectedShapes.reduce((acc, shape) => {
+        const right = shape.x + shape.w;
+        const bottom = shape.y + shape.h;
+        return {
+          left: Math.min(acc.left, shape.x),
+          right: Math.max(acc.right, right),
+          top: Math.min(acc.top, shape.y),
+          bottom: Math.max(acc.bottom, bottom),
+          width: Math.max(acc.right, right) - Math.min(acc.left, shape.x),
+          height: Math.max(acc.bottom, bottom) - Math.min(acc.top, shape.y),
+        };
+      }, {
+        left: Infinity,
+        right: -Infinity,
+        top: Infinity,
+        bottom: -Infinity,
+        width: 0,
+        height: 0,
+      });
+      
+      // Apply alignment
+      selectedShapes.forEach(shape => {
+        let newX = shape.x;
+        let newY = shape.y;
+        
+        switch (alignment) {
+          case 'left':
+            newX = bounds.left;
+            break;
+          case 'center':
+            newX = bounds.left + (bounds.width - shape.w) / 2;
+            break;
+          case 'right':
+            newX = bounds.right - shape.w;
+            break;
+          case 'top':
+            newY = bounds.top;
+            break;
+          case 'middle':
+            newY = bounds.top + (bounds.height - shape.h) / 2;
+            break;
+          case 'bottom':
+            newY = bounds.bottom - shape.h;
+            break;
+        }
+        
+        if (newX !== shape.x || newY !== shape.y) {
+          updatedShapes.set(shape.id, { ...shape, x: newX, y: newY });
+        }
+      });
+      
+      return { shapes: updatedShapes };
+    }),
+  
+  distributeSelectedShapes: (direction: 'horizontal' | 'vertical') =>
+    set((state) => {
+      if (state.selectedShapeIds.length < 3) return state;
+      
+      const selectedShapes = state.selectedShapeIds
+        .map(id => state.shapes.get(id))
+        .filter(Boolean) as Shape[];
+      
+      if (selectedShapes.length < 3) return state;
+      
+      const updatedShapes = new Map(state.shapes);
+      
+      if (direction === 'horizontal') {
+        // Sort by x position
+        const sortedShapes = [...selectedShapes].sort((a, b) => a.x - b.x);
+        const totalWidth = sortedShapes[sortedShapes.length - 1].x - sortedShapes[0].x;
+        const spacing = totalWidth / (sortedShapes.length - 1);
+        
+        sortedShapes.forEach((shape, index) => {
+          if (index > 0 && index < sortedShapes.length - 1) {
+            const newX = sortedShapes[0].x + (spacing * index);
+            updatedShapes.set(shape.id, { ...shape, x: newX });
+          }
+        });
+      } else {
+        // Sort by y position
+        const sortedShapes = [...selectedShapes].sort((a, b) => a.y - b.y);
+        const totalHeight = sortedShapes[sortedShapes.length - 1].y - sortedShapes[0].y;
+        const spacing = totalHeight / (sortedShapes.length - 1);
+        
+        sortedShapes.forEach((shape, index) => {
+          if (index > 0 && index < sortedShapes.length - 1) {
+            const newY = sortedShapes[0].y + (spacing * index);
+            updatedShapes.set(shape.id, { ...shape, y: newY });
+          }
+        });
+      }
+      
+      return { shapes: updatedShapes };
+    }),
+
+  // Grid and Snap
+  gridState: {
+    isVisible: false,
+    isSnapEnabled: false,
+    size: 20,
+    color: '#E5E7EB',
+    opacity: 0.5,
+  },
+  snapIndicators: [],
+  
+  toggleGrid: () =>
+    set((state) => ({
+      gridState: { ...state.gridState, isVisible: !state.gridState.isVisible },
+    })),
+  
+  toggleSnap: () =>
+    set((state) => ({
+      gridState: { ...state.gridState, isSnapEnabled: !state.gridState.isSnapEnabled },
+    })),
+  
+  updateGridSize: (size: number) =>
+    set((state) => ({
+      gridState: { ...state.gridState, size },
+    })),
+  
+  setSnapIndicators: (indicators: SnapIndicator[]) =>
+    set(() => ({ snapIndicators: indicators })),
   };
 });
 
