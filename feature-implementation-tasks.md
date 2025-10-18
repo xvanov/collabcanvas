@@ -155,15 +155,17 @@ interface TransformControls {
 
 ## Phase 2: Advanced Features & Professional Tools
 
-### [ ] PR #13 — Color System & Undo/Redo
+### [ ] PR #13 — Export System & Undo/Redo
 **Target Points**: +6-8 | **Priority**: HIGH
 
 **Features to Implement**:
-- [ ] **Color Picker with Recent Colors** (2 points)
-  - [ ] Color picker component
-  - [ ] Recent colors storage
-  - [ ] Color palette persistence
-  - [ ] Saved color palettes
+- [ ] **Canvas Export System** (2 points)
+  - [ ] Canvas to PNG export functionality
+  - [ ] Canvas to SVG export functionality
+  - [ ] Export button in toolbar
+  - [ ] Export options dialog (quality, size, background)
+  - [ ] Selected shapes only export option
+  - [ ] High-resolution export support
 
 - [ ] **Undo/Redo System** (2 points)
   - [ ] Command history system
@@ -172,19 +174,24 @@ interface TransformControls {
   - [ ] History UI indicators
 
 - [ ] **Keyboard Shortcuts** (2 points)
-  - [ ] Delete key for shapes
-  - [ ] Duplicate (Ctrl+D)
-  - [ ] Arrow keys for movement
-  - [ ] Escape to deselect
   - [ ] Shortcuts help panel
 
 **Technical Implementation**:
 ```typescript
-// Color system
-interface ColorPalette {
-  recent: string[];
-  saved: string[];
-  default: string[];
+// Export system
+interface ExportOptions {
+  format: 'PNG' | 'SVG';
+  quality: number;
+  includeBackground: boolean;
+  selectedOnly: boolean;
+  width?: number;
+  height?: number;
+}
+
+interface ExportService {
+  exportCanvas: (options: ExportOptions) => Promise<Blob>;
+  exportSelectedShapes: (options: ExportOptions) => Promise<Blob>;
+  downloadBlob: (blob: Blob, filename: string) => void;
 }
 
 // History system
@@ -203,8 +210,11 @@ interface CanvasAction {
 ```
 
 **Acceptance Criteria**:
-- [ ] Color picker shows recent colors
-- [ ] Colors persist between sessions
+- [ ] PNG export works for full canvas
+- [ ] SVG export works for full canvas
+- [ ] Export options dialog allows customization
+- [ ] Selected shapes only export works
+- [ ] High-resolution export maintains quality
 - [ ] Undo/Redo works with Cmd+Z/Cmd+Shift+Z
 - [ ] All keyboard shortcuts work
 - [ ] History UI shows available actions
@@ -213,10 +223,10 @@ interface CanvasAction {
 ⚠️ Note: Firestore/RTDB rules must remain consistent with editing capabilities (e.g., allow color/size updates if enabled). Include a security rules update.
 
 **Testing Strategy** (fast, practical):
-- [ ] Unit: Color palette reducers; history push/undo/redo correctness
-- [ ] Component: Shortcut handlers (Cmd+Z/Shift+Z), palette persistence (localStorage)
-- [ ] Integration (Harness): Undo/redo after remote updates doesn’t corrupt state
-- [ ] Manual: Quick smoke for undo/redo across 2 tabs
+- [ ] Unit: Export format validation; history push/undo/redo correctness
+- [ ] Component: Export dialog UI; shortcut handlers (Cmd+Z/Shift+Z)
+- [ ] Integration (Harness): Export PNG/SVG produces valid files; undo/redo after remote updates doesn't corrupt state
+- [ ] Manual: Export quality check; quick smoke for undo/redo across 2 tabs
 
 ---
 
@@ -281,7 +291,7 @@ interface AlignmentTools {
 
 ## Phase 3: Advanced Features & AI Integration
 
-### [ ] PR #15 — Version History & Export Features (TIER 3 REQUIRED!)
+### [ ] PR #15 — Version History & Copy/Paste Features (TIER 3 REQUIRED!)
 **Target Points**: +3 (Tier 3) + Additional Polish | **Priority**: HIGH
 
 **Features to Implement**:
@@ -292,12 +302,6 @@ interface AlignmentTools {
   - [ ] Version comparison view (show diff between versions)
   - [ ] Store versions in Firestore with pagination
   - [ ] Limit to last 20 versions per board
-
-- [ ] **Export Functionality** (Polish/UX)
-  - [ ] Canvas to PNG export
-  - [ ] Canvas to SVG export
-  - [ ] Export button in toolbar
-  - [ ] Export options dialog
 
 - [ ] **Copy/Paste Functionality** (Polish/UX)
   - [ ] Copy selected shapes (Ctrl+C)
@@ -326,14 +330,6 @@ interface VersionHistoryStore {
   compareVersions: (v1: string, v2: string) => VersionDiff;
 }
 
-// Export system
-interface ExportOptions {
-  format: 'PNG' | 'SVG';
-  quality: number;
-  includeBackground: boolean;
-  selectedOnly: boolean;
-}
-
 // Clipboard system
 interface Clipboard {
   shapes: Shape[];
@@ -348,7 +344,6 @@ interface Clipboard {
 - [ ] **Manual snapshots** can be created with descriptions
 - [ ] **Restore functionality** works without data loss
 - [ ] **Version comparison** highlights changes between versions
-- [ ] PNG/SVG export works for full canvas and selected shapes
 - [ ] Copy/paste works with Ctrl+C/Ctrl+V
 - [ ] All features maintain 60 FPS performance
 - [ ] Version storage is efficient (< 1MB per version)
@@ -358,7 +353,7 @@ interface Clipboard {
 
 **Testing Strategy** (fast, practical):
 - [ ] Unit: Diff/comparison function correctness on sample shape arrays
-- [ ] Component: Export PNG/SVG produces a non-empty blob; clipboard copy/paste roundtrip
+- [ ] Component: Clipboard copy/paste roundtrip
 - [ ] Integration (Emulator): Create/restore versions; verify snapshot count limit
 - [ ] Manual: Restore under 300+ shapes does not corrupt state
 
