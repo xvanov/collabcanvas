@@ -52,14 +52,19 @@ export function Board() {
     setCurrentUser(user);
   }, [user, setCurrentUser]);
 
-  // Handle reconnection and reload shapes
+  // Handle reconnection and reload shapes with debounce
   useEffect(() => {
     if (user && isOnline) {
-      // Reload shapes from Firestore on reconnection
-      reloadShapesFromFirestore();
+      // Debounce reload to prevent excessive calls
+      const timeoutId = setTimeout(() => {
+        // Reload shapes from Firestore on reconnection
+        reloadShapesFromFirestore();
+        
+        // Clear stale locks on reconnection
+        clearStaleLocks();
+      }, 1000); // 1 second debounce
       
-      // Clear stale locks on reconnection
-      clearStaleLocks();
+      return () => clearTimeout(timeoutId);
     }
   }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks]);
 

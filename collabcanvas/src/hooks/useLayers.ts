@@ -13,6 +13,7 @@ import {
   subscribeToLayers,
   subscribeToLayersChanges,
   subscribeToBoardState,
+  initializeBoard,
   type FirestoreLayer,
   type FirestoreLayerChange,
   type FirestoreBoardState,
@@ -154,11 +155,17 @@ export function useLayers() {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔗 Initializing layers from Firestore');
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('🔗 Initializing layers from Firestore');
+    }
 
     const initializeLayers = async () => {
       try {
-        // First, get all existing layers from Firestore
+        // First, initialize the board document to ensure it exists
+        await initializeBoard(user.uid);
+        
+        // Then, get all existing layers from Firestore
         const unsubscribe = subscribeToLayers((firestoreLayers: FirestoreLayer[]) => {
           console.log('📋 Loaded layers from Firestore:', firestoreLayers.length);
           
@@ -174,8 +181,9 @@ export function useLayers() {
               order: 0,
             };
             
-            // Add to local store immediately
+            // Add to local store immediately and set as active
             setLayers([defaultLayer]);
+            setActiveLayer('default-layer');
             
             // Then create in Firestore
             createLayerInFirestore('default-layer', 'Default Layer', user.uid, 0)
@@ -189,6 +197,21 @@ export function useLayers() {
             // Convert Firestore layers to local layers and update store
             const localLayers = firestoreLayers.map(convertFirestoreLayer);
             console.log('🔄 Updating local layers with Firestore data:', localLayers);
+            
+            // Ensure default layer exists in loaded layers
+            const hasDefaultLayer = localLayers.some(layer => layer.id === 'default-layer');
+            if (!hasDefaultLayer) {
+              console.log('🏗️ Adding missing default layer to loaded layers');
+              const defaultLayer: Layer = {
+                id: 'default-layer',
+                name: 'Default Layer',
+                shapes: [],
+                visible: true,
+                locked: false,
+                order: -1, // Put it at the bottom
+              };
+              localLayers.push(defaultLayer);
+            }
             
             // Check if we already have layers locally to avoid duplication
             const currentLayers = layersRef.current;
@@ -248,21 +271,26 @@ export function useLayers() {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔗 Subscribing to board state changes');
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('🔗 Subscribing to board state changes');
+    }
 
     const unsubscribe = subscribeToBoardState((state: FirestoreBoardState | null) => {
       if (state && state.activeLayerId) {
-        console.log('📡 Received activeLayerId from Firestore:', state.activeLayerId);
-        // Only update if it's different from current state to avoid loops
-        if (state.activeLayerId !== activeLayerId) {
-          console.log(`🎯 Syncing activeLayerId: ${activeLayerId} -> ${state.activeLayerId}`);
+        // Only update if the value from Firestore is genuinely different
+        // AND if it was updated by a different user (to support multi-user collaboration)
+        if (state.activeLayerId !== activeLayerId && state.updatedBy !== user.uid) {
+          console.log(`🎯 Syncing activeLayerId from another user: ${activeLayerId} -> ${state.activeLayerId}`);
           setActiveLayer(state.activeLayerId);
         }
       }
     });
 
     return () => {
-      console.log('🔌 Unsubscribing from board state changes');
+      if (import.meta.env.DEV) {
+        console.log('🔌 Unsubscribing from board state changes');
+      }
       unsubscribe();
     };
   }, [user, activeLayerId, setActiveLayer]);
@@ -271,7 +299,10 @@ export function useLayers() {
   useEffect(() => {
     if (!user) return;
 
-    console.log('🔗 Subscribing to layers changes');
+    // Only log in development
+    if (import.meta.env.DEV) {
+      console.log('🔗 Subscribing to layers changes');
+    }
 
     const unsubscribe = subscribeToLayersChanges((changes: FirestoreLayerChange[]) => {
       console.log('📡 Received layer changes:', changes);

@@ -349,6 +349,25 @@ export const subscribeToLayersChanges = (
 };
 
 /**
+ * Initialize the board document if it doesn't exist
+ */
+export const initializeBoard = async (userId: string): Promise<void> => {
+  try {
+    const boardState: FirestoreBoardState = {
+      activeLayerId: 'default-layer',
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    };
+    
+    await setDoc(boardDoc, boardState, { merge: true });
+    console.log('🎯 Board document initialized in Firestore');
+  } catch (error) {
+    console.error('❌ Failed to initialize board:', error);
+    throw error;
+  }
+};
+
+/**
  * Update the active layer ID in Firestore
  */
 export const updateActiveLayerId = async (
