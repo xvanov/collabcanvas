@@ -32,6 +32,7 @@ function convertFirestoreLayer(firestoreLayer: FirestoreLayer): Layer {
     visible: firestoreLayer.visible,
     locked: firestoreLayer.locked,
     order: firestoreLayer.order,
+    color: (firestoreLayer as any).color || '#3B82F6',
   };
 }
 
@@ -179,6 +180,7 @@ export function useLayers() {
               visible: true,
               locked: false,
               order: 0,
+              color: '#3B82F6',
             };
             
             // Add to local store immediately and set as active
@@ -209,6 +211,7 @@ export function useLayers() {
                 visible: true,
                 locked: false,
                 order: -1, // Put it at the bottom
+                color: '#3B82F6',
               };
               localLayers.push(defaultLayer);
             }

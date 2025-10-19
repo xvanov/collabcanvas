@@ -371,10 +371,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     set((state) => {
       const newShapes = new Map(state.shapes);
       // Ensure shape has a layerId - use activeLayerId if not provided
+      const assignedLayerId = shape.layerId || state.activeLayerId || 'default-layer';
+      const layer = state.layers.find(l => l.id === assignedLayerId) as any;
+      const defaultColor = layer?.color || '#3B82F6';
       const shapeWithLayer = { 
         ...shape, 
-        layerId: shape.layerId || state.activeLayerId || 'default-layer' 
-      };
+        layerId: assignedLayerId,
+        color: defaultColor,
+      } as Shape;
       newShapes.set(shape.id, shapeWithLayer);
         
         // Push create action to history
@@ -809,6 +813,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         visible: true,
         locked: false,
         order: state.layers.length,
+        color: '#3B82F6',
       };
       
       return {
@@ -818,11 +823,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     }),
   
   updateLayer: (id: string, updates: Partial<Layer>) =>
-    set((state) => ({
-      layers: state.layers.map(layer => 
+    set((state) => {
+      const isColorChange = Object.prototype.hasOwnProperty.call(updates, 'color');
+      const newLayers = state.layers.map(layer => 
         layer.id === id ? { ...layer, ...updates } : layer
-      ),
-    })),
+      );
+      let newShapes = state.shapes;
+      if (isColorChange) {
+        const target = newLayers.find(l => l.id === id) as any;
+        const layerColor = target?.color as string | undefined;
+        if (layerColor) {
+          const updated = new Map(newShapes);
+          Array.from(updated.values()).forEach((shape) => {
+            const shapeLayerId = shape.layerId || 'default-layer';
+            if (shapeLayerId === id) {
+              updated.set(shape.id, { ...shape, color: layerColor, updatedAt: Date.now() });
+            }
+          });
+          newShapes = updated;
+        }
+      }
+      return { layers: newLayers, shapes: newShapes };
+    }),
   
   deleteLayer: (id: string) =>
     set((state) => {
@@ -877,7 +899,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       if (!shape) return state;
       
       const updatedShapes = new Map(state.shapes);
-      updatedShapes.set(shapeId, { ...shape, layerId });
+      const layer = state.layers.find(l => l.id === layerId) as any;
+      const layerColor = layer?.color || '#3B82F6';
+      updatedShapes.set(shapeId, { ...shape, layerId, color: layerColor, updatedAt: Date.now() });
       
       const updatedLayers = state.layers.map(layer => ({
         ...layer,

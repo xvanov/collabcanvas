@@ -63,6 +63,7 @@ export interface FirestoreLayer {
   visible: boolean;
   locked: boolean;
   order: number;
+  color?: string;
   createdAt: FieldValue | number; // serverTimestamp or timestamp
   createdBy: string;
   updatedAt: FieldValue | number; // serverTimestamp or timestamp
@@ -288,6 +289,7 @@ export const createLayer = async (
     visible: true,
     locked: false,
     order,
+    color: '#3B82F6',
     createdAt: serverTimestamp(),
     createdBy: userId,
     updatedAt: serverTimestamp(),

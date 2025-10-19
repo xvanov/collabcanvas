@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import { useLayers } from '../hooks/useLayers';
+import { ColorPicker } from './ColorPicker';
 
 interface LayersPanelProps {
   isVisible: boolean;
@@ -216,16 +217,25 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                     <span className="text-xs text-gray-500">({shapesInLayer.length})</span>
                   </div>
 
-                  {layer.id !== 'default-layer' && (
-                    <button
-                      onClick={() => handleDeleteLayer(layer.id)}
-                      className="text-red-400 hover:text-red-600"
-                    >
-                      <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                      </svg>
-                    </button>
-                  )}
+                  <div className="flex items-center gap-2">
+                    <ColorPicker
+                      currentColor={(layer as any).color || '#3B82F6'}
+                      onColorChange={(c) => {
+                        // Route through hook updater to persist to Firestore and local store
+                        updateLayer(layer.id, { color: c });
+                      }}
+                    />
+                    {layer.id !== 'default-layer' && (
+                      <button
+                        onClick={() => handleDeleteLayer(layer.id)}
+                        className="text-red-400 hover:text-red-600"
+                      >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                        </svg>
+                      </button>
+                    )}
+                  </div>
                 </div>
 
                 {/* Shapes in layer */}
