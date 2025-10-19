@@ -30,6 +30,7 @@ export const layerService: LayerService = {
       visible: true,
       locked: false,
       order: existingLayers.length,
+      color: '#3B82F6',
     };
   },
 
