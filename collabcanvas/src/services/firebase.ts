@@ -20,15 +20,20 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID,
 };
 
-// Debug: Log the config to see what's being loaded
-console.log('Firebase Config:', firebaseConfig);
-console.log('Environment Variables:', {
-  apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
-  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
-  databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
-  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
-  useEmulators: import.meta.env.VITE_USE_FIREBASE_EMULATORS
-});
+// Debug: Log the config to see what's being loaded (only in development)
+if (import.meta.env.DEV) {
+  console.log('Firebase Config:', firebaseConfig);
+  console.log('Environment Variables:', {
+    apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
+    authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN,
+    databaseURL: import.meta.env.VITE_FIREBASE_DATABASE_URL,
+    projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID,
+    storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET,
+    messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID,
+    appId: import.meta.env.VITE_FIREBASE_APP_ID,
+    useEmulators: import.meta.env.VITE_USE_FIREBASE_EMULATORS
+  });
+}
 
 // Initialize Firebase app
 export const app: FirebaseApp = initializeApp(firebaseConfig);
