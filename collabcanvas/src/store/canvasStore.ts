@@ -4,11 +4,11 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator, AICommand, AICommandResult, AIStatus, AICommandHistory } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator, AICommand, AICommandResult, AIStatus, AICommandHistory, CanvasScale, BackgroundImage, ScaleLine, UnitType } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
-import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore } from '../services/firestore';
+import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore, saveBackgroundImage, saveScaleLine, deleteScaleLineFromFirestore, deleteBackgroundImageFromFirestore, subscribeToBoardState } from '../services/firestore';
 import { AIService } from '../services/aiService';
 import { AICommandExecutor } from '../services/aiCommandExecutor';
 
@@ -123,6 +123,16 @@ interface CanvasState {
   addToCommandQueue: (command: AICommand) => void;
   processCommandQueue: () => Promise<void>;
   setAIStatus: (status: Partial<AIStatus>) => void;
+  
+  // Construction Annotation Tool State
+  canvasScale: CanvasScale;
+  setBackgroundImage: (image: BackgroundImage | null) => void;
+  setScaleLine: (scaleLine: ScaleLine | null) => void;
+  updateScaleLine: (updates: Partial<ScaleLine>) => void;
+  deleteScaleLine: () => void;
+  setIsScaleMode: (isScaleMode: boolean) => void;
+  setIsImageUploadMode: (isImageUploadMode: boolean) => void;
+  initializeBoardStateSubscription: () => () => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => {
@@ -1318,7 +1328,194 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
   setAIStatus: (status: Partial<AIStatus>) =>
     set((state) => ({
       aiStatus: { ...state.aiStatus, ...status }
-    }))
+    })),
+
+  // Construction Annotation Tool State
+  canvasScale: {
+    scaleLine: null,
+    backgroundImage: null,
+    isScaleMode: false,
+    isImageUploadMode: false,
+  },
+
+  setBackgroundImage: (image: BackgroundImage | null) =>
+    set((state) => {
+      const newState = {
+        canvasScale: {
+          ...state.canvasScale,
+          backgroundImage: image,
+        },
+      };
+      
+      // Save to Firestore if user is authenticated (async operation)
+      if (state.currentUser) {
+        if (image) {
+          saveBackgroundImage({
+            url: image.url,
+            width: image.width,
+            height: image.height,
+          }, state.currentUser.uid).catch((error) => {
+            console.error('❌ Failed to save background image to Firestore:', error);
+          });
+        } else {
+          deleteBackgroundImageFromFirestore(state.currentUser.uid).catch((error) => {
+            console.error('❌ Failed to delete background image from Firestore:', error);
+          });
+        }
+      }
+      
+      return newState;
+    }),
+
+  setScaleLine: (scaleLine: ScaleLine | null) =>
+    set((state) => {
+      const newState = {
+        canvasScale: {
+          ...state.canvasScale,
+          scaleLine: scaleLine,
+        },
+      };
+      
+      // Save to Firestore if user is authenticated (async operation)
+      if (state.currentUser) {
+        if (scaleLine) {
+          saveScaleLine({
+            id: scaleLine.id,
+            startX: scaleLine.startX,
+            startY: scaleLine.startY,
+            endX: scaleLine.endX,
+            endY: scaleLine.endY,
+            realWorldLength: scaleLine.realWorldLength,
+            unit: scaleLine.unit,
+            isVisible: scaleLine.isVisible,
+          }, state.currentUser.uid).catch((error) => {
+            console.error('❌ Failed to save scale line to Firestore:', error);
+          });
+        } else {
+          deleteScaleLineFromFirestore(state.currentUser.uid).catch((error) => {
+            console.error('❌ Failed to delete scale line from Firestore:', error);
+          });
+        }
+      }
+      
+      return newState;
+    }),
+
+  updateScaleLine: (updates: Partial<ScaleLine>) =>
+    set((state) => {
+      if (!state.canvasScale.scaleLine) return state;
+      
+      const updatedScaleLine = {
+        ...state.canvasScale.scaleLine,
+        ...updates,
+        updatedAt: Date.now(),
+        updatedBy: state.currentUser?.uid || 'unknown',
+      };
+      
+      const newState = {
+        canvasScale: {
+          ...state.canvasScale,
+          scaleLine: updatedScaleLine,
+        },
+      };
+      
+      // Save to Firestore if user is authenticated (async operation)
+      if (state.currentUser) {
+        saveScaleLine({
+          id: updatedScaleLine.id,
+          startX: updatedScaleLine.startX,
+          startY: updatedScaleLine.startY,
+          endX: updatedScaleLine.endX,
+          endY: updatedScaleLine.endY,
+          realWorldLength: updatedScaleLine.realWorldLength,
+          unit: updatedScaleLine.unit,
+          isVisible: updatedScaleLine.isVisible,
+        }, state.currentUser.uid).catch((error) => {
+          console.error('❌ Failed to update scale line in Firestore:', error);
+        });
+      }
+      
+      return newState;
+    }),
+
+  deleteScaleLine: () =>
+    set((state) => {
+      const newState = {
+        canvasScale: {
+          ...state.canvasScale,
+          scaleLine: null,
+        },
+      };
+      
+      // Delete from Firestore if user is authenticated (async operation)
+      if (state.currentUser) {
+        deleteScaleLineFromFirestore(state.currentUser.uid).catch((error) => {
+          console.error('❌ Failed to delete scale line from Firestore:', error);
+        });
+      }
+      
+      return newState;
+    }),
+
+  setIsScaleMode: (isScaleMode: boolean) =>
+    set((state) => ({
+      canvasScale: {
+        ...state.canvasScale,
+        isScaleMode,
+      },
+    })),
+
+  setIsImageUploadMode: (isImageUploadMode: boolean) =>
+    set((state) => ({
+      canvasScale: {
+        ...state.canvasScale,
+        isImageUploadMode,
+      },
+    })),
+
+  // Initialize board state subscription
+  initializeBoardStateSubscription: () => {
+    const unsubscribe = subscribeToBoardState((boardState) => {
+      if (boardState) {
+        const state = get();
+        
+        // Load background image if it exists
+        if (boardState.backgroundImage && !state.canvasScale.backgroundImage) {
+          state.setBackgroundImage({
+            id: `background-${Date.now()}`,
+            url: boardState.backgroundImage.url,
+            fileName: 'construction-plan',
+            fileSize: 0,
+            width: boardState.backgroundImage.width,
+            height: boardState.backgroundImage.height,
+            aspectRatio: boardState.backgroundImage.width / boardState.backgroundImage.height,
+            uploadedAt: typeof boardState.backgroundImage.uploadedAt === 'number' ? boardState.backgroundImage.uploadedAt : Date.now(),
+            uploadedBy: boardState.backgroundImage.uploadedBy || 'unknown',
+          });
+        }
+        
+        // Load scale line if it exists
+        if (boardState.scaleLine && !state.canvasScale.scaleLine) {
+          state.setScaleLine({
+            id: boardState.scaleLine.id,
+            startX: boardState.scaleLine.startX,
+            startY: boardState.scaleLine.startY,
+            endX: boardState.scaleLine.endX,
+            endY: boardState.scaleLine.endY,
+            realWorldLength: boardState.scaleLine.realWorldLength,
+            unit: boardState.scaleLine.unit as UnitType,
+            isVisible: boardState.scaleLine.isVisible,
+            createdAt: typeof boardState.scaleLine.createdAt === 'number' ? boardState.scaleLine.createdAt : Date.now(),
+            createdBy: boardState.scaleLine.createdBy,
+            updatedAt: typeof boardState.scaleLine.updatedAt === 'number' ? boardState.scaleLine.updatedAt : Date.now(),
+            updatedBy: boardState.scaleLine.updatedBy,
+          });
+        }
+      }
+    });
+    
+    return unsubscribe;
+  }
   };
 });
 

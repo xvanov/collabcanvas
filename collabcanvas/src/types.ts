@@ -5,7 +5,7 @@
 /**
  * Shape types
  */
-export type ShapeType = 'rect' | 'circle' | 'text' | 'line';
+export type ShapeType = 'rect' | 'circle' | 'text' | 'line' | 'polyline' | 'polygon' | 'arrow-text';
 
 export interface Shape {
   id: string;
@@ -402,4 +402,134 @@ export interface AIServiceConfig {
   temperature: number;
   rateLimitPerMinute: number;
   timeoutMs: number;
+}
+
+/**
+ * Construction Annotation Tool Types
+ */
+
+/**
+ * Unit types for construction measurements
+ */
+export type UnitType = 'feet' | 'inches' | 'meters' | 'centimeters' | 'millimeters' | 'yards';
+
+/**
+ * Unit configuration with abbreviations and conversion factors
+ */
+export interface UnitConfig {
+  type: UnitType;
+  abbreviation: string;
+  fullName: string;
+  conversionToInches: number; // Base unit for imperial
+  conversionToMeters: number; // Base unit for metric
+}
+
+/**
+ * Unit configurations
+ */
+export const UNIT_CONFIGS: Record<UnitType, UnitConfig> = {
+  feet: {
+    type: 'feet',
+    abbreviation: 'FT',
+    fullName: 'Feet',
+    conversionToInches: 12,
+    conversionToMeters: 0.3048,
+  },
+  inches: {
+    type: 'inches',
+    abbreviation: 'IN',
+    fullName: 'Inches',
+    conversionToInches: 1,
+    conversionToMeters: 0.0254,
+  },
+  meters: {
+    type: 'meters',
+    abbreviation: 'M',
+    fullName: 'Meters',
+    conversionToInches: 39.3701,
+    conversionToMeters: 1,
+  },
+  centimeters: {
+    type: 'centimeters',
+    abbreviation: 'CM',
+    fullName: 'Centimeters',
+    conversionToInches: 0.393701,
+    conversionToMeters: 0.01,
+  },
+  millimeters: {
+    type: 'millimeters',
+    abbreviation: 'MM',
+    fullName: 'Millimeters',
+    conversionToInches: 0.0393701,
+    conversionToMeters: 0.001,
+  },
+  yards: {
+    type: 'yards',
+    abbreviation: 'YD',
+    fullName: 'Yards',
+    conversionToInches: 36,
+    conversionToMeters: 0.9144,
+  },
+};
+
+/**
+ * Get available unit types
+ */
+export function getAvailableUnits(): UnitType[] {
+  return Object.keys(UNIT_CONFIGS) as UnitType[];
+}
+export interface ScaleLine {
+  id: string;
+  startX: number;
+  startY: number;
+  endX: number;
+  endY: number;
+  realWorldLength: number;
+  unit: UnitType;
+  isVisible: boolean;
+  createdAt: number;
+  updatedAt: number;
+  createdBy: string;
+  updatedBy: string;
+}
+
+/**
+ * Background image for construction plans
+ */
+export interface BackgroundImage {
+  id: string;
+  url: string;
+  fileName: string;
+  fileSize: number;
+  width: number;
+  height: number;
+  aspectRatio: number;
+  uploadedAt: number;
+  uploadedBy: string;
+}
+
+/**
+ * Canvas scale state for construction measurements
+ */
+export interface CanvasScale {
+  scaleLine: ScaleLine | null;
+  backgroundImage: BackgroundImage | null;
+  isScaleMode: boolean;
+  isImageUploadMode: boolean;
+}
+
+/**
+ * Material specification for construction estimation
+ */
+export interface MaterialSpec {
+  id: string;
+  name: string;
+  category: 'flooring' | 'wall' | 'ceiling' | 'structural' | 'finish';
+  unit: 'sqft' | 'sqm' | 'linear' | 'cubic' | 'each';
+  coverage: number; // Coverage per unit (e.g., sqft per gallon)
+  wasteFactor: number; // Additional percentage for waste
+  code: string; // Building code reference
+  description: string;
+  pricePerUnit?: number;
+  supplier?: string;
 }

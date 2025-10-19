@@ -12,6 +12,7 @@ import {
 } from 'firebase/firestore';
 import type { Unsubscribe, FieldValue } from 'firebase/firestore';
 import { firestore } from './firebase';
+import type { ShapeType } from '../types';
 
 // Collection reference for the global board
 const BOARD_ID = 'global';
@@ -24,7 +25,7 @@ const boardDoc = doc(firestore, 'boards', BOARD_ID);
 */
 export interface FirestoreShape {
   id: string;
-  type: 'rect' | 'circle' | 'text' | 'line';
+  type: ShapeType;
   x: number;
   y: number;
   w: number;
@@ -81,6 +82,28 @@ export interface FirestoreBoardState {
   activeLayerId: string;
   updatedAt: FieldValue | number;
   updatedBy: string;
+  // Construction annotation tool data
+  backgroundImage?: {
+    url: string;
+    width: number;
+    height: number;
+    uploadedAt: FieldValue | number;
+    uploadedBy: string;
+  };
+  scaleLine?: {
+    id: string;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    realWorldLength: number;
+    unit: string;
+    isVisible: boolean;
+    createdAt: FieldValue | number;
+    createdBy: string;
+    updatedAt: FieldValue | number;
+    updatedBy: string;
+  };
 }
 
 /**
@@ -88,7 +111,7 @@ export interface FirestoreBoardState {
  */
 export const createShape = async (
   shapeId: string,
-  shapeType: 'rect' | 'circle' | 'text' | 'line',
+  shapeType: ShapeType,
   x: number,
   y: number,
   userId: string,
@@ -403,4 +426,113 @@ export const subscribeToBoardState = (
       onStateChange(null);
     }
   });
+};
+
+/**
+ * Construction Annotation Tool Functions
+ */
+
+/**
+ * Save background image to Firestore
+ */
+export const saveBackgroundImage = async (
+  backgroundImage: {
+    url: string;
+    width: number;
+    height: number;
+  },
+  userId: string
+): Promise<void> => {
+  try {
+    const boardState: Partial<FirestoreBoardState> = {
+      backgroundImage: {
+        ...backgroundImage,
+        uploadedAt: serverTimestamp(),
+        uploadedBy: userId,
+      },
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    };
+    
+    await setDoc(boardDoc, boardState, { merge: true });
+    console.log('🎯 Background image saved to Firestore');
+  } catch (error) {
+    console.error('❌ Failed to save background image:', error);
+    throw error;
+  }
+};
+
+/**
+ * Save scale line to Firestore
+ */
+export const saveScaleLine = async (
+  scaleLine: {
+    id: string;
+    startX: number;
+    startY: number;
+    endX: number;
+    endY: number;
+    realWorldLength: number;
+    unit: string;
+    isVisible: boolean;
+  },
+  userId: string
+): Promise<void> => {
+  try {
+    const boardState: Partial<FirestoreBoardState> = {
+      scaleLine: {
+        ...scaleLine,
+        createdAt: serverTimestamp(),
+        createdBy: userId,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+      },
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    };
+    
+    await setDoc(boardDoc, boardState, { merge: true });
+    console.log('🎯 Scale line saved to Firestore');
+  } catch (error) {
+    console.error('❌ Failed to save scale line:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete scale line from Firestore
+ */
+export const deleteScaleLineFromFirestore = async (userId: string): Promise<void> => {
+  try {
+    const boardState: Partial<FirestoreBoardState> = {
+      scaleLine: undefined,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    };
+    
+    await setDoc(boardDoc, boardState, { merge: true });
+    console.log('🎯 Scale line deleted from Firestore');
+  } catch (error) {
+    console.error('❌ Failed to delete scale line:', error);
+    throw error;
+  }
+};
+
+/**
+ * Delete background image from Firestore
+ */
+export const deleteBackgroundImageFromFirestore = async (userId: string): Promise<void> => {
+  try {
+    const boardState: Partial<FirestoreBoardState> = {
+      backgroundImage: undefined,
+      updatedAt: serverTimestamp(),
+      updatedBy: userId,
+    };
+    
+    await setDoc(boardDoc, boardState, { merge: true });
+    console.log('🎯 Background image deleted from Firestore');
+  } catch (error) {
+    console.error('❌ Failed to delete background image:', error);
+    throw error;
+  }
 };

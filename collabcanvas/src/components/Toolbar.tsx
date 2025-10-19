@@ -13,6 +13,8 @@ import { createExportService } from '../services/exportService';
 import Konva from 'konva';
 import { AICommandInput } from './AICommandInput';
 import { AIClarificationDialog } from './AIClarificationDialog';
+import { FileUpload } from './FileUpload';
+import { ScaleTool } from './ScaleTool';
 
 interface ToolbarProps {
   children?: React.ReactNode;
@@ -245,7 +247,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
           <div className="relative" ref={shapesMenuRef}>
             <button
               onClick={() => setIsShapesMenuOpen(!isShapesMenuOpen)}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               title="Create shapes"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -333,7 +335,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
           <div className="relative" ref={toolsMenuRef}>
             <button
               onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
-              className="flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
               title="Tools and AI Assistant"
             >
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -342,7 +344,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
               </svg>
               Tools
               {commandQueue && commandQueue.length > 0 && (
-                <span className="ml-1 px-1.5 py-0.5 text-xs bg-white text-purple-600 rounded-full">
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-gray-200 text-gray-700 rounded-full">
                   {commandQueue.length}
                 </span>
               )}
@@ -371,11 +373,35 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
                     )}
                     AI Assistant
                     {commandQueue && commandQueue.length > 0 && (
-                      <span className="ml-auto px-1.5 py-0.5 text-xs bg-purple-100 text-purple-600 rounded-full">
+                      <span className="ml-auto px-1.5 py-0.5 text-xs bg-gray-100 text-gray-600 rounded-full">
                         {commandQueue.length}
                       </span>
                     )}
                   </button>
+                  
+                  {/* File Upload */}
+                  <div className="px-4 py-2">
+                    <FileUpload
+                      onUploadComplete={(image) => {
+                        console.log('Image uploaded:', image);
+                        setIsToolsMenuOpen(false);
+                      }}
+                      onUploadError={(error) => {
+                        console.error('Upload error:', error);
+                        alert(`Upload failed: ${error}`);
+                      }}
+                    />
+                  </div>
+                  
+                  {/* Scale Tool */}
+                  <div className="px-4 py-2">
+                    <ScaleTool
+                      onScaleComplete={(scaleLine) => {
+                        console.log('Scale line created:', scaleLine);
+                        setIsToolsMenuOpen(false);
+                      }}
+                    />
+                  </div>
                   <button
                     onClick={() => {
                       setIsExportDialogOpen(true);
