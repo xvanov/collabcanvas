@@ -11,6 +11,10 @@ dotenv.config();
 const openai = new openai_1.OpenAI({
     apiKey: process.env.OPENAI_API_KEY || '',
 });
+// Fallback: Check if running locally and use local env var
+if (!process.env.OPENAI_API_KEY && process.env.NODE_ENV === 'development') {
+    console.warn('⚠️ OPENAI_API_KEY not found. AI assistant will not work.');
+}
 // Define command schema using Zod
 const CommandSchema = zod_1.z.object({
     type: zod_1.z.enum(['CREATE', 'MOVE', 'RESIZE', 'ROTATE', 'DELETE', 'ALIGN', 'EXPORT', 'LAYER', 'COLOR', 'DUPLICATE']),
@@ -118,7 +122,9 @@ Return ONLY the JSON, no other text.`;
         throw new Error(`Failed to parse command: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
-exports.aiCommand = (0, https_1.onCall)(async (request) => {
+exports.aiCommand = (0, https_1.onCall)({
+    cors: true, // Enable CORS for all origins (Firebase Functions v2 handles this automatically)
+}, async (request) => {
     try {
         const { commandText, userId } = request.data;
         if (!commandText || !userId) {

@@ -6,7 +6,7 @@
 import { describe, it, expect } from 'vitest';
 import { processDialogueRequest, handleRefinement } from './aiDialogueService';
 import type { DialogueContext, MaterialRequest } from '../types/dialogue';
-import type { Layer, Shape } from '../types';
+import type { Layer, Shape, WallAssumptions } from '../types';
 
 describe('aiDialogueService', () => {
   const mockUserId = 'test-user-123';
@@ -224,10 +224,10 @@ describe('aiDialogueService', () => {
           scaleFactor
         );
 
-        if (refinedResponse.type === 'estimate' && refinedResponse.calculation) {
-          const assumptions = refinedResponse.calculation.assumptions as any;
-          expect(assumptions.framing?.type).toBe('metal');
-        }
+      if (refinedResponse.type === 'estimate' && refinedResponse.calculation) {
+        const assumptions = refinedResponse.calculation.assumptions as WallAssumptions;
+        expect(assumptions.framing?.type).toBe('metal');
+      }
       }
     });
   });

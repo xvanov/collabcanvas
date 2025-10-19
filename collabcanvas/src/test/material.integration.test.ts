@@ -5,10 +5,9 @@
 
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useCanvasStore } from '../store/canvasStore';
-import { processDialogueRequest } from '../services/aiDialogueService';
 import { calculateWallEstimate, calculateFloorEstimate } from '../services/materialService';
 import { DEFAULT_WALL_ASSUMPTIONS, DEFAULT_FLOOR_ASSUMPTIONS } from '../data/defaultAssumptions';
-import type { Shape, Layer, User } from '../types';
+import type { Shape, User } from '../types';
 
 describe('Material Estimation Integration', () => {
   const mockUser: User = {

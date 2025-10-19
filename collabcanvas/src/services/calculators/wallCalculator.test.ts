@@ -7,7 +7,6 @@ import { describe, it, expect } from 'vitest';
 import {
   calculateWallMaterials,
   calculateFramingMaterials,
-  calculateSurfaceMaterials,
   calculateMultipleWalls,
   estimateWallHeight,
   calculateWallArea,

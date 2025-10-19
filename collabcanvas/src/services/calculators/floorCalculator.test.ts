@@ -8,8 +8,6 @@ import {
   calculateFloorMaterials,
   calculateEpoxyCoating,
   calculateTileFlooring,
-  calculateCarpetFlooring,
-  calculateHardwoodFlooring,
   calculateFloorByType,
   calculateMultipleFloors,
 } from './floorCalculator';
