@@ -388,10 +388,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     set((state) => {
       const newShapes = new Map(state.shapes);
       // Ensure shape has a layerId - use activeLayerId if not provided
+      const assignedLayerId = shape.layerId || state.activeLayerId || 'default-layer';
+      const layer = state.layers.find(l => l.id === assignedLayerId);
+      const defaultColor = layer?.color || '#3B82F6';
+      const assignedColor = (shape as Partial<Shape>).color ?? defaultColor;
       const shapeWithLayer = { 
         ...shape, 
-        layerId: shape.layerId || state.activeLayerId || 'default-layer' 
-      };
+        layerId: assignedLayerId,
+        color: assignedColor,
+      } as Shape;
       newShapes.set(shape.id, shapeWithLayer);
         
         // Push create action to history
@@ -843,6 +848,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         visible: true,
         locked: false,
         order: state.layers.length,
+        color: '#3B82F6',
       };
       
       return {
@@ -852,11 +858,45 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     }),
   
   updateLayer: (id: string, updates: Partial<Layer>) =>
-    set((state) => ({
-      layers: state.layers.map(layer => 
-        layer.id === id ? { ...layer, ...updates } : layer
-      ),
-    })),
+    {
+      const currentUser = get().currentUser;
+      const isColorChange = Object.prototype.hasOwnProperty.call(updates, 'color');
+      const updatedShapeIds: string[] = [];
+      set((state) => {
+        const newLayers = state.layers.map(layer => 
+          layer.id === id ? { ...layer, ...updates } : layer
+        );
+        let newShapes = state.shapes;
+        if (isColorChange) {
+          const layerColor = (updates as Partial<Layer>).color;
+          if (layerColor) {
+            const updated = new Map(newShapes);
+            Array.from(updated.values()).forEach((shape) => {
+              const shapeLayerId = shape.layerId || 'default-layer';
+              if (shapeLayerId === id && shape.color !== layerColor) {
+                updated.set(shape.id, { ...shape, color: layerColor, updatedAt: Date.now() });
+                updatedShapeIds.push(shape.id);
+              }
+            });
+            newShapes = updated;
+          }
+        }
+        return { layers: newLayers, shapes: newShapes };
+      });
+      // Persist color propagation to Firestore so other clients see updated colors
+      if (isColorChange && currentUser && (updates as Partial<Layer>).color && updatedShapeIds.length > 0) {
+        const layerColor = (updates as Partial<Layer>).color as string;
+        const clientTimestamp = Date.now();
+        import('../services/firestore').then(({ updateShapeProperty }) => {
+          updatedShapeIds.forEach((shapeId) => {
+            updateShapeProperty(shapeId, 'color' as any, layerColor, currentUser.uid, clientTimestamp)
+              .catch((error: unknown) => {
+                console.error('❌ Failed to persist shape color to Firestore:', { shapeId, error });
+              });
+          });
+        });
+      }
+    },
   
   deleteLayer: (id: string) =>
     set((state) => {
@@ -911,7 +951,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       if (!shape) return state;
       
       const updatedShapes = new Map(state.shapes);
-      updatedShapes.set(shapeId, { ...shape, layerId });
+      const layer = state.layers.find(l => l.id === layerId);
+      const layerColor = layer?.color || '#3B82F6';
+      updatedShapes.set(shapeId, { ...shape, layerId, color: layerColor, updatedAt: Date.now() });
       
       const updatedLayers = state.layers.map(layer => ({
         ...layer,
