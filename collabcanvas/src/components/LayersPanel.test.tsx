@@ -66,6 +66,12 @@ describe('LayersPanel - Shape Assignment Bug', () => {
       reorderLayers: mockReorderLayers,
       toggleLayerVisibility: mockToggleLayerVisibility,
       toggleLayerLock: mockToggleLayerLock,
+      canvasScale: {
+        scaleLine: null,
+        backgroundImage: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     });
   });
 
@@ -93,6 +99,12 @@ describe('LayersPanel - Shape Assignment Bug', () => {
       reorderLayers: mockReorderLayers,
       toggleLayerVisibility: mockToggleLayerVisibility,
       toggleLayerLock: mockToggleLayerLock,
+      canvasScale: {
+        scaleLine: null,
+        backgroundImage: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     });
 
     const { rerender } = render(<LayersPanel isVisible={true} onClose={vi.fn()} />);
@@ -120,6 +132,12 @@ describe('LayersPanel - Shape Assignment Bug', () => {
         reorderLayers: mockReorderLayers,
         toggleLayerVisibility: mockToggleLayerVisibility,
         toggleLayerLock: mockToggleLayerLock,
+        canvasScale: {
+          scaleLine: null,
+          backgroundImage: null,
+          isScaleMode: false,
+          isImageUploadMode: false,
+        },
       });
     });
 
@@ -150,6 +168,12 @@ describe('LayersPanel - Shape Assignment Bug', () => {
       reorderLayers: mockReorderLayers,
       toggleLayerVisibility: mockToggleLayerVisibility,
       toggleLayerLock: mockToggleLayerLock,
+      canvasScale: {
+        scaleLine: null,
+        backgroundImage: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     });
 
     rerender(<LayersPanel isVisible={true} onClose={vi.fn()} />);
@@ -184,6 +208,12 @@ describe('LayersPanel - Shape Assignment Bug', () => {
       reorderLayers: mockReorderLayers,
       toggleLayerVisibility: mockToggleLayerVisibility,
       toggleLayerLock: mockToggleLayerLock,
+      canvasScale: {
+        scaleLine: null,
+        backgroundImage: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     });
 
     render(<LayersPanel isVisible={true} onClose={vi.fn()} />);

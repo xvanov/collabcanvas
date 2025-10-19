@@ -34,7 +34,13 @@ export function Board() {
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
   const initializeBoardStateSubscription = useCanvasStore((state) => state.initializeBoardStateSubscription);
-  const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number }; getStage: () => Konva.Stage | null } | null>(null);
+  const canvasRef = useRef<{ 
+    getViewportCenter: () => { x: number; y: number }; 
+    getStage: () => Konva.Stage | null;
+    activatePolylineTool: () => void;
+    activatePolygonTool: () => void;
+    deactivateDrawingTools: () => void;
+  } | null>(null);
   const showDiagnosticsDefault = useMemo(() => {
     if (typeof window === 'undefined') return perfMetrics.enabled;
     const params = new URLSearchParams(window.location.search);
@@ -203,6 +209,9 @@ export function Board() {
         stageRef={canvasRef.current?.getStage()}
         onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
         onToggleAlignment={() => setShowAlignmentToolbar(!showAlignmentToolbar)}
+        onToggleGrid={() => {}}
+        onActivatePolylineTool={() => canvasRef.current?.activatePolylineTool()}
+        onActivatePolygonTool={() => canvasRef.current?.activatePolygonTool()}
       >
         {/* Additional toolbar controls will be added in future PRs */}
       </Toolbar>

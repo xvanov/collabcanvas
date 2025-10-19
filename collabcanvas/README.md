@@ -1,15 +1,24 @@
-# CollabCanvas
+# CollabCanvas - Construction Plan Annotation Tool
 
-Real-time collaborative canvas application built with React, TypeScript, and Firebase.
+Real-time collaborative canvas application for construction professionals. Upload plans, measure walls and rooms, and get instant material estimates with AI assistance.
 
 ## Features
 
+### Core Collaboration
 - 🔐 **Google Authentication** - Secure sign-in with Firebase Auth
-- 🎨 **Real-time Collaboration** - Multiple users can work together simultaneously
+- 🎨 **Real-time Collaboration** - Multiple users can annotate together simultaneously
 - 👁️ **Live Presence** - See who's online with live cursors
 - 🔒 **Shape Locking** - Prevent conflicts with automatic shape locking
-- ⚡ **60 FPS Performance** - Smooth interactions with Konva canvas
-- 🎯 **Simple & Focused** - MVP focused on core collaboration features
+- ⚡ **60 FPS Performance** - Smooth pan, zoom, and drawing operations
+
+### Construction Annotation Tools
+- 📐 **Plan Upload** - Upload PNG/JPG construction plans as canvas background
+- 📏 **Scale Tool** - Set reference measurements for accurate calculations
+- 📊 **Polyline Tool** - Measure wall lengths with click-to-click drawing
+- 🏠 **Polygon Tool** - Calculate room areas with polygon drawing
+- 📋 **Measurement Display** - Real-time length and area calculations
+- 📈 **Layer Totals** - Automatic summation of all measurements per layer
+- 🎯 **Material Estimation** - AI-powered material calculations (coming in PR-4)
 
 ## Technology Stack
 
@@ -109,28 +118,63 @@ src/
 └── main.tsx        # Entry point
 ```
 
+## How to Use
+
+### Quick Start
+1. **Sign in** with your Google account
+2. **Upload** a construction plan (PNG/JPG)
+3. **Set scale** using Tools > Scale Tool (click two points of known distance)
+4. **Measure walls** with Shapes > Polyline (Wall Measurement)
+5. **Measure rooms** with Shapes > Polygon (Room Area)
+6. **View totals** in Advanced > Layers Panel
+
+### Workflow Example
+```
+1. Upload floor plan image
+2. Set scale: Click two ends of a 10-foot wall, enter "10 feet"
+3. Create "Walls" layer
+4. Use Polyline tool to trace all walls → See total linear feet
+5. Create "Floors" layer  
+6. Use Polygon tool to outline rooms → See total square footage
+7. Export measurements or share with team
+```
+
 ## Development Progress
 
-### ✅ Completed
+### ✅ Completed PRs
 
-- **PR #1**: Project Bootstrap & Firebase Setup
-- **PR #2**: Authentication (Google Sign-In)
-- **PR #3**: Canvas Renderer (Konva Integration)
+**Construction Annotation Tool MVP:**
+- **PR-1**: Document Upload & Scale Foundation ✅
+  - Image upload (PNG/JPG)
+  - Scale reference tool
+  - Unit selection (feet, meters, inches)
+  - Background image persistence
 
-### 🚧 In Progress
+- **PR-2**: Core Annotation Tools ✅
+  - Polyline tool for wall measurements
+  - Polygon tool for room areas
+  - Real-time measurement calculations
+  - Layer panel with totals
+  - 104 comprehensive tests
 
-- **PR #4**: Shape Creation & Movement - Coming soon
+**Foundation Features:**
+- ✅ Google Authentication
+- ✅ Real-time collaboration (Firestore + RTDB)
+- ✅ Live presence & cursors
+- ✅ Shape locking
+- ✅ Layer system with visibility/lock
+- ✅ Undo/redo
+- ✅ Offline handling with queue
+- ✅ 60 FPS performance
+- ✅ Security rules
+- ✅ Export (PNG/SVG)
 
-### 📋 Planned
+### 🚧 Next Up
 
-- PR #5: Firestore Realtime Sync
-- PR #6: Presence & Cursors (RTDB)
-- PR #7: Shape Locking (RTDB)
-- PR #8: Security Rules
-- PR #9: Offline Handling
-- PR #10: Deployment
+- **PR-3**: Enhanced Layer System (color-coded layers)
+- **PR-4**: AI Material Estimation (wall framing, flooring systems)
 
-See [tasks.md](../tasks.md) for detailed implementation plan.
+See [docs/task-list-construction-annotation.md](../docs/task-list-construction-annotation.md) for detailed implementation plan.
 
 ## Testing
 
