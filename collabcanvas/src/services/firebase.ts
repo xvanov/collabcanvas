@@ -6,6 +6,8 @@ import { getFirestore, connectFirestoreEmulator, enableNetwork, disableNetwork }
 import type { Firestore } from 'firebase/firestore';
 import { getDatabase, connectDatabaseEmulator, goOnline, goOffline } from 'firebase/database';
 import type { Database } from 'firebase/database';
+import { getFunctions, connectFunctionsEmulator } from 'firebase/functions';
+import type { Functions } from 'firebase/functions';
 
 // Firebase configuration from environment variables
 const firebaseConfig = {
@@ -35,6 +37,7 @@ export const app: FirebaseApp = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
 export const firestore: Firestore = getFirestore(app);
 export const rtdb: Database = getDatabase(app);
+export const functions: Functions = getFunctions(app);
 
 // Export network control functions for offline handling
 export const enableFirestoreNetwork = () => enableNetwork(firestore);
@@ -52,6 +55,7 @@ if (useEmulators) {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
     connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
     connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
+    connectFunctionsEmulator(functions, '127.0.0.1', 5001);
     console.log('✅ Connected to Firebase Emulators');
   } catch (error) {
     console.warn('⚠️ Emulator connection may already be initialized:', error);

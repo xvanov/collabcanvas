@@ -6,6 +6,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { CanvasHistoryService, createHistoryService, createAction } from '../services/historyService';
 import type { CanvasAction, Shape } from '../types';
 
+// Unmock the history service for this test file
+vi.unmock('../services/historyService');
+
 describe('CanvasHistoryService', () => {
   let historyService: CanvasHistoryService;
   let mockOnActionApplied: ReturnType<typeof vi.fn>;

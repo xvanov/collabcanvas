@@ -50,3 +50,10 @@ vi.mock('firebase/database', () => ({
   connectDatabaseEmulator: vi.fn(),
 }));
 
+// Mock Firebase Functions module
+vi.mock('firebase/functions', () => ({
+  getFunctions: vi.fn(() => ({})),
+  connectFunctionsEmulator: vi.fn(),
+  httpsCallable: vi.fn(() => vi.fn()),
+}));
+

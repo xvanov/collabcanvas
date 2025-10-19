@@ -3,6 +3,7 @@
  * Tests username display on locked shapes
  */
 
+import React from 'react';
 import { render } from '@testing-library/react';
 import { vi } from 'vitest';
 import { LockOverlay } from '../components/LockOverlay';

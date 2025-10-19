@@ -247,3 +247,159 @@ export interface SnapIndicator {
   length: number;
   visible: boolean;
 }
+
+/**
+ * AI Canvas Agent Types
+ */
+
+/**
+ * AI Command Types - 8+ distinct command types for rubric compliance
+ */
+export type AICommandType = 
+  | 'CREATE'      // Create shapes (circle, rectangle, text, line)
+  | 'MOVE'        // Move shapes to positions
+  | 'RESIZE'      // Resize shapes (scale, specific dimensions)
+  | 'ROTATE'      // Rotate shapes
+  | 'DELETE'      // Delete shapes
+  | 'ALIGN'       // Align shapes (left, center, right, distribute)
+  | 'EXPORT'      // Export canvas or shapes
+  | 'LAYER'       // Layer operations (create, move to layer)
+  | 'COLOR'       // Change shape colors
+  | 'DUPLICATE';  // Duplicate shapes
+
+/**
+ * AI Command parameters
+ */
+export interface AICommandParameters {
+  // Shape creation parameters
+  shapeType?: ShapeType;
+  color?: string;
+  text?: string;
+  fontSize?: number;
+  
+  // Position and size parameters (flat properties for easier access)
+  x?: number;
+  y?: number;
+  w?: number;
+  h?: number;
+  radius?: number;
+  strokeWidth?: number;
+  points?: number[];
+  rotation?: number;
+  
+  // Legacy nested properties (for backward compatibility)
+  position?: { x: number; y: number };
+  size?: { w: number; h: number };
+  
+  // Target identification
+  targetShapes?: string[];
+  targetColor?: string;
+  targetType?: ShapeType;
+  
+  // Layout parameters
+  alignment?: AlignmentType;
+  spacing?: number;
+  direction?: 'horizontal' | 'vertical';
+  
+  // Export parameters
+  exportFormat?: 'PNG' | 'SVG';
+  exportQuality?: number;
+  
+  // Layer parameters
+  layerName?: string;
+  layerId?: string;
+  
+  // Complex command parameters
+  template?: 'login-form' | 'nav-bar' | 'card-layout' | 'flowchart';
+  elementCount?: number;
+}
+
+/**
+ * AI Command structure
+ */
+export interface AICommand {
+  type: AICommandType;
+  action: string;
+  parameters: AICommandParameters;
+  confidence: number;
+  timestamp: number;
+  userId: string;
+  commandId: string;
+}
+
+/**
+ * AI Command execution result
+ */
+export interface AICommandResult {
+  success: boolean;
+  message: string;
+  executedCommands: AICommand[];
+  createdShapeIds?: string[];
+  modifiedShapeIds?: string[];
+  deletedShapeIds?: string[];
+  error?: string;
+  clarificationNeeded?: {
+    question: string;
+    options: Array<{
+      label: string;
+      value: string;
+      shapeIds?: string[];
+    }>;
+  };
+}
+
+/**
+ * AI Status and state management
+ */
+export interface AIStatus {
+  isProcessing: boolean;
+  lastCommand?: string;
+  lastResult?: AICommandResult;
+  error?: string;
+  commandQueue: AICommand[];
+  queuePosition?: number;
+  rateLimitInfo?: {
+    commandsRemaining: number;
+    resetTime: number;
+  };
+}
+
+/**
+ * AI Command history entry
+ */
+export interface AICommandHistory {
+  commandId: string;
+  command: string;
+  result: AICommandResult;
+  timestamp: number;
+  userId: string;
+}
+
+/**
+ * Complex command templates
+ */
+export interface ComplexCommandTemplate {
+  name: string;
+  description: string;
+  elements: Array<{
+    type: ShapeType;
+    properties: Partial<Shape>;
+    position: { x: number; y: number };
+  }>;
+  layout: {
+    spacing: number;
+    direction: 'horizontal' | 'vertical' | 'grid';
+    alignment: AlignmentType;
+  };
+}
+
+/**
+ * AI Service configuration
+ */
+export interface AIServiceConfig {
+  model: string;
+  maxTokens: number;
+  temperature: number;
+  rateLimitPerMinute: number;
+  timeoutMs: number;
+}

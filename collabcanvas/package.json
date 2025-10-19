@@ -12,6 +12,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "test:ui": "vitest --ui",
+    "test:ci": "SKIP_AI_TESTS=true vitest run",
+    "test:ai": "vitest run src/services/aiService*.test.ts",
     "test:perf": "playwright test --config test/perf/playwright.perf.config.ts",
     "deploy": "npm run build:production && firebase deploy --only hosting",
     "deploy:rules": "firebase deploy --only firestore:rules,database:rules"

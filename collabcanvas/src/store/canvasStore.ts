@@ -4,11 +4,13 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator, AICommand, AICommandResult, AIStatus, AICommandHistory } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
 import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore } from '../services/firestore';
+import { AIService } from '../services/aiService';
+import { AICommandExecutor } from '../services/aiCommandExecutor';
 
 interface CanvasState {
   // Shapes
@@ -95,6 +97,11 @@ interface CanvasState {
   alignSelectedShapes: (alignment: AlignmentType) => void;
   distributeSelectedShapes: (direction: 'horizontal' | 'vertical') => void;
   
+  // Shape Operations
+  deleteShape: (id: string) => void;
+  deleteShapes: (ids: string[]) => void;
+  duplicateShapes: (ids: string[], duplicatedBy: string) => void;
+  
   // Grid and Snap
   gridState: GridState;
   snapIndicators: SnapIndicator[];
@@ -102,11 +109,28 @@ interface CanvasState {
   toggleSnap: () => void;
   updateGridSize: (size: number) => void;
   setSnapIndicators: (indicators: SnapIndicator[]) => void;
+  
+  // AI Canvas Agent
+  aiCommands: AICommand[];
+  aiStatus: AIStatus;
+  aiCommandHistory: AICommandHistory[];
+  commandQueue: AICommand[];
+  isProcessingAICommand: boolean;
+  processAICommand: (commandText: string) => Promise<AICommandResult>;
+  executeAICommand: (command: AICommand) => Promise<AICommandResult>;
+  clearAIHistory: () => void;
+  getAIStatus: () => AIStatus;
+  addToCommandQueue: (command: AICommand) => void;
+  processCommandQueue: () => Promise<void>;
+  setAIStatus: (status: Partial<AIStatus>) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => {
   // Initialize history service
   const historyService = createHistoryService(50);
+  
+  // Initialize AI service
+  const aiService = new AIService();
   
   // Set up history service callback
   historyService.setOnActionApplied(async (action: CanvasAction) => {
@@ -324,7 +348,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       }));
     },
   
-  createShape: (shape: Shape) =>
+  createShape: (shape: Shape) => {
+    const currentState = get();
     set((state) => {
       const newShapes = new Map(state.shapes);
       const shapeWithLayer = { ...shape, layerId: shape.layerId || state.activeLayerId };
@@ -348,7 +373,19 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           layers: updatedLayers,
           history: historyService.getHistoryState(),
         };
-    }),
+    });
+
+    // Also save to Firestore
+    if (currentState.currentUser) {
+      import('../services/firestore').then(({ createShape: createShapeInFirestore }) => {
+        const layerId = shape.layerId || currentState.activeLayerId;
+        createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentState.currentUser!.uid, layerId)
+          .catch((error: unknown) => {
+            console.error('❌ Failed to create shape in Firestore:', error);
+          });
+      });
+    }
+  },
 
   updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) =>
     set((state) => {
@@ -962,6 +999,64 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       return { shapes: updatedShapes };
     }),
 
+  // Shape Operations
+  deleteShape: (id: string) =>
+    set((state) => {
+      const updatedShapes = new Map(state.shapes);
+      updatedShapes.delete(id);
+      
+      // Remove from selection if selected
+      const updatedSelectedShapeIds = state.selectedShapeIds.filter(shapeId => shapeId !== id);
+      
+      return { 
+        shapes: updatedShapes,
+        selectedShapeIds: updatedSelectedShapeIds
+      };
+    }),
+
+  deleteShapes: (ids: string[]) =>
+    set((state) => {
+      const updatedShapes = new Map(state.shapes);
+      ids.forEach(id => updatedShapes.delete(id));
+      
+      // Remove from selection if selected
+      const updatedSelectedShapeIds = state.selectedShapeIds.filter(shapeId => !ids.includes(shapeId));
+      
+      return { 
+        shapes: updatedShapes,
+        selectedShapeIds: updatedSelectedShapeIds
+      };
+    }),
+
+  duplicateShapes: (ids: string[], duplicatedBy: string) =>
+    set((state) => {
+      const updatedShapes = new Map(state.shapes);
+      const duplicatedIds: string[] = [];
+      
+      ids.forEach(id => {
+        const shape = state.shapes.get(id);
+        if (shape) {
+          const duplicatedShape = {
+            ...shape,
+            id: `${id}_copy_${Date.now()}`,
+            x: shape.x + 20,
+            y: shape.y + 20,
+            createdBy: duplicatedBy,
+            createdAt: Date.now(),
+            updatedBy: duplicatedBy,
+            updatedAt: Date.now()
+          };
+          updatedShapes.set(duplicatedShape.id, duplicatedShape);
+          duplicatedIds.push(duplicatedShape.id);
+        }
+      });
+      
+      return { 
+        shapes: updatedShapes,
+        selectedShapeIds: duplicatedIds
+      };
+    }),
+
   // Grid and Snap
   gridState: {
     isVisible: false,
@@ -989,6 +1084,199 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
   
   setSnapIndicators: (indicators: SnapIndicator[]) =>
     set(() => ({ snapIndicators: indicators })),
+
+  // AI Canvas Agent
+  aiCommands: [],
+  aiCommandHistory: [],
+  commandQueue: [],
+  isProcessingAICommand: false,
+  aiStatus: {
+    isProcessing: false,
+    commandQueue: [],
+  },
+
+  processAICommand: async (commandText: string) => {
+    const state = get();
+    const currentUser = state.currentUser;
+    
+    if (!currentUser) {
+      throw new Error('User must be authenticated to use AI commands');
+    }
+
+    // Set processing state
+    set({ isProcessingAICommand: true });
+    
+    try {
+      // Prepare canvas context for AI (unused for now)
+      // const canvasContext = {
+      //   shapes: Array.from(state.shapes.values()).map(shape => ({
+      //     id: shape.id,
+      //     type: shape.type,
+      //     color: shape.color,
+      //     x: shape.x,
+      //     y: shape.y,
+      //     w: shape.w,
+      //     h: shape.h,
+      //     text: shape.text
+      //   })),
+      //   selectedShapes: state.selectedShapeIds
+      // };
+
+                // Call the AI service to parse the command
+                const aiServiceResult = await aiService.processCommand(commandText, currentUser.uid);
+                
+                // Execute the parsed command
+        const command = aiServiceResult.executedCommands[0] as AICommand;
+        if (!command) {
+          throw new Error('No command returned from AI service');
+        }
+        const result = await state.executeAICommand(command);
+      
+                // Add to command history
+                const historyEntry: AICommandHistory = {
+                  commandId: command.commandId,
+                  command: commandText,
+                  result,
+                  timestamp: Date.now(),
+                  userId: currentUser.uid
+                };
+
+      set((state) => ({
+        aiCommandHistory: [...state.aiCommandHistory, historyEntry],
+        aiStatus: {
+          ...state.aiStatus,
+          lastCommand: commandText,
+          lastResult: result,
+          error: result.error
+        }
+      }));
+
+      return result;
+    } catch (error) {
+      console.error('AI Command Processing Error:', error);
+      const errorResult: AICommandResult = {
+        success: false,
+        message: `Failed to process command: ${error}`,
+        executedCommands: [],
+        error: error instanceof Error ? error.message : String(error)
+      };
+
+      set((state) => ({
+        aiStatus: {
+          ...state.aiStatus,
+          error: errorResult.error
+        }
+      }));
+
+      return errorResult;
+    } finally {
+      set({ isProcessingAICommand: false });
+    }
+  },
+
+  executeAICommand: async (command: AICommand) => {
+    const state = get();
+    const currentUser = state.currentUser;
+    
+    if (!currentUser) {
+      throw new Error('User must be authenticated to execute AI commands');
+    }
+
+    // Create command executor
+    const executor = new AICommandExecutor({
+      createShape: state.createShape,
+      updateShapePosition: state.updateShapePosition,
+      updateShapeProperty: state.updateShapeProperty,
+      deleteShape: (id: string) => state.deleteShape(id),
+      deleteShapes: (ids: string[]) => state.deleteShapes(ids),
+      duplicateShapes: (ids: string[]) => state.duplicateShapes(ids, currentUser.uid),
+      alignShapes: (shapeIds: string[], alignment: AlignmentType) => {
+        // For now, just log the alignment request
+        console.log('Align shapes request:', shapeIds, alignment);
+      },
+      createLayer: (name: string) => {
+        const layerId = `layer_${Date.now()}`;
+        state.createLayer(name, layerId);
+        return layerId;
+      },
+      moveShapeToLayer: state.moveShapeToLayer,
+      exportCanvas: async (format: 'PNG' | 'SVG', quality?: number) => {
+        // TODO: Implement export functionality
+        console.log(`Exporting canvas as ${format} with quality ${quality}`);
+      },
+      exportSelectedShapes: async (format: 'PNG' | 'SVG', quality?: number) => {
+        // TODO: Implement export functionality
+        console.log(`Exporting selected shapes as ${format} with quality ${quality}`);
+      }
+    });
+
+    // Execute the command
+    const result = await executor.executeCommand(command);
+    
+    // Update AI status
+    set((state) => ({
+      aiStatus: {
+        ...state.aiStatus,
+        lastResult: result
+      }
+    }));
+
+    return result;
+  },
+
+  clearAIHistory: () =>
+    set((state) => ({
+      aiCommandHistory: state.aiCommandHistory.filter(entry => 
+        entry.userId !== state.currentUser?.uid
+      )
+    })),
+
+  getAIStatus: () => {
+    const state = get();
+    
+    return {
+      ...state.aiStatus,
+      lastCommand: state.aiCommandHistory[state.aiCommandHistory.length - 1]?.command,
+      lastResult: state.aiCommandHistory[state.aiCommandHistory.length - 1]?.result
+    };
+  },
+
+  addToCommandQueue: (command: AICommand) =>
+    set((state) => ({
+      commandQueue: [...state.commandQueue, command]
+    })),
+
+  processCommandQueue: async () => {
+    const state = get();
+    
+    if (state.isProcessingAICommand || state.commandQueue.length === 0) {
+      return;
+    }
+
+    set({ isProcessingAICommand: true });
+
+    try {
+      // Process commands one by one (first-come-first-serve)
+      while (state.commandQueue.length > 0) {
+        const command = state.commandQueue[0];
+        
+        // Remove command from queue
+        set((state) => ({
+          commandQueue: state.commandQueue.slice(1)
+        }));
+
+        // Execute command
+        await state.executeAICommand(command);
+      }
+    } finally {
+      set({ isProcessingAICommand: false });
+    }
+  },
+
+  setAIStatus: (status: Partial<AIStatus>) =>
+    set((state) => ({
+      aiStatus: { ...state.aiStatus, ...status }
+    }))
   };
 });
 
