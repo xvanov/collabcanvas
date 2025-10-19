@@ -74,12 +74,20 @@ describe('Toolbar', () => {
   it('should render Create Rectangle button', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
+    
     const button = screen.getByRole('button', { name: /rectangle/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render Create Circle button', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /circle/i });
     expect(button).toBeInTheDocument();
@@ -88,12 +96,20 @@ describe('Toolbar', () => {
   it('should render Create Text button', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
+    
     const button = screen.getByRole('button', { name: /text/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render Create Line button', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /line/i });
     expect(button).toBeInTheDocument();
@@ -102,12 +118,20 @@ describe('Toolbar', () => {
   it('should render Undo button', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Edit dropdown to open it
+    const editDropdown = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editDropdown);
+    
     const button = screen.getByRole('button', { name: /undo/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render Redo button', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Edit dropdown to open it
+    const editDropdown = screen.getByRole('button', { name: /edit/i });
+    fireEvent.click(editDropdown);
     
     const button = screen.getByRole('button', { name: /redo/i });
     expect(button).toBeInTheDocument();
@@ -116,12 +140,20 @@ describe('Toolbar', () => {
   it('should render Export button', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Tools dropdown to open it
+    const toolsDropdown = screen.getByRole('button', { name: /tools/i });
+    fireEvent.click(toolsDropdown);
+    
     const button = screen.getByRole('button', { name: /export/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render Layers button', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Advanced dropdown to open it
+    const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
+    fireEvent.click(advancedDropdown);
     
     const button = screen.getByRole('button', { name: /layers/i });
     expect(button).toBeInTheDocument();
@@ -130,12 +162,20 @@ describe('Toolbar', () => {
   it('should render Align button', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Advanced dropdown to open it
+    const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
+    fireEvent.click(advancedDropdown);
+    
     const button = screen.getByRole('button', { name: /align/i });
     expect(button).toBeInTheDocument();
   });
 
   it('should render Grid button', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Advanced dropdown to open it
+    const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
+    fireEvent.click(advancedDropdown);
     
     const button = screen.getByRole('button', { name: /grid/i });
     expect(button).toBeInTheDocument();
@@ -145,6 +185,10 @@ describe('Toolbar', () => {
     const mockOnCreateShape = vi.fn();
     render(<Toolbar fps={60} zoom={1} onCreateShape={mockOnCreateShape} />);
     
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
+    
     const button = screen.getByRole('button', { name: /rectangle/i });
     fireEvent.click(button);
     
@@ -153,6 +197,10 @@ describe('Toolbar', () => {
 
   it('should call createShape when no onCreateShape prop is provided', () => {
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /rectangle/i });
     fireEvent.click(button);
@@ -209,6 +257,10 @@ describe('Toolbar', () => {
     
     render(<Toolbar fps={60} zoom={1} />);
     
+    // Click the Shapes dropdown to open it
+    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    fireEvent.click(shapesDropdown);
+    
     const button = screen.getByRole('button', { name: /rectangle/i });
     expect(button).toBeDisabled();
   });
@@ -244,6 +296,10 @@ describe('Toolbar', () => {
     });
     
     render(<Toolbar fps={60} zoom={1} />);
+    
+    // Click the Advanced dropdown to open it
+    const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
+    fireEvent.click(advancedDropdown);
     
     const button = screen.getByRole('button', { name: /grid/i });
     fireEvent.click(button);
