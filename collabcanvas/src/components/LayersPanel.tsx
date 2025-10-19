@@ -280,6 +280,7 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
 
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
+                        <span className="sr-only">{layer.name}</span>
                         <input
                           className="text-sm font-medium text-gray-900 bg-transparent border-b border-transparent focus:border-blue-400 focus:outline-none"
                           value={layer.name}
@@ -331,7 +332,11 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                     />
                     {layer.id !== 'default-layer' && (
                       <button
-                        onClick={() => handleDeleteLayer(layer.id)}
+                        onClick={() => {
+                          if (window.confirm('Delete this layer and ALL shapes on it? This cannot be undone.')) {
+                            handleDeleteLayer(layer.id);
+                          }
+                        }}
                         className="text-red-400 hover:text-red-600"
                       >
                         <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

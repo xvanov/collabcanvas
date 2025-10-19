@@ -297,11 +297,8 @@ export function useShapes() {
    */
   const handleFirestoreUpdate = useCallback((firestoreShapes: FirestoreShape[]) => {
     if (isSyncing.current || !userIdRef.current) return;
-    
     console.log(`📥 Firestore update received: ${firestoreShapes.length} shapes`);
-    
     isSyncing.current = true;
-    
     try {
       if (perfMetrics.enabled) {
         firestoreShapes.forEach((rawShape) => {
@@ -312,59 +309,40 @@ export function useShapes() {
           perfMetrics.trackShapeUpdate(rawShape.id, clientTimestamp ?? null, isRemoteUpdate);
         });
       }
-
-      // Convert Firestore shapes to local format
-      const localShapes = firestoreShapes.map(convertFirestoreShape);
-      
-      // Apply Last-Write-Wins: if a shape exists locally and remotely,
-      // use the one with the more recent updatedAt timestamp
-      const mergedShapes = new Map<string, Shape>();
-      
-      // Add all local shapes first
-      shapesRef.current.forEach((shape, id) => {
-        mergedShapes.set(id, shape);
+      // Build layer color map
+      const layerColorById = useCanvasStore.getState().layers.reduce((acc, l) => {
+        acc[l.id] = l.color || '#3B82F6';
+        return acc;
+      }, {} as Record<string, string>);
+      // Convert Firestore shapes to local format and enforce inheritance
+      const localShapes = firestoreShapes.map((fs) => {
+        let s = convertFirestoreShape(fs);
+        const lid = s.layerId || 'default-layer';
+        const lc = layerColorById[lid];
+        if (lc && s.color === '#3B82F6' && lc !== '#3B82F6') s = { ...s, color: lc };
+        return s;
       });
-      
-      // Merge with Firestore shapes, applying LWW
+      const mergedShapes = new Map<string, Shape>();
+      shapesRef.current.forEach((shape, id) => { mergedShapes.set(id, shape); });
       localShapes.forEach((firestoreShape) => {
         const localShape = mergedShapes.get(firestoreShape.id);
-        
-        // Skip shapes we've locally deleted to prevent them from reappearing
         if (locallyDeletedShapes.current.has(firestoreShape.id)) {
           console.log(`🚫 Ignoring Firestore update for locally deleted shape: ${firestoreShape.id}`);
           return;
         }
-        
         if (!localShape) {
-          // New shape from Firestore
           mergedShapes.set(firestoreShape.id, firestoreShape);
         } else {
-          // Skip updates for shapes we're currently updating to prevent visual glitches
-          if (updatingShapes.current.has(firestoreShape.id)) {
-            // This shape is being updated by us, keep the local version
-            return;
-          }
-          
-          // Conflict resolution: use the shape with more recent updatedAt
+          if (updatingShapes.current.has(firestoreShape.id)) return;
           const localUpdatedAt = localShape.updatedAt || 0;
           const firestoreUpdatedAt = firestoreShape.updatedAt || 0;
-          
           if (firestoreUpdatedAt > localUpdatedAt) {
-            // Firestore version is newer, use it
             mergedShapes.set(firestoreShape.id, firestoreShape);
-          } else if (firestoreUpdatedAt < localUpdatedAt) {
-            // Local version is newer, keep it
-            // This prevents visual glitches from our own older updates
-          } else {
-            // Same timestamp - prefer local version to avoid unnecessary updates
-            // This handles the case where we get our own update back
           }
         }
       });
-      
       latestShapesRef.current = mergedShapes;
       scheduleShapesCommit();
-
     } finally {
       isSyncing.current = false;
     }
@@ -377,29 +355,28 @@ export function useShapes() {
   const handleFirestoreDocChanges = useCallback((changes: FirestoreShapeChange[]) => {
     if (!userIdRef.current) return;
     const merged = new Map(shapesRef.current);
-
+    const layerColorById = useCanvasStore.getState().layers.reduce((acc, l) => {
+      acc[l.id] = l.color || '#3B82F6';
+      return acc;
+    }, {} as Record<string, string>);
     for (const change of changes) {
       const raw = change.shape;
-      const local = convertFirestoreShape(raw);
-
+      let local = convertFirestoreShape(raw);
+      const lid = local.layerId || 'default-layer';
+      const lc = layerColorById[lid];
+      if (lc && local.color === '#3B82F6' && lc !== '#3B82F6') local = { ...local, color: lc };
       if (change.type === 'removed') {
         merged.delete(local.id);
-        // Remove from locally deleted set since Firestore confirms the deletion
         locallyDeletedShapes.current.delete(local.id);
         continue;
       }
-
-      // Skip shapes we've locally deleted to prevent them from reappearing
       if (locallyDeletedShapes.current.has(local.id)) {
         console.log(`🚫 Ignoring Firestore ${change.type} for locally deleted shape: ${local.id}`);
         continue;
       }
-
-      // Skip updates for shapes we're currently updating to prevent visual glitches
       if (change.type === 'modified' && updatingShapes.current.has(local.id)) {
         continue;
       }
-
       const existing = merged.get(local.id);
       if (!existing) {
         merged.set(local.id, local);
@@ -407,7 +384,6 @@ export function useShapes() {
         merged.set(local.id, local);
       }
     }
-
     latestShapesRef.current = merged;
     scheduleShapesCommit();
   }, [scheduleShapesCommit]);

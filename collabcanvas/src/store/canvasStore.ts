@@ -423,14 +423,20 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     if (currentState.currentUser) {
       import('../services/firestore').then(({ createShape: createShapeInFirestore }) => {
         const layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
-        // Pass additional properties for polyline/polygon shapes
-        const additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
-          points: shape.points,
-          strokeWidth: shape.strokeWidth,
-          w: shape.w,
-          h: shape.h,
+        // Always persist color; include type-specific props where applicable
+        const additionalProps: Partial<Shape> = {
           color: shape.color,
-        } : undefined;
+          ...(shape.type === 'polyline' || shape.type === 'polygon' ? {
+            points: shape.points,
+            strokeWidth: shape.strokeWidth,
+            w: shape.w,
+            h: shape.h,
+          } : {}),
+          ...(shape.type === 'line' ? {
+            points: shape.points,
+            strokeWidth: shape.strokeWidth,
+          } : {}),
+        };
         
         createShapeInFirestore(
           shape.id, 
@@ -889,7 +895,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         const clientTimestamp = Date.now();
         import('../services/firestore').then(({ updateShapeProperty }) => {
           updatedShapeIds.forEach((shapeId) => {
-            updateShapeProperty(shapeId, 'color' as any, layerColor, currentUser.uid, clientTimestamp)
+            updateShapeProperty(shapeId, 'color', layerColor, currentUser.uid, clientTimestamp)
               .catch((error: unknown) => {
                 console.error('❌ Failed to persist shape color to Firestore:', { shapeId, error });
               });
@@ -905,34 +911,45 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       const layerToDelete = state.layers.find(layer => layer.id === id);
       if (!layerToDelete) return state;
       
-      // Move all shapes from deleted layer to the first remaining layer
+      // Compute shapes to delete by checking shape.layerId to be robust
+      const shapeIdsToDelete: string[] = [];
+      state.shapes.forEach((shape, shapeId) => {
+        const shapeLayerId = shape.layerId || 'default-layer';
+        if (shapeLayerId === id) shapeIdsToDelete.push(shapeId);
+      });
+
+      // Delete all shapes that belong to this layer from local state
+      const updatedShapes = new Map(state.shapes);
+      shapeIdsToDelete.forEach(shapeId => {
+        updatedShapes.delete(shapeId);
+      });
+
       const remainingLayers = state.layers.filter(layer => layer.id !== id);
-      const targetLayer = remainingLayers[0];
-      
-      if (targetLayer) {
-        const updatedShapes = new Map(state.shapes);
-        layerToDelete.shapes.forEach(shapeId => {
-          const shape = updatedShapes.get(shapeId);
-          if (shape) {
-            updatedShapes.set(shapeId, { ...shape, layerId: targetLayer.id });
-          }
+      // Also scrub shape ids from any layer.shapes arrays to keep them clean
+      const cleanedLayers = remainingLayers.map(layer => ({
+        ...layer,
+        shapes: layer.shapes.filter(sid => !shapeIdsToDelete.includes(sid)),
+      }));
+
+      // Persist deletes to Firestore (best-effort)
+      if (state.currentUser) {
+        import('../services/firestore').then(({ deleteLayer: deleteLayerInFs, deleteShape: deleteShapeInFs }) => {
+          // Delete shapes in Firestore
+          shapeIdsToDelete.forEach(shapeId => {
+            deleteShapeInFs(shapeId).catch((error: unknown) => {
+              console.error('❌ Failed to delete shape in Firestore:', { shapeId, error });
+            });
+          });
+          // Delete layer in Firestore
+          deleteLayerInFs(id).catch((error: unknown) => {
+            console.error('❌ Failed to delete layer in Firestore:', { layerId: id, error });
+          });
         });
-        
-        const updatedLayers = remainingLayers.map(layer => 
-          layer.id === targetLayer.id 
-            ? { ...layer, shapes: [...layer.shapes, ...layerToDelete.shapes] }
-            : layer
-        );
-        
-        return {
-          shapes: updatedShapes,
-          layers: updatedLayers,
-          activeLayerId: state.activeLayerId === id ? targetLayer.id : state.activeLayerId,
-        };
       }
-      
+
       return {
-        layers: remainingLayers,
+        shapes: updatedShapes,
+        layers: cleanedLayers,
         activeLayerId: state.activeLayerId === id ? remainingLayers[0]?.id || 'default-layer' : state.activeLayerId,
       };
     }),
