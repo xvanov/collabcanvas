@@ -14,7 +14,7 @@ service cloud.firestore {
         // Create: Validate shape schema and auth
         allow create: if request.auth != null
           // Validate shape type
-          && request.resource.data.type in ['rect', 'circle', 'text', 'line']
+          && request.resource.data.type in ['rect', 'circle', 'text', 'line', 'polyline', 'polygon']
           // Validate position fields are numbers
           && request.resource.data.x is number
           && request.resource.data.y is number
@@ -35,7 +35,9 @@ service cloud.firestore {
           && (request.resource.data.type == 'rect' 
               || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
               || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
-              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (request.resource.data.type == 'polyline' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (request.resource.data.type == 'polygon' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
         
         // Update: Allow position and property updates by authenticated user
         allow update: if request.auth != null
@@ -59,7 +61,9 @@ service cloud.firestore {
           && (request.resource.data.type == 'rect' 
               || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
               || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
-              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (request.resource.data.type == 'polyline' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (request.resource.data.type == 'polygon' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
         
         // Delete: Allow authenticated users to delete shapes
         allow delete: if request.auth != null;

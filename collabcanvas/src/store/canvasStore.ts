@@ -182,7 +182,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           
           // Also sync the restored shape to Firestore so other clients know about it
           try {
-            await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentUser.uid, shape.layerId);
+            // Pass additional properties for polyline/polygon shapes
+            const additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
+              points: shape.points,
+              strokeWidth: shape.strokeWidth,
+              w: shape.w,
+              h: shape.h,
+              color: shape.color,
+            } : undefined;
+            
+            await createShapeInFirestore(
+              shape.id, 
+              shape.type, 
+              shape.x, 
+              shape.y, 
+              currentUser.uid, 
+              shape.layerId,
+              additionalProps
+            );
             console.log(`✅ Synced restored shape ${action.shapeId} to Firestore`);
           } catch (error) {
             console.error(`❌ Failed to sync restored shape ${action.shapeId} to Firestore:`, error);
@@ -412,7 +429,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     if (currentState.currentUser) {
       import('../services/firestore').then(({ createShape: createShapeInFirestore }) => {
         const layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
-        createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentState.currentUser!.uid, layerId)
+        // Pass additional properties for polyline/polygon shapes
+        const additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
+          points: shape.points,
+          strokeWidth: shape.strokeWidth,
+          w: shape.w,
+          h: shape.h,
+          color: shape.color,
+        } : undefined;
+        
+        createShapeInFirestore(
+          shape.id, 
+          shape.type, 
+          shape.x, 
+          shape.y, 
+          currentState.currentUser!.uid, 
+          layerId,
+          additionalProps
+        )
           .catch((error: unknown) => {
             console.error('❌ Failed to create shape in Firestore:', error);
           });
