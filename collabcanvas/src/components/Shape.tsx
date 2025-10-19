@@ -168,6 +168,34 @@ function ShapeComponent({
         />
       );
 
+    case 'polyline':
+      return (
+        <Line
+          {...commonProps}
+          points={shape.points || []}
+          stroke={shape.color}
+          strokeWidth={shape.strokeWidth || 2}
+          fill={undefined}
+          lineCap="round"
+          lineJoin="round"
+        />
+      );
+
+    case 'polygon':
+      return (
+        <Line
+          {...commonProps}
+          points={shape.points || []}
+          stroke={shape.color}
+          strokeWidth={shape.strokeWidth || 2}
+          fill={shape.color}
+          opacity={opacity * 0.3} // Semi-transparent fill
+          closed={true}
+          lineCap="round"
+          lineJoin="round"
+        />
+      );
+
     default:
       // Fallback to rectangle for unknown types
       return (
