@@ -3,19 +3,10 @@ rules_version = '2';
 // Firebase Storage security rules for construction annotation tool
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow authenticated users to upload construction plan images
-    match /construction-plans/{userId}/{fileName} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-    
-    // Allow authenticated users to upload construction plan images to canvas-specific folders
-    match /construction-plans/{canvasId}/{fileName} {
-      allow read, write: if request.auth != null;
-    }
-    
-    // Allow authenticated users to read any construction plan image
+    // Allow all authenticated users to read and write construction plan images
+    // This enables collaboration - any user can upload and all users can view
     match /construction-plans/{allPaths=**} {
-      allow read: if request.auth != null;
+      allow read, write: if request.auth != null;
     }
     
     // Deny all other access

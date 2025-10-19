@@ -9,9 +9,10 @@ import { formatMeasurement } from '../services/unitConversion';
 
 interface ScaleLineProps {
   scaleLine: ScaleLineType;
+  scale: number;
 }
 
-export function ScaleLine({ scaleLine }: ScaleLineProps) {
+export function ScaleLine({ scaleLine, scale }: ScaleLineProps) {
   if (!scaleLine.isVisible) return null;
 
   // Calculate line properties - coordinates are already in canvas space
@@ -41,9 +42,9 @@ export function ScaleLine({ scaleLine }: ScaleLineProps) {
   // Calculate scale ratio (pixels per unit) - only if we have a real world length
   const scaleRatio = scaleLine.realWorldLength > 0 ? lineLength / scaleLine.realWorldLength : 0;
   
-  // Scale line properties - use fixed sizes for performance
-  const strokeWidth = 3;
-  const fontSize = 14;
+  // Scale line properties
+  const strokeWidth = Math.max(2, 2 * scale);
+  const fontSize = Math.max(12, 12 * scale);
   
   return (
     <Group>
@@ -126,14 +127,16 @@ export function ScaleLine({ scaleLine }: ScaleLineProps) {
  */
 interface ScaleLineOverlayProps {
   scaleLine: ScaleLineType | null;
+  scale: number;
 }
 
-export function ScaleLineOverlay({ scaleLine }: ScaleLineOverlayProps) {
+export function ScaleLineOverlay({ scaleLine, scale }: ScaleLineOverlayProps) {
   if (!scaleLine) return null;
   
   return (
     <ScaleLine
       scaleLine={scaleLine}
+      scale={scale}
     />
   );
 }

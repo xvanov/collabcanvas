@@ -531,7 +531,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       return () => window.removeEventListener('keydown', handleDrawingKeyDown);
     }
   }, [activeDrawingTool, drawingPoints, completeDrawing]);
-
   // Handle scale tool clicks
   const handleScaleToolClick = (x: number, y: number) => {
     if (!canvasScale.isScaleMode || !currentUser) return;
@@ -683,6 +682,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             {canvasScale.scaleLine && (
            <ScaleLine
              scaleLine={canvasScale.scaleLine}
+             scale={stageScaleRef.current}
            />
             )}
           </Layer>

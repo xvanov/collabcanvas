@@ -164,6 +164,7 @@ function ShapeComponent({
           points={shape.points || [0, 0, shape.w, 0]}
           stroke={shape.color}
           strokeWidth={shape.strokeWidth || 2}
+          hitStrokeWidth={20} // Make hit detection area wider for easier selection
           fill={undefined}
         />
       );
@@ -175,6 +176,7 @@ function ShapeComponent({
           points={shape.points || []}
           stroke={shape.color}
           strokeWidth={shape.strokeWidth || 2}
+          hitStrokeWidth={20} // Make hit detection area wider for easier selection
           fill={undefined}
           lineCap="round"
           lineJoin="round"
@@ -188,6 +190,7 @@ function ShapeComponent({
           points={shape.points || []}
           stroke={shape.color}
           strokeWidth={shape.strokeWidth || 2}
+          hitStrokeWidth={20} // Make hit detection area wider for easier selection
           fill={shape.color}
           opacity={opacity * 0.3} // Semi-transparent fill
           closed={true}
