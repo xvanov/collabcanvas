@@ -13,13 +13,19 @@ flowchart TB
         Store[Zustand Store]
         Hooks[Custom Hooks]
         Services[Firebase Services]
+        AI[AI Services]
     end
     
     subgraph Firebase["Firebase Backend"]
         Auth[Firebase Auth<br/>Google Sign-In]
         Firestore[Firestore<br/>Persistent Shapes]
         RTDB[Realtime Database<br/>Presence, Cursors, Locks]
+        Functions[Cloud Functions<br/>AI Command Processing]
         Hosting[Firebase Hosting<br/>Deployment]
+    end
+    
+    subgraph External["External Services"]
+        OpenAI[OpenAI API<br/>GPT-3.5-turbo]
     end
     
     UI <--> Store
@@ -28,6 +34,8 @@ flowchart TB
     Services <--> Auth
     Services <--> Firestore
     Services <--> RTDB
+    AI <--> Functions
+    Functions <--> OpenAI
     Browser -.deployed to.-> Hosting
 ```
 
@@ -47,7 +55,12 @@ flowchart TB
 - **Firebase Authentication** (Google Sign-In)
 - **Cloud Firestore** for persistent shape data
 - **Realtime Database (RTDB)** for ephemeral data (presence, cursors, locks)
+- **Firebase Cloud Functions** for AI command processing
 - **Firebase Hosting** for deployment
+
+### External Services
+- **OpenAI API** (GPT-3.5-turbo) for natural language processing
+- **LangChain** for command validation and parsing
 
 ### Development Tools
 - **TypeScript** for type safety
@@ -534,11 +547,22 @@ service cloud.firestore {
 - **Clean Separation:** Keep business logic separate from UI components
 - **Type System:** Use discriminated unions for shape types
 
-### AI Integration (Phase 3)
-- Natural language command parser
-- Shape generation from text descriptions
-- Integration points already structured in services layer
-- Command pattern enables AI to trigger actions programmatically
+## Future Expansion Considerations
+
+### Code Preparation for Phase 2/3
+- **Command/Action Pattern:** Centralize shape operations for easy AI integration ✅
+- **Extensible Shape Types:** Design shape system to support circles, text, lines ✅
+- **Clean Separation:** Keep business logic separate from UI components ✅
+- **Type System:** Use discriminated unions for shape types ✅
+
+### AI Integration (Phase 3) ✅ **COMPLETED**
+- ✅ Natural language command parser
+- ✅ Shape generation from text descriptions
+- ✅ Integration points structured in services layer
+- ✅ Command pattern enables AI to trigger actions programmatically
+- ✅ Multi-user AI command queuing
+- ✅ Complex command templates
+- ✅ AI command undo/redo integration
 
 ---
 

@@ -142,6 +142,7 @@ export const createShape = async (
       break;
   }
 
+  console.log('🔥 Saving shape to Firestore:', { shapeId, shapeData });
   await setDoc(shapeRef, shapeData);
 };
 

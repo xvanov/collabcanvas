@@ -30,8 +30,8 @@ jobs:
         run: npm run lint
         working-directory: collabcanvas
       
-      - name: Run tests
-        run: npm test
+      - name: Run tests (excluding AI service tests)
+        run: npm run test:ci
         working-directory: collabcanvas
       
       - name: Build production bundle

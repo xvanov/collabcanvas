@@ -75,19 +75,18 @@ export class CanvasHistoryService implements HistoryService {
     }
 
     const currentAction = this.history.present;
-    if (!currentAction) {
-      return null;
+    
+    // Move current action to future if it exists
+    if (currentAction) {
+      this.history.future.unshift(currentAction);
     }
-
-    // Move current action to future
-    this.history.future.unshift(currentAction);
 
     // Get previous action from past
     const previousAction = this.history.past.pop() || null;
     this.history.present = previousAction;
 
     // Apply the undo action
-    if (this.onActionApplied) {
+    if (this.onActionApplied && currentAction) {
       this.onActionApplied(this.createUndoAction(currentAction));
     }
 
