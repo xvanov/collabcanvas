@@ -5,7 +5,7 @@ import { useCanvasStore } from '../store/canvasStore';
 import { usePresence } from '../hooks/usePresence';
 import { useOffline } from '../hooks/useOffline';
 import type { Shape, ShapeType, ExportOptions } from '../types';
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ExportDialog } from './ExportDialog';
 import { ShortcutsHelp } from './ShortcutsHelp';
 import { useKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
@@ -57,6 +57,17 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
   const [isExportDialogOpen, setIsExportDialogOpen] = useState(false);
   const [isShortcutsHelpOpen, setIsShortcutsHelpOpen] = useState(false);
   
+  // Dropdown menu states
+  const [isShapesMenuOpen, setIsShapesMenuOpen] = useState(false);
+  const [isEditMenuOpen, setIsEditMenuOpen] = useState(false);
+  const [isToolsMenuOpen, setIsToolsMenuOpen] = useState(false);
+  const [isProfessionalMenuOpen, setIsProfessionalMenuOpen] = useState(false);
+  
+  const shapesMenuRef = useRef<HTMLDivElement>(null);
+  const editMenuRef = useRef<HTMLDivElement>(null);
+  const toolsMenuRef = useRef<HTMLDivElement>(null);
+  const professionalMenuRef = useRef<HTMLDivElement>(null);
+  
   // AI Assistant state
   const [isAIAssistantOpen, setIsAIAssistantOpen] = useState(false);
   const [clarificationDialog, setClarificationDialog] = useState<{
@@ -71,6 +82,32 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
   // AI status from store
   const isProcessingAICommand = useCanvasStore((state) => state.isProcessingAICommand);
   const commandQueue = useCanvasStore((state) => state.commandQueue);
+
+  // Click outside handlers for all dropdown menus
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (shapesMenuRef.current && !shapesMenuRef.current.contains(event.target as Node)) {
+        setIsShapesMenuOpen(false);
+      }
+      if (editMenuRef.current && !editMenuRef.current.contains(event.target as Node)) {
+        setIsEditMenuOpen(false);
+      }
+      if (toolsMenuRef.current && !toolsMenuRef.current.contains(event.target as Node)) {
+        setIsToolsMenuOpen(false);
+      }
+      if (professionalMenuRef.current && !professionalMenuRef.current.contains(event.target as Node)) {
+        setIsProfessionalMenuOpen(false);
+      }
+    };
+
+    if (isShapesMenuOpen || isEditMenuOpen || isToolsMenuOpen || isProfessionalMenuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isShapesMenuOpen, isEditMenuOpen, isToolsMenuOpen, isProfessionalMenuOpen]);
 
   // Export functionality
   const handleExport = async (options: ExportOptions) => {
@@ -201,161 +238,240 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
       <div className="flex items-center gap-4">
         <h1 className="text-xl font-bold text-gray-900">CollabCanvas</h1>
         
-        {/* Shape Creation Buttons */}
+        {/* Four Dropdown Menus - Always Visible */}
         <div className="flex items-center gap-2">
-          {shapeButtons.map(({ type, label, icon }) => (
+          
+          {/* Shapes Dropdown */}
+          <div className="relative" ref={shapesMenuRef}>
             <button
-              key={type}
-              onClick={() => handleCreateShape(type)}
-              disabled={!currentUser}
-              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-              title={`Create a new ${label.toLowerCase()}`}
+              onClick={() => setIsShapesMenuOpen(!isShapesMenuOpen)}
+              className="flex items-center gap-2 rounded-lg bg-blue-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              title="Create shapes"
             >
-              {icon}
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Separator */}
-        <div className="h-6 w-px bg-gray-300"></div>
-
-        {/* Edit Actions */}
-        <div className="flex items-center gap-2">
-          {/* Undo Button */}
-          <button
-            onClick={undo}
-            disabled={!canUndo() || !currentUser}
-            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Undo (Cmd+Z)"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
-            </svg>
-            Undo
-          </button>
-
-          {/* Redo Button */}
-          <button
-            onClick={redo}
-            disabled={!canRedo() || !currentUser}
-            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Redo (Cmd+Shift+Z)"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
-            </svg>
-            Redo
-          </button>
-        </div>
-
-        {/* Separator */}
-        <div className="h-6 w-px bg-gray-300"></div>
-
-        {/* Export Actions */}
-        <div className="flex items-center gap-2">
-          {/* Export Button */}
-          <button
-            onClick={() => setIsExportDialogOpen(true)}
-            disabled={!currentUser || !stageRef}
-            className="flex items-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-green-700 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
-            title="Export Canvas (Cmd+E)"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-            </svg>
-            Export
-          </button>
-
-          {/* AI Assistant Button */}
-          <button
-            onClick={() => setIsAIAssistantOpen(true)}
-            disabled={!currentUser}
-            className={`flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium shadow-sm transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed ${
-              isProcessingAICommand || (commandQueue && commandQueue.length > 0)
-                ? 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500'
-                : 'bg-purple-600 text-white hover:bg-purple-700 focus:ring-purple-500'
-            }`}
-            title="AI Assistant - Natural language commands"
-          >
-            {isProcessingAICommand ? (
-              <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-            ) : (
               <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4" />
               </svg>
-            )}
-          AI Assistant
-          {commandQueue && commandQueue.length > 0 && (
-            <span className="ml-1 px-1.5 py-0.5 text-xs bg-white text-purple-600 rounded-full">
-              {commandQueue.length}
-            </span>
-          )}
-          </button>
+              Shapes
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
 
-          {/* Shortcuts Help Button */}
-          <button
-            onClick={() => setIsShortcutsHelpOpen(true)}
-            className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
-            title="Show Keyboard Shortcuts (Cmd+/)"
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-            Help
-          </button>
+            {isShapesMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="py-2">
+                  {shapeButtons.map(({ type, label, icon }) => (
+                    <button
+                      key={type}
+                      onClick={() => {
+                        handleCreateShape(type);
+                        setIsShapesMenuOpen(false);
+                      }}
+                      disabled={!currentUser}
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {icon}
+                      Create {label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Edit Dropdown */}
+          <div className="relative" ref={editMenuRef}>
+            <button
+              onClick={() => setIsEditMenuOpen(!isEditMenuOpen)}
+              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Edit actions"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+              </svg>
+              Edit
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isEditMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-40 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="py-2">
+                  <button
+                    onClick={() => {
+                      undo();
+                      setIsEditMenuOpen(false);
+                    }}
+                    disabled={!canUndo() || !currentUser}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
+                    </svg>
+                    Undo
+                  </button>
+                  <button
+                    onClick={() => {
+                      redo();
+                      setIsEditMenuOpen(false);
+                    }}
+                    disabled={!canRedo() || !currentUser}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 10H11a8 8 0 00-8 8v2m18-10l-6 6m6-6l-6-6" />
+                    </svg>
+                    Redo
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tools Dropdown (includes AI) */}
+          <div className="relative" ref={toolsMenuRef}>
+            <button
+              onClick={() => setIsToolsMenuOpen(!isToolsMenuOpen)}
+              className="flex items-center gap-2 rounded-lg bg-purple-600 px-3 py-2 text-sm font-medium text-white shadow-sm transition-colors hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2"
+              title="Tools and AI Assistant"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z" />
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+              </svg>
+              Tools
+              {commandQueue && commandQueue.length > 0 && (
+                <span className="ml-1 px-1.5 py-0.5 text-xs bg-white text-purple-600 rounded-full">
+                  {commandQueue.length}
+                </span>
+              )}
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isToolsMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="py-2">
+                  <button
+                    onClick={() => {
+                      setIsAIAssistantOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    disabled={!currentUser}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isProcessingAICommand ? (
+                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-gray-700"></div>
+                    ) : (
+                      <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                      </svg>
+                    )}
+                    AI Assistant
+                    {commandQueue && commandQueue.length > 0 && (
+                      <span className="ml-auto px-1.5 py-0.5 text-xs bg-purple-100 text-purple-600 rounded-full">
+                        {commandQueue.length}
+                      </span>
+                    )}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsExportDialogOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    disabled={!currentUser || !stageRef}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    Export Canvas
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsShortcutsHelpOpen(true);
+                      setIsToolsMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                    </svg>
+                    Help & Shortcuts
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Advanced Dropdown */}
+          <div className="relative" ref={professionalMenuRef}>
+            <button
+              onClick={() => setIsProfessionalMenuOpen(!isProfessionalMenuOpen)}
+              className="flex items-center gap-2 rounded-lg bg-gray-100 px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              title="Advanced tools"
+            >
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              Advanced
+              <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+
+            {isProfessionalMenuOpen && (
+              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+                <div className="py-2">
+                  <button
+                    onClick={() => {
+                      if (onToggleLayers) onToggleLayers();
+                      setIsProfessionalMenuOpen(false);
+                    }}
+                    disabled={!onToggleLayers}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
+                    </svg>
+                    Layers Panel
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (onToggleAlignment) onToggleAlignment();
+                      setIsProfessionalMenuOpen(false);
+                    }}
+                    disabled={!onToggleAlignment}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                    </svg>
+                    Alignment Toolbar
+                  </button>
+                  <button
+                    onClick={() => {
+                      toggleGrid();
+                      if (onToggleGrid) onToggleGrid();
+                      setIsProfessionalMenuOpen(false);
+                    }}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
+                    </svg>
+                    {gridState.isVisible ? 'Hide Grid' : 'Show Grid'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
         </div>
 
         {children}
-
-        {/* Professional Tools */}
-        <div className="flex items-center gap-2 border-l border-gray-200 pl-4">
-          <button
-            onClick={onToggleLayers}
-            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              onToggleLayers ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-            }`}
-            title="Toggle Layers Panel"
-            disabled={!onToggleLayers}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 10h16M4 14h16M4 18h16" />
-            </svg>
-            Layers
-          </button>
-
-          <button
-            onClick={onToggleAlignment}
-            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              onToggleAlignment ? 'bg-gray-100 text-gray-700 hover:bg-gray-200' : 'bg-gray-50 text-gray-400 cursor-not-allowed'
-            }`}
-            title="Toggle Alignment Toolbar"
-            disabled={!onToggleAlignment}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
-            </svg>
-            Align
-          </button>
-
-          <button
-            onClick={() => {
-              toggleGrid();
-              if (onToggleGrid) onToggleGrid();
-            }}
-            className={`flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
-              gridState.isVisible 
-                ? 'bg-blue-100 text-blue-700 hover:bg-blue-200' 
-                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-            }`}
-            title={`${gridState.isVisible ? 'Hide' : 'Show'} Grid`}
-          >
-            <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z" />
-            </svg>
-            Grid
-          </button>
-        </div>
       </div>
       <div className="flex items-center gap-6">
         {/* Connection Status */}
