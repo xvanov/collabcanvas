@@ -49,10 +49,20 @@ describe('Toolbar', () => {
         opacity: 0.5,
       },
       toggleGrid: vi.fn(),
+      canvasScale: {
+        backgroundImage: null,
+        scaleLine: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     };
     
-    mockUseCanvasStore.mockImplementation((selector: (state: unknown) => unknown) => {
-      return selector(mockState);
+    mockUseCanvasStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+      if (selector) {
+        return selector(mockState);
+      }
+      // If no selector provided, return the mock state directly
+      return mockState;
     });
     
     // Add getState method to the mock
@@ -249,10 +259,20 @@ describe('Toolbar', () => {
         opacity: 0.5,
       },
       toggleGrid: vi.fn(),
+      canvasScale: {
+        backgroundImage: null,
+        scaleLine: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      },
     };
     
-    mockUseCanvasStore.mockImplementation((selector: (state: unknown) => unknown) => {
-      return selector(mockState);
+    mockUseCanvasStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+      if (selector) {
+        return selector(mockState);
+      }
+      // If no selector provided, return the mock state directly
+      return mockState;
     });
     
     render(<Toolbar fps={60} zoom={1} />);
@@ -291,8 +311,12 @@ describe('Toolbar', () => {
       toggleGrid: mockToggleGrid,
     };
     
-    mockUseCanvasStore.mockImplementation((selector: (state: unknown) => unknown) => {
-      return selector(mockState);
+    mockUseCanvasStore.mockImplementation((selector?: (state: unknown) => unknown) => {
+      if (selector) {
+        return selector(mockState);
+      }
+      // If no selector provided, return the mock state directly
+      return mockState;
     });
     
     render(<Toolbar fps={60} zoom={1} />);
