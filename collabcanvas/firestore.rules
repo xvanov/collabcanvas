@@ -2,81 +2,86 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // Global board shapes collection
-    match /boards/{boardId}/shapes/{shapeId} {
-      // Auth required for all operations
-      allow read: if request.auth != null;
+    // Board document - allow authenticated users to create/read/update
+    match /boards/{boardId} {
+      allow read, write: if request.auth != null;
       
-      // Create: Validate shape schema and auth
-      allow create: if request.auth != null
-        // Validate shape type
-        && request.resource.data.type in ['rect', 'circle', 'text', 'line']
-        // Validate position fields are numbers
-        && request.resource.data.x is number
-        && request.resource.data.y is number
-        && request.resource.data.w is number
-        && request.resource.data.h is number
-        // Validate color is string
-        && request.resource.data.color is string
-        // Validate metadata
-        && request.resource.data.createdBy == request.auth.uid
-        && request.resource.data.updatedBy == request.auth.uid
-        // Ensure server timestamps are used
-        && request.resource.data.createdAt is timestamp
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.clientUpdatedAt is number
-        // Validate layerId is string (optional)
-        && (request.resource.data.layerId == null || request.resource.data.layerId is string)
-        // Validate type-specific properties
-        && (request.resource.data.type == 'rect' 
-            || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
-            || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
-            || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+      // Global board shapes collection
+      match /shapes/{shapeId} {
+        // Auth required for all operations
+        allow read: if request.auth != null;
+        
+        // Create: Validate shape schema and auth
+        allow create: if request.auth != null
+          // Validate shape type
+          && request.resource.data.type in ['rect', 'circle', 'text', 'line']
+          // Validate position fields are numbers
+          && request.resource.data.x is number
+          && request.resource.data.y is number
+          && request.resource.data.w is number
+          && request.resource.data.h is number
+          // Validate color is string
+          && request.resource.data.color is string
+          // Validate metadata
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.updatedBy == request.auth.uid
+          // Ensure server timestamps are used
+          && request.resource.data.createdAt is timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.clientUpdatedAt is number
+          // Validate layerId is string (optional)
+          && (request.resource.data.layerId == null || request.resource.data.layerId is string)
+          // Validate type-specific properties
+          && (request.resource.data.type == 'rect' 
+              || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
+              || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
+              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+        
+        // Update: Allow position and property updates by authenticated user
+        allow update: if request.auth != null
+          // Only the user who last updated can update again
+          && request.resource.data.updatedBy == request.auth.uid
+          // Validate that core fields don't change
+          && request.resource.data.type == resource.data.type
+          && request.resource.data.createdBy == resource.data.createdBy
+          && request.resource.data.createdAt == resource.data.createdAt
+          // Validate position fields
+          && request.resource.data.x is number
+          && request.resource.data.y is number
+          && request.resource.data.w is number
+          && request.resource.data.h is number
+          // Validate color is string
+          && request.resource.data.color is string
+          // Validate updatedAt timestamp
+          && request.resource.data.updatedAt is timestamp
+          && request.resource.data.clientUpdatedAt is number
+          // Validate type-specific properties remain valid
+          && (request.resource.data.type == 'rect' 
+              || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
+              || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
+              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+        
+        // Delete: Allow authenticated users to delete shapes
+        allow delete: if request.auth != null;
+      }
       
-      // Update: Allow position and property updates by authenticated user
-      allow update: if request.auth != null
-        // Only the user who last updated can update again
-        && request.resource.data.updatedBy == request.auth.uid
-        // Validate that core fields don't change
-        && request.resource.data.type == resource.data.type
-        && request.resource.data.createdBy == resource.data.createdBy
-        && request.resource.data.createdAt == resource.data.createdAt
-        // Validate position fields
-        && request.resource.data.x is number
-        && request.resource.data.y is number
-        && request.resource.data.w is number
-        && request.resource.data.h is number
-        // Validate color is string
-        && request.resource.data.color is string
-        // Validate updatedAt timestamp
-        && request.resource.data.updatedAt is timestamp
-        && request.resource.data.clientUpdatedAt is number
-        // Validate type-specific properties remain valid
-        && (request.resource.data.type == 'rect' 
-            || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
-            || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
-            || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
-      
-      // Delete: Allow authenticated users to delete shapes
-      allow delete: if request.auth != null;
-    }
-    
-    // Global board layers collection
-    match /boards/{boardId}/layers/{layerId} {
-      // Auth required for all operations
-      allow read: if request.auth != null;
-      
-      // Create: Basic validation
-      allow create: if request.auth != null
-        && request.resource.data.name is string
-        && request.resource.data.createdBy == request.auth.uid;
-      
-      // Update: Basic validation
-      allow update: if request.auth != null
-        && request.resource.data.updatedBy == request.auth.uid;
-      
-      // Delete: Allow authenticated users to delete layers
-      allow delete: if request.auth != null;
+      // Global board layers collection
+      match /layers/{layerId} {
+        // Auth required for all operations
+        allow read: if request.auth != null;
+        
+        // Create: Basic validation
+        allow create: if request.auth != null
+          && request.resource.data.name is string
+          && request.resource.data.createdBy == request.auth.uid;
+        
+        // Update: Basic validation
+        allow update: if request.auth != null
+          && request.resource.data.updatedBy == request.auth.uid;
+        
+        // Delete: Allow authenticated users to delete layers
+        allow delete: if request.auth != null;
+      }
     }
     
     // Deny all other paths

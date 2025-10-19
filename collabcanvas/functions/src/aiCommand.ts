@@ -11,6 +11,14 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
+// CORS configuration
+const corsOptions = {
+  origin: true, // Allow all origins in production, or specify your domain
+  methods: ['GET', 'POST', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  credentials: true,
+};
+
 // Define command schema using Zod
 const CommandSchema = z.object({
   type: z.enum(['CREATE', 'MOVE', 'RESIZE', 'ROTATE', 'DELETE', 'ALIGN', 'EXPORT', 'LAYER', 'COLOR', 'DUPLICATE']),
@@ -140,7 +148,9 @@ Return ONLY the JSON, no other text.`;
   }
 }
 
-export const aiCommand = onCall(async (request) => {
+export const aiCommand = onCall({
+  cors: corsOptions,
+}, async (request) => {
   try {
     const { commandText, userId } = request.data;
     

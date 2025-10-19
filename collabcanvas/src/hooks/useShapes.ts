@@ -418,7 +418,10 @@ export function useShapes() {
   const reloadShapesFromFirestore = useCallback(async () => {
     if (!userIdRef.current) return;
 
-    console.log('🔄 Reloading all shapes from Firestore...');
+    // Only log in development or when explicitly debugging
+    if (import.meta.env.DEV) {
+      console.log('🔄 Reloading all shapes from Firestore...');
+    }
     
     try {
       // Set up a one-time listener to get all current shapes

@@ -161,7 +161,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           
           // Also sync the restored shape to Firestore so other clients know about it
           try {
-            await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentUser.uid);
+            await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentUser.uid, shape.layerId);
             console.log(`✅ Synced restored shape ${action.shapeId} to Firestore`);
           } catch (error) {
             console.error(`❌ Failed to sync restored shape ${action.shapeId} to Firestore:`, error);
@@ -174,6 +174,14 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           const newShapes = new Map(state.shapes);
           newShapes.delete(action.shapeId);
           set({ shapes: newShapes });
+          
+          // Also delete from Firestore to ensure sync
+          try {
+            await deleteShapeInFirestore(action.shapeId);
+            console.log(`✅ Synced deleted shape ${action.shapeId} to Firestore`);
+          } catch (error) {
+            console.error(`❌ Failed to sync deleted shape ${action.shapeId} to Firestore:`, error);
+          }
         }
         break;
         
@@ -352,7 +360,11 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     const currentState = get();
     set((state) => {
       const newShapes = new Map(state.shapes);
-      const shapeWithLayer = { ...shape, layerId: shape.layerId || state.activeLayerId };
+      // Ensure shape has a layerId - use activeLayerId if not provided
+      const shapeWithLayer = { 
+        ...shape, 
+        layerId: shape.layerId || state.activeLayerId || 'default-layer' 
+      };
       newShapes.set(shape.id, shapeWithLayer);
         
         // Push create action to history
@@ -363,7 +375,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         
         // Add shape to active layer
         const updatedLayers = state.layers.map(layer => 
-          layer.id === state.activeLayerId 
+          layer.id === (shapeWithLayer.layerId || state.activeLayerId)
             ? { ...layer, shapes: [...layer.shapes, shape.id] }
             : layer
         );
@@ -378,7 +390,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     // Also save to Firestore
     if (currentState.currentUser) {
       import('../services/firestore').then(({ createShape: createShapeInFirestore }) => {
-        const layerId = shape.layerId || currentState.activeLayerId;
+        const layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
         createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, currentState.currentUser!.uid, layerId)
           .catch((error: unknown) => {
             console.error('❌ Failed to create shape in Firestore:', error);
@@ -885,7 +897,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     })),
   
   setActiveLayer: (id: string) =>
-    set(() => ({ activeLayerId: id })),
+    set((state) => {
+      // Don't update if already set to avoid sync loops
+      if (state.activeLayerId === id) return state;
+      
+      // Update local state
+      const newState = { activeLayerId: id };
+      
+      // Sync to Firestore
+      if (state.currentUser) {
+        import('../services/firestore').then(({ updateActiveLayerId }) => {
+          updateActiveLayerId(id, state.currentUser!.uid)
+            .catch((error: unknown) => {
+              console.error('❌ Failed to update active layer in Firestore:', error);
+            });
+        });
+      }
+      
+      return newState;
+    }),
   
   setLayers: (layers: Layer[]) =>
     set(() => ({ layers })),
@@ -903,17 +933,24 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       
       const updatedShapes = new Map(state.shapes);
       
-      // Calculate alignment bounds
-      const bounds = selectedShapes.reduce((acc, shape) => {
-        const right = shape.x + shape.w;
-        const bottom = shape.y + shape.h;
+      // Helper function to calculate shape center
+      const getShapeCenter = (shape: Shape) => {
         return {
-          left: Math.min(acc.left, shape.x),
-          right: Math.max(acc.right, right),
-          top: Math.min(acc.top, shape.y),
-          bottom: Math.max(acc.bottom, bottom),
-          width: Math.max(acc.right, right) - Math.min(acc.left, shape.x),
-          height: Math.max(acc.bottom, bottom) - Math.min(acc.top, shape.y),
+          centerX: shape.x + shape.w / 2,
+          centerY: shape.y + shape.h / 2,
+        };
+      };
+      
+      // Calculate alignment bounds based on centers
+      const centers = selectedShapes.map(getShapeCenter);
+      const bounds = centers.reduce((acc, center) => {
+        return {
+          left: Math.min(acc.left, center.centerX),
+          right: Math.max(acc.right, center.centerX),
+          top: Math.min(acc.top, center.centerY),
+          bottom: Math.max(acc.bottom, center.centerY),
+          width: Math.max(acc.right, center.centerX) - Math.min(acc.left, center.centerX),
+          height: Math.max(acc.bottom, center.centerY) - Math.min(acc.top, center.centerY),
         };
       }, {
         left: Infinity,
@@ -924,31 +961,36 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         height: 0,
       });
       
-      // Apply alignment
+      // Apply alignment based on centers
       selectedShapes.forEach(shape => {
-        let newX = shape.x;
-        let newY = shape.y;
+        const center = getShapeCenter(shape);
+        let newCenterX = center.centerX;
+        let newCenterY = center.centerY;
         
         switch (alignment) {
           case 'left':
-            newX = bounds.left;
+            newCenterX = bounds.left;
             break;
           case 'center':
-            newX = bounds.left + (bounds.width - shape.w) / 2;
+            newCenterX = bounds.left + bounds.width / 2;
             break;
           case 'right':
-            newX = bounds.right - shape.w;
+            newCenterX = bounds.right;
             break;
           case 'top':
-            newY = bounds.top;
+            newCenterY = bounds.top;
             break;
           case 'middle':
-            newY = bounds.top + (bounds.height - shape.h) / 2;
+            newCenterY = bounds.top + bounds.height / 2;
             break;
           case 'bottom':
-            newY = bounds.bottom - shape.h;
+            newCenterY = bounds.bottom;
             break;
         }
+        
+        // Convert center back to top-left coordinates
+        const newX = newCenterX - shape.w / 2;
+        const newY = newCenterY - shape.h / 2;
         
         if (newX !== shape.x || newY !== shape.y) {
           updatedShapes.set(shape.id, { ...shape, x: newX, y: newY });
