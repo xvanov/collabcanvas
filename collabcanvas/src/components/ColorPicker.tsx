@@ -9,6 +9,7 @@ interface ColorPickerProps {
   currentColor: string;
   onColorChange: (color: string) => void;
   disabled?: boolean;
+  swatchOnly?: boolean; // render just a small color swatch without text
 }
 
 const PRESET_COLORS = [
@@ -26,7 +27,7 @@ const PRESET_COLORS = [
   '#FFFFFF', // White
 ];
 
-export function ColorPicker({ currentColor, onColorChange, disabled = false }: ColorPickerProps) {
+export function ColorPicker({ currentColor, onColorChange, disabled = false, swatchOnly = false }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleColorSelect = (color: string) => {
@@ -40,14 +41,16 @@ export function ColorPicker({ currentColor, onColorChange, disabled = false }: C
       <button
         onClick={() => setIsOpen(!isOpen)}
         disabled={disabled}
-        className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={swatchOnly
+          ? "flex items-center rounded border border-gray-300 bg-white p-1 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          : "flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"}
         title="Change color"
       >
         <div
-          className="h-4 w-4 rounded border border-gray-300"
+          className={swatchOnly ? "h-4 w-4 rounded border border-gray-300" : "h-4 w-4 rounded border border-gray-300"}
           style={{ backgroundColor: currentColor }}
         />
-        Color
+        {!swatchOnly && 'Color'}
       </button>
 
       {isOpen && (

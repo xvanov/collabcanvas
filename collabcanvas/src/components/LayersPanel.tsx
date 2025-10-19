@@ -280,7 +280,30 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
 
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">{layer.name}</span>
+                        <input
+                          className="text-sm font-medium text-gray-900 bg-transparent border-b border-transparent focus:border-blue-400 focus:outline-none"
+                          value={layer.name}
+                          onChange={(e) => {
+                            const name = e.target.value;
+                            updateLayerInStore(layer.id, { name });
+                          }}
+                          onBlur={(e) => {
+                            const name = e.target.value.trim();
+                            if (name && name !== layer.name) {
+                              updateLayer(layer.id, { name });
+                            }
+                          }}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') {
+                              (e.target as HTMLInputElement).blur();
+                            }
+                            if (e.key === 'Escape') {
+                              // revert to current layer.name
+                              (e.target as HTMLInputElement).value = layer.name;
+                              (e.target as HTMLInputElement).blur();
+                            }
+                          }}
+                        />
                         <span className="text-xs text-gray-500">({shapesInLayer.length})</span>
                       </div>
                       {/* Layer totals */}
@@ -297,14 +320,14 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <ColorPicker
                       currentColor={layer.color || '#3B82F6'}
                       onColorChange={(c) => {
-                        // Route through hook updater to persist to Firestore and local store
                         updateLayerInStore(layer.id, { color: c });
                         updateLayer(layer.id, { color: c });
                       }}
+                      swatchOnly
                     />
                     {layer.id !== 'default-layer' && (
                       <button
