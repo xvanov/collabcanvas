@@ -7,6 +7,14 @@ import React, { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import { useLayers } from '../hooks/useLayers';
 import { ColorPicker } from './ColorPicker';
+import { 
+  calculatePolylineLength, 
+  calculatePolygonArea, 
+  convertToRealWorld, 
+  convertAreaToRealWorld,
+  formatMeasurement 
+} from '../services/measurementService';
+import { flatPointsToPoints } from '../services/shapeService';
 
 interface LayersPanelProps {
   isVisible: boolean;
@@ -23,16 +31,73 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
     reorderLayers,
     toggleLayerVisibility,
     toggleLayerLock,
+    updateLayer: updateLayerInStore,
+    canvasScale,
   } = useCanvasStore();
   
   const {
     createLayer,
+    updateLayer,
     deleteLayer,
   } = useLayers();
 
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [newLayerName, setNewLayerName] = useState('');
   const [isCreatingLayer, setIsCreatingLayer] = useState(false);
+
+  // Helper function to get measurement for a shape
+  const getShapeMeasurement = (shape: { type: string; points?: number[] }) => {
+    if (!canvasScale.scaleLine) return null;
+    
+    if (shape.type === 'polyline' && shape.points && shape.points.length >= 4) {
+      const points = flatPointsToPoints(shape.points);
+      const pixelLength = calculatePolylineLength(points);
+      const realLength = convertToRealWorld(pixelLength, canvasScale);
+      return realLength !== null ? formatMeasurement(realLength, canvasScale.scaleLine.unit) : null;
+    }
+    
+    if (shape.type === 'polygon' && shape.points && shape.points.length >= 6) {
+      const points = flatPointsToPoints(shape.points);
+      const pixelArea = calculatePolygonArea(points);
+      const realArea = convertAreaToRealWorld(pixelArea, canvasScale);
+      return realArea !== null ? formatMeasurement(realArea, canvasScale.scaleLine.unit, true) : null;
+    }
+    
+    return null;
+  };
+
+  // Helper function to calculate layer totals
+  const getLayerTotals = (layerShapes: Array<{ type: string; points?: number[] }>) => {
+    if (!canvasScale.scaleLine) return null;
+    
+    let totalLength = 0;
+    let totalArea = 0;
+    let hasPolylines = false;
+    let hasPolygons = false;
+    
+    layerShapes.forEach(shape => {
+      if (shape.type === 'polyline' && shape.points && shape.points.length >= 4) {
+        hasPolylines = true;
+        const points = flatPointsToPoints(shape.points);
+        const pixelLength = calculatePolylineLength(points);
+        const realLength = convertToRealWorld(pixelLength, canvasScale);
+        if (realLength !== null) totalLength += realLength;
+      }
+      
+      if (shape.type === 'polygon' && shape.points && shape.points.length >= 6) {
+        hasPolygons = true;
+        const points = flatPointsToPoints(shape.points);
+        const pixelArea = calculatePolygonArea(points);
+        const realArea = convertAreaToRealWorld(pixelArea, canvasScale);
+        if (realArea !== null) totalArea += realArea;
+      }
+    });
+    
+    return {
+      totalLength: hasPolylines ? formatMeasurement(totalLength, canvasScale.scaleLine.unit) : null,
+      totalArea: hasPolygons ? formatMeasurement(totalArea, canvasScale.scaleLine.unit, true) : null,
+    };
+  };
 
   if (!isVisible) return null;
 
@@ -181,7 +246,7 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                 } ${draggedLayerId === layer.id ? 'opacity-50' : ''}`}
               >
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-1">
                     <button
                       onClick={() => toggleLayerVisibility(layer.id)}
                       className="text-gray-400 hover:text-gray-600"
@@ -213,15 +278,31 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                       )}
                     </button>
 
-                    <span className="text-sm font-medium text-gray-900">{layer.name}</span>
-                    <span className="text-xs text-gray-500">({shapesInLayer.length})</span>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-medium text-gray-900">{layer.name}</span>
+                        <span className="text-xs text-gray-500">({shapesInLayer.length})</span>
+                      </div>
+                      {/* Layer totals */}
+                      {(() => {
+                        const totals = getLayerTotals(shapesInLayer);
+                        if (!totals) return null;
+                        return (
+                          <div className="text-xs text-gray-600 mt-0.5 font-mono">
+                            {totals.totalLength && <div>📏 Total: {totals.totalLength}</div>}
+                            {totals.totalArea && <div>📐 Total: {totals.totalArea}</div>}
+                          </div>
+                        );
+                      })()}
+                    </div>
                   </div>
 
                   <div className="flex items-center gap-2">
                     <ColorPicker
-                      currentColor={(layer as any).color || '#3B82F6'}
+                      currentColor={layer.color || '#3B82F6'}
                       onColorChange={(c) => {
                         // Route through hook updater to persist to Firestore and local store
+                        updateLayerInStore(layer.id, { color: c });
                         updateLayer(layer.id, { color: c });
                       }}
                     />
@@ -241,18 +322,28 @@ export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
                 {/* Shapes in layer */}
                 {shapesInLayer.length > 0 && (
                   <div className="mt-2 ml-6 space-y-1">
-                    {shapesInLayer.map((shape) => (
-                      <div
-                        key={shape.id}
-                        className={`text-xs p-1 rounded ${
-                          selectedShapeIds.includes(shape.id) 
-                            ? 'bg-blue-100 text-blue-800' 
-                            : 'text-gray-600 hover:bg-gray-100'
-                        }`}
-                      >
-                        {shape.type} ({shape.id.slice(-4)})
-                      </div>
-                    ))}
+                    {shapesInLayer.map((shape) => {
+                      const measurement = getShapeMeasurement(shape);
+                      return (
+                        <div
+                          key={shape.id}
+                          className={`text-xs p-1 rounded ${
+                            selectedShapeIds.includes(shape.id) 
+                              ? 'bg-blue-100 text-blue-800' 
+                              : 'text-gray-600 hover:bg-gray-100'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span>{shape.type} ({shape.id.slice(-4)})</span>
+                            {measurement && (
+                              <span className="font-mono text-xs ml-2 text-gray-500">
+                                {measurement}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
                   </div>
                 )}
               </div>

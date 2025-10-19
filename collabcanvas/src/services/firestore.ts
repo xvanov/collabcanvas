@@ -12,7 +12,7 @@ import {
 } from 'firebase/firestore';
 import type { Unsubscribe, FieldValue } from 'firebase/firestore';
 import { firestore } from './firebase';
-import type { ShapeType } from '../types';
+import type { ShapeType, Shape } from '../types';
 
 // Collection reference for the global board
 const BOARD_ID = 'global';
@@ -116,7 +116,8 @@ export const createShape = async (
   x: number,
   y: number,
   userId: string,
-  layerId?: string
+  layerId?: string,
+  additionalProps?: Partial<Shape>
 ): Promise<void> => {
   const shapeRef = doc(shapesCollection, shapeId);
   
@@ -124,9 +125,9 @@ export const createShape = async (
     type: shapeType,
     x,
     y,
-    w: 100,
-    h: 100,
-    color: '#3B82F6',
+    w: additionalProps?.w ?? 100,
+    h: additionalProps?.h ?? 100,
+    color: additionalProps?.color ?? '#3B82F6',
     createdAt: serverTimestamp(),
     createdBy: userId,
     updatedAt: serverTimestamp(),
@@ -141,24 +142,38 @@ export const createShape = async (
     case 'circle':
       shapeData = {
         ...baseShapeData,
-        radius: 50,
+        radius: additionalProps?.radius ?? 50,
       };
       break;
     case 'text':
       shapeData = {
         ...baseShapeData,
-        text: '',
-        fontSize: 16,
-        w: 200,
-        h: 50,
+        text: additionalProps?.text ?? '',
+        fontSize: additionalProps?.fontSize ?? 16,
+        w: additionalProps?.w ?? 200,
+        h: additionalProps?.h ?? 50,
       };
       break;
     case 'line':
       shapeData = {
         ...baseShapeData,
-        strokeWidth: 2,
-        points: [0, 0, 100, 0],
-        h: 0,
+        strokeWidth: additionalProps?.strokeWidth ?? 2,
+        points: additionalProps?.points ?? [0, 0, 100, 0],
+        h: additionalProps?.h ?? 0,
+      };
+      break;
+    case 'polyline':
+      shapeData = {
+        ...baseShapeData,
+        strokeWidth: additionalProps?.strokeWidth ?? 2,
+        points: additionalProps?.points ?? [0, 0, 100, 0],
+      };
+      break;
+    case 'polygon':
+      shapeData = {
+        ...baseShapeData,
+        strokeWidth: additionalProps?.strokeWidth ?? 2,
+        points: additionalProps?.points ?? [0, 0, 100, 0, 50, 100],
       };
       break;
     default: // rect

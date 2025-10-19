@@ -37,8 +37,8 @@ describe('LayersPanel - Color control (PR-3)', () => {
     fireEvent.click(preset);
 
     // Verify store updated
-    const layer = useCanvasStore.getState().layers[0] as any;
-    expect(layer['color']).toBe('#EF4444');
+    const layer = useCanvasStore.getState().layers[0];
+    expect(layer.color).toBe('#EF4444');
   });
 });
 

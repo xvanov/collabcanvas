@@ -32,7 +32,7 @@ function convertFirestoreLayer(firestoreLayer: FirestoreLayer): Layer {
     visible: firestoreLayer.visible,
     locked: firestoreLayer.locked,
     order: firestoreLayer.order,
-    color: (firestoreLayer as any).color || '#3B82F6',
+    color: firestoreLayer.color || '#3B82F6',
   };
 }
 

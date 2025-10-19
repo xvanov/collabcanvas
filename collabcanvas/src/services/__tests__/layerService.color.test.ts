@@ -2,14 +2,14 @@ import { describe, it, expect } from 'vitest';
 import { layerService } from '../layerService';
 import type { Layer, Shape } from '../../types';
 
-const makeLayer = (id: string, name: string, color?: string): Layer & { color?: string } => ({
+const makeLayer = (id: string, name: string, color?: string): Layer => ({
   id,
   name,
   shapes: [],
   visible: true,
   locked: false,
   order: 0,
-  ...(color ? { color } : {}),
+  color,
 });
 
 const makeShape = (id: string, layerId: string, color: string): Shape => ({
@@ -31,8 +31,8 @@ const makeShape = (id: string, layerId: string, color: string): Shape => ({
 describe('layerService - color behavior (PR-3)', () => {
   it('updateLayer supports color change', () => {
     const layers = [makeLayer('l1', 'Layer 1', '#111111')];
-    const updated = layerService.updateLayer('l1', { color: '#222222' } as any, layers) as Array<any>;
-    expect(updated[0].color).toBe('#222222');
+    const updated = layerService.updateLayer('l1', { color: '#222222' }, layers);
+    expect((updated[0] as Layer).color).toBe('#222222');
   });
 
   it('moveShapeToLayer updates shape.layerId and expects color to match target layer (PR-3 responsibility)', () => {
@@ -41,8 +41,8 @@ describe('layerService - color behavior (PR-3)', () => {
     const shapes = new Map<string, Shape>();
     shapes.set('s1', makeShape('s1', 'l1', '#111111'));
 
-    const { layers: newLayers, shapes: newShapes } = layerService.moveShapeToLayer('s1', 'l2', layers, shapes);
-    const moved = newShapes.get('s1') as any;
+    const { shapes: newShapes } = layerService.moveShapeToLayer('s1', 'l2', layers, shapes);
+    const moved = newShapes.get('s1');
     expect(moved.layerId).toBe('l2');
     // Expect PR-3 to also ensure color alignment to target layer color elsewhere in the pipeline
   });
@@ -60,8 +60,8 @@ describe('layerService - color behavior (PR-3)', () => {
     const ldef = newLayers.find(l => l.id === 'default-layer')!;
     expect(ldef.shapes).toContain('s1');
     expect(ldef.shapes).toContain('s2');
-    const s1 = newShapes.get('s1') as any;
-    const s2 = newShapes.get('s2') as any;
+    const s1 = newShapes.get('s1');
+    const s2 = newShapes.get('s2');
     // Expect PR-3 higher-level logic to update colors to default color when reassigned
     expect(s1.layerId).toBe('default-layer');
     expect(s2.layerId).toBe('default-layer');
