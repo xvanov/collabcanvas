@@ -33,6 +33,7 @@ export function Board() {
   useLayers(); // Initialize layer synchronization
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
+  const initializeBoardStateSubscription = useCanvasStore((state) => state.initializeBoardStateSubscription);
   const canvasRef = useRef<{ getViewportCenter: () => { x: number; y: number }; getStage: () => Konva.Stage | null } | null>(null);
   const showDiagnosticsDefault = useMemo(() => {
     if (typeof window === 'undefined') return perfMetrics.enabled;
@@ -62,11 +63,14 @@ export function Board() {
         
         // Clear stale locks on reconnection
         clearStaleLocks();
+        
+        // Initialize board state subscription (background image, scale line)
+        initializeBoardStateSubscription();
       }, 1000); // 1 second debounce
       
       return () => clearTimeout(timeoutId);
     }
-  }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks]);
+  }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks, initializeBoardStateSubscription]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;

@@ -20,6 +20,7 @@ import {
   setPresence, 
   updateCursor
 } from './rtdb';
+import type { ShapeType } from '../types';
 
 /**
  * Queued update types
@@ -27,7 +28,7 @@ import {
 export interface QueuedCreateShape {
   type: 'createShape';
   shapeId: string;
-  shapeType: 'rect' | 'circle' | 'text' | 'line';
+  shapeType: ShapeType;
   x: number;
   y: number;
   userId: string;
@@ -183,7 +184,7 @@ class OfflineManager {
   /**
    * Queue a shape creation for later sync
    */
-  public queueCreateShape(shapeId: string, shapeType: 'rect' | 'circle' | 'text' | 'line', x: number, y: number, userId: string, layerId?: string): void {
+  public queueCreateShape(shapeId: string, shapeType: ShapeType, x: number, y: number, userId: string, layerId?: string): void {
     const update: QueuedCreateShape = {
       type: 'createShape',
       shapeId,
