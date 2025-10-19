@@ -15,6 +15,8 @@ import { AICommandInput } from './AICommandInput';
 import { AIClarificationDialog } from './AIClarificationDialog';
 import { FileUpload } from './FileUpload';
 import { ScaleTool } from './ScaleTool';
+import { MaterialDialogueBox } from './MaterialDialogueBox';
+import { MaterialEstimationPanel } from './MaterialEstimationPanel';
 
 interface ToolbarProps {
   children?: React.ReactNode;
@@ -80,6 +82,10 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
       shapeIds?: string[];
     }>;
   } | null>(null);
+  
+  // Material Estimation state (PR-4)
+  const [isMaterialDialogueOpen, setIsMaterialDialogueOpen] = useState(false);
+  const [isMaterialPanelOpen, setIsMaterialPanelOpen] = useState(false);
   
   // AI status from store
   const isProcessingAICommand = useCanvasStore((state) => state.isProcessingAICommand);
@@ -490,6 +496,35 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
                     </svg>
                     {gridState.isVisible ? 'Hide Grid' : 'Show Grid'}
                   </button>
+                  
+                  {/* PR-4: Material Estimation */}
+                  <div className="border-t border-gray-200 my-2"></div>
+                  <button
+                    onClick={() => {
+                      setIsMaterialDialogueOpen(true);
+                      setIsProfessionalMenuOpen(false);
+                    }}
+                    disabled={!currentUser}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                    </svg>
+                    Material Estimation
+                  </button>
+                  <button
+                    onClick={() => {
+                      setIsMaterialPanelOpen(true);
+                      setIsProfessionalMenuOpen(false);
+                    }}
+                    disabled={!currentUser}
+                    className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                    </svg>
+                    BOM Panel
+                  </button>
                 </div>
               </div>
             )}
@@ -564,6 +599,16 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
           onCancel={() => setClarificationDialog(null)}
         />
       )}
+
+      {/* PR-4: Material Estimation Components */}
+      <MaterialDialogueBox
+        isVisible={isMaterialDialogueOpen}
+        onClose={() => setIsMaterialDialogueOpen(false)}
+      />
+      <MaterialEstimationPanel
+        isVisible={isMaterialPanelOpen}
+        onClose={() => setIsMaterialPanelOpen(false)}
+      />
     </div>
   );
 }

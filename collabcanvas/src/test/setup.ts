@@ -78,7 +78,13 @@ vi.mock('../services/firestore', () => ({
   updateShape: vi.fn(() => Promise.resolve()),
   subscribeToShapes: vi.fn(() => vi.fn()),
   subscribeToLocks: vi.fn(() => vi.fn()),
-  subscribeToPresence: vi.fn(() => vi.fn())
+  subscribeToPresence: vi.fn(() => vi.fn()),
+  // PR-4: Material estimation mocks
+  saveBackgroundImage: vi.fn(() => Promise.resolve()),
+  saveScaleLine: vi.fn(() => Promise.resolve()),
+  deleteBackgroundImageFromFirestore: vi.fn(() => Promise.resolve()),
+  deleteScaleLineFromFirestore: vi.fn(() => Promise.resolve()),
+  subscribeToBoardState: vi.fn(() => vi.fn()),
 }));
 
 vi.mock('../services/historyService', () => ({

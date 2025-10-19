@@ -519,17 +519,43 @@ export interface CanvasScale {
 }
 
 /**
- * Material specification for construction estimation
+ * Export material estimation types
  */
-export interface MaterialSpec {
-  id: string;
-  name: string;
-  category: 'flooring' | 'wall' | 'ceiling' | 'structural' | 'finish';
-  unit: 'sqft' | 'sqm' | 'linear' | 'cubic' | 'each';
-  coverage: number; // Coverage per unit (e.g., sqft per gallon)
-  wasteFactor: number; // Additional percentage for waste
-  code: string; // Building code reference
-  description: string;
-  pricePerUnit?: number;
-  supplier?: string;
-}
+export type {
+  MaterialCategory,
+  FramingType,
+  SurfaceType,
+  FloorType,
+  MaterialUnit,
+  FramingSpacing,
+  DrywallThickness,
+  FRPThickness,
+  TileSize,
+  MaterialSpec,
+  WallAssumptions,
+  FloorAssumptions,
+  MaterialCalculation,
+  BillOfMaterials,
+  MaterialComparison,
+  BOMExportData,
+  WallFramingInput,
+  WallSurfaceInput,
+  FloorCoatingInput,
+  DetailedMaterialResult,
+} from './types/material';
+
+export type {
+  DialogueMessageType,
+  DialogueStage,
+  DialogueMessage,
+  MaterialRequest,
+  MissingInformation,
+  ClarificationRequest,
+  ClarificationResponse,
+  RefinementRequest,
+  DialogueContext,
+  UserMaterialPreferences,
+  RefinementSuggestion,
+  AIDialogueResponse,
+  DialogueHistory,
+} from './types/dialogue';

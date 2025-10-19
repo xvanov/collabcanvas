@@ -4,7 +4,7 @@
  */
 
 import { create } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator, AICommand, AICommandResult, AIStatus, AICommandHistory, CanvasScale, BackgroundImage, ScaleLine, UnitType } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, HistoryState, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, GridState, SnapIndicator, AICommand, AICommandResult, AIStatus, AICommandHistory, CanvasScale, BackgroundImage, ScaleLine, UnitType, DialogueContext, BillOfMaterials, MaterialCalculation, UserMaterialPreferences } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
@@ -133,6 +133,17 @@ interface CanvasState {
   setIsScaleMode: (isScaleMode: boolean) => void;
   setIsImageUploadMode: (isImageUploadMode: boolean) => void;
   initializeBoardStateSubscription: () => () => void;
+  
+  // Material Estimation State (PR-4)
+  materialDialogue: DialogueContext | null;
+  billOfMaterials: BillOfMaterials | null;
+  userMaterialPreferences: UserMaterialPreferences | null;
+  startMaterialDialogue: (request: string) => void;
+  updateMaterialDialogue: (updates: Partial<DialogueContext>) => void;
+  clearMaterialDialogue: () => void;
+  setBillOfMaterials: (bom: BillOfMaterials | null) => void;
+  addMaterialCalculation: (calculation: MaterialCalculation) => void;
+  setUserMaterialPreferences: (preferences: UserMaterialPreferences) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => {
@@ -1515,7 +1526,106 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     });
     
     return unsubscribe;
-  }
+  },
+
+  // Material Estimation State (PR-4)
+  materialDialogue: null,
+  billOfMaterials: null,
+  userMaterialPreferences: null,
+
+  startMaterialDialogue: (request: string) =>
+    set((state) => {
+      const currentUser = state.currentUser;
+      if (!currentUser) return state;
+
+      const conversationId = `dialogue-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+      const now = Date.now();
+
+      return {
+        materialDialogue: {
+          conversationId,
+          userId: currentUser.uid,
+          stage: 'initial' as const,
+          currentRequest: {
+            originalQuery: request,
+          },
+          pendingClarification: null,
+          assumptions: null,
+          lastCalculation: null,
+          messageHistory: [
+            {
+              id: `msg-${now}`,
+              type: 'user' as const,
+              content: request,
+              timestamp: now,
+              userId: currentUser.uid,
+            },
+          ],
+          createdAt: now,
+          updatedAt: now,
+        },
+      };
+    }),
+
+  updateMaterialDialogue: (updates: Partial<DialogueContext>) =>
+    set((state) => {
+      if (!state.materialDialogue) return state;
+
+      return {
+        materialDialogue: {
+          ...state.materialDialogue,
+          ...updates,
+          updatedAt: Date.now(),
+        },
+      };
+    }),
+
+  clearMaterialDialogue: () =>
+    set(() => ({
+      materialDialogue: null,
+    })),
+
+  setBillOfMaterials: (bom: BillOfMaterials | null) =>
+    set(() => ({
+      billOfMaterials: bom,
+    })),
+
+  addMaterialCalculation: (calculation: MaterialCalculation) =>
+    set((state) => {
+      const currentBom = state.billOfMaterials;
+      const currentUser = state.currentUser;
+      
+      if (!currentUser) return state;
+
+      if (!currentBom) {
+        // Create new BOM
+        return {
+          billOfMaterials: {
+            id: `bom-${Date.now()}`,
+            calculations: [calculation],
+            totalMaterials: calculation.materials,
+            createdAt: Date.now(),
+            createdBy: currentUser.uid,
+            updatedAt: Date.now(),
+          },
+        };
+      }
+
+      // Add to existing BOM
+      return {
+        billOfMaterials: {
+          ...currentBom,
+          calculations: [...currentBom.calculations, calculation],
+          totalMaterials: [...currentBom.totalMaterials, ...calculation.materials],
+          updatedAt: Date.now(),
+        },
+      };
+    }),
+
+  setUserMaterialPreferences: (preferences: UserMaterialPreferences) =>
+    set(() => ({
+      userMaterialPreferences: preferences,
+    })),
   };
 });
 
