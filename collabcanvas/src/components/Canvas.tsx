@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
-import { Stage, Layer, Line, Circle } from 'react-konva';
+import { Stage, Layer, Line, Circle, Image } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from './Shape';
 import { CursorOverlay } from './CursorOverlay';
@@ -9,12 +9,14 @@ import { TransformControls } from './TransformControls';
 import { LayersPanel } from './LayersPanel';
 import { AlignmentToolbar } from './AlignmentToolbar';
 import { SnapIndicators } from './SnapIndicators';
+import { ScaleLine } from './ScaleLine';
+import { MeasurementInput } from './MeasurementInput';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
-import type { SelectionBox as SelectionBoxType } from '../types';
+import type { SelectionBox as SelectionBoxType, UnitType } from '../types';
 
 interface CanvasProps {
   onFpsUpdate?: (fps: number) => void;
@@ -44,6 +46,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const [stageScale, setStageScale] = useState(1);
   // Mouse position for snap indicators
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
+  // Measurement input modal state
+  const [showMeasurementInput, setShowMeasurementInput] = useState(false);
+  const [pendingScaleLine, setPendingScaleLine] = useState<{ endX: number; endY: number } | null>(null);
   // Imperative current-user cursor to avoid React re-renders on mousemove
   const overlaysLayerRef = useRef<Konva.Layer>(null);
   const currentCursorRef = useRef<Konva.Circle>(null);
@@ -75,6 +80,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const activeLayerId = useCanvasStore((state) => state.activeLayerId);
   const layers = useCanvasStore((state) => state.layers);
   const gridState = useCanvasStore((state) => state.gridState);
+  const canvasScale = useCanvasStore((state) => state.canvasScale);
+  const setScaleLine = useCanvasStore((state) => state.setScaleLine);
+  const updateScaleLine = useCanvasStore((state) => state.updateScaleLine);
+  const deleteScaleLine = useCanvasStore((state) => state.deleteScaleLine);
+  const setIsScaleMode = useCanvasStore((state) => state.setIsScaleMode);
   
   // Debug: Track activeLayerId changes
   useEffect(() => {
@@ -226,9 +236,18 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
   };
 
-  // Handle keyboard events for arrow key movement
+  // Handle keyboard events for arrow key movement and Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // Handle Escape key to cancel scale mode
+      if (e.key === 'Escape' && canvasScale.isScaleMode) {
+        setIsScaleMode(false);
+        if (canvasScale.scaleLine) {
+          deleteScaleLine();
+        }
+        return;
+      }
+
       // Only handle arrow keys when canvas has focus
       if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
         return;
@@ -263,7 +282,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       container.addEventListener('keydown', handleKeyDown);
       return () => container.removeEventListener('keydown', handleKeyDown);
     }
-  }, [selectedShapeIds, moveSelectedShapes]);
+  }, [selectedShapeIds, moveSelectedShapes, canvasScale.isScaleMode, canvasScale.scaleLine, deleteScaleLine, setIsScaleMode]);
 
   // Handle mouse down - start pan if clicking on empty space, or start selection
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -410,12 +429,88 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     isSelecting.current = false;
   };
 
-  // Handle canvas click - deselect shapes when clicking empty space
+  // Handle canvas click - deselect shapes when clicking empty space or handle scale tool
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // If clicking on the stage itself (not a shape), deselect
     if (e.target === stageRef.current) {
+      // Handle scale tool clicks
+      if (canvasScale.isScaleMode) {
+        const stage = stageRef.current;
+        if (stage) {
+          const pointerPosition = stage.getPointerPosition();
+          if (pointerPosition) {
+            // Get actual current stage position and scale
+            const stagePos = stage.position();
+            const stageScale = stage.scaleX(); // Use scaleX since scale is uniform
+            
+            // Convert screen coordinates to canvas coordinates
+            const canvasX = (pointerPosition.x - stagePos.x) / stageScale;
+            const canvasY = (pointerPosition.y - stagePos.y) / stageScale;
+            
+            // Handle scale tool click logic
+            handleScaleToolClick(canvasX, canvasY);
+          }
+        }
+        return; // Don't deselect when in scale mode
+      }
+      
       deselectShape();
     }
+  };
+
+  // Handle scale tool clicks
+  const handleScaleToolClick = (x: number, y: number) => {
+    if (!canvasScale.isScaleMode || !currentUser) return;
+
+    // If there's no existing scale line, start creating one
+    if (!canvasScale.scaleLine) {
+      // First click - set start point and create a temporary line
+      const scaleLine = {
+        id: `scale-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+        startX: x,
+        startY: y,
+        endX: x, // Same as start point initially
+        endY: y,
+        realWorldLength: 0, // Will be set after second click
+        unit: 'feet' as const,
+        isVisible: true,
+        createdAt: Date.now(),
+        updatedAt: Date.now(),
+        createdBy: currentUser.uid,
+        updatedBy: currentUser.uid,
+      };
+      setScaleLine(scaleLine);
+    } else {
+      // Second click - set end point and show measurement input modal
+      setPendingScaleLine({ endX: x, endY: y });
+      setShowMeasurementInput(true);
+    }
+  };
+
+  // Handle measurement input submission
+  const handleMeasurementSubmit = (value: number, unit: UnitType) => {
+    if (!pendingScaleLine) return;
+    
+    updateScaleLine({
+      endX: pendingScaleLine.endX,
+      endY: pendingScaleLine.endY,
+      realWorldLength: value,
+      unit: unit,
+    });
+    
+    // Exit scale mode after successful creation
+    setIsScaleMode(false);
+    setShowMeasurementInput(false);
+    setPendingScaleLine(null);
+  };
+
+  // Handle measurement input cancellation
+  const handleMeasurementCancel = () => {
+    // Remove the temporary line and exit scale mode
+    deleteScaleLine();
+    setIsScaleMode(false);
+    setShowMeasurementInput(false);
+    setPendingScaleLine(null);
   };
 
   // Handle shape selection
@@ -475,6 +570,34 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
           onMouseUp={handleMouseUp}
           onClick={handleStageClick}
         >
+          {/* Background Image Layer - non-interactive */}
+          <Layer listening={false}>
+            {canvasScale.backgroundImage && (
+              <Image
+                image={(() => {
+                  const img = new window.Image();
+                  img.src = canvasScale.backgroundImage.url;
+                  return img;
+                })()}
+                x={0}
+                y={0}
+                width={canvasScale.backgroundImage.width}
+                height={canvasScale.backgroundImage.height}
+                listening={false}
+              />
+            )}
+          </Layer>
+
+          {/* Scale Line Layer - non-interactive */}
+          <Layer listening={false}>
+            {canvasScale.scaleLine && (
+           <ScaleLine
+             scaleLine={canvasScale.scaleLine}
+             scale={stageScale}
+           />
+            )}
+          </Layer>
+
           {/* Grid layer - non-interactive */}
           <Layer listening={false}>
             {(() => {
@@ -660,6 +783,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       <AlignmentToolbar
         isVisible={showAlignmentToolbar}
         onClose={onCloseAlignmentToolbar || (() => {})}
+      />
+
+      {/* Measurement Input Modal */}
+      <MeasurementInput
+        isOpen={showMeasurementInput}
+        onClose={handleMeasurementCancel}
+        onSubmit={handleMeasurementSubmit}
+        title="Set Scale Measurement"
       />
     </div>
   );
