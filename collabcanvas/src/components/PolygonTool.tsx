@@ -30,7 +30,7 @@ export function PolygonTool({ isActive, points, previewPoint }: PolygonToolProps
 
   // Get active layer color
   const activeLayer = layers.find(l => l.id === activeLayerId);
-  const color = activeLayer?.name ? '#10B981' : '#10B981'; // Default green for polygons
+  const color = activeLayer?.color || '#10B981';
 
   // Check if scale is set
   const hasScale = canvasScale.scaleLine !== null;
