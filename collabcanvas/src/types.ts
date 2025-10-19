@@ -205,6 +205,8 @@ export interface Layer {
   visible: boolean;
   locked: boolean;
   order: number;
+  // PR-3: default color for shapes in this layer
+  color?: string;
 }
 
 /**

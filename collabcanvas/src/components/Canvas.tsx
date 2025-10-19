@@ -462,7 +462,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     if (activeDrawingTool === 'polygon' && drawingPoints.length < 3) return;
 
     const activeLayer = layers.find(l => l.id === activeLayerId);
-    const shapeColor = activeLayer?.name ? '#3B82F6' : '#3B82F6';
+    const shapeColor = activeLayer?.color || '#3B82F6';
 
     const shape = activeDrawingTool === 'polyline'
       ? createPolylineShape(drawingPoints, shapeColor, currentUser.uid, activeLayerId)
