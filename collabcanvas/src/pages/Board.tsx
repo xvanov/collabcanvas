@@ -162,6 +162,9 @@ export function Board() {
     // Get the current active layer ID
     const activeLayerId = useCanvasStore.getState().activeLayerId;
 
+    const layersState = (useCanvasStore.getState().layers || []) as ReturnType<typeof useCanvasStore.getState>['layers'];
+    const activeLayer = layersState.find(l => l.id === activeLayerId);
+    const activeColor = activeLayer?.color || '#3B82F6';
     const baseShape = {
       id: `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type,
@@ -169,7 +172,7 @@ export function Board() {
       y: center.y - 50,
       w: 100,
       h: 100,
-      color: '#3B82F6',
+      color: activeColor,
       createdAt: Date.now(),
       createdBy: user.uid,
       updatedAt: Date.now(),

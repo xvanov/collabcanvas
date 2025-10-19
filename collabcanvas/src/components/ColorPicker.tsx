@@ -3,12 +3,13 @@
  * Provides a simple color palette for quick color selection
  */
 
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 
 interface ColorPickerProps {
   currentColor: string;
   onColorChange: (color: string) => void;
   disabled?: boolean;
+  swatchOnly?: boolean; // render just a small color swatch without text
 }
 
 const PRESET_COLORS = [
@@ -26,8 +27,10 @@ const PRESET_COLORS = [
   '#FFFFFF', // White
 ];
 
-export function ColorPicker({ currentColor, onColorChange, disabled = false }: ColorPickerProps) {
+export function ColorPicker({ currentColor, onColorChange, disabled = false, swatchOnly = false }: ColorPickerProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const [menuPos, setMenuPos] = useState<{ top: number; left: number }>({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement | null>(null);
 
   const handleColorSelect = (color: string) => {
     console.log('ColorPicker: handleColorSelect called with:', color);
@@ -35,23 +38,45 @@ export function ColorPicker({ currentColor, onColorChange, disabled = false }: C
     setIsOpen(false);
   };
 
+  const openMenu = () => {
+    if (!btnRef.current) return setIsOpen(true);
+    const rect = btnRef.current.getBoundingClientRect();
+    const margin = 8;
+    const estWidth = 220; // estimated popover width
+    const estHeight = 300; // estimated popover height
+    let left = Math.min(Math.max(margin, rect.left), window.innerWidth - estWidth - margin);
+    let top = rect.bottom + margin;
+    const spaceBelow = window.innerHeight - rect.bottom;
+    if (spaceBelow < estHeight + margin) {
+      top = Math.max(margin, rect.top - estHeight - margin);
+    }
+    setMenuPos({ top, left });
+    setIsOpen(true);
+  };
+
   return (
     <div className="relative">
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        ref={btnRef}
+        onClick={() => (isOpen ? setIsOpen(false) : openMenu())}
         disabled={disabled}
-        className="flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"
+        className={swatchOnly
+          ? "flex items-center rounded border border-gray-300 bg-white p-1 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500"
+          : "flex items-center gap-2 rounded-lg border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 shadow-sm transition-colors hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed"}
         title="Change color"
       >
         <div
-          className="h-4 w-4 rounded border border-gray-300"
+          className={swatchOnly ? "h-4 w-4 rounded border border-gray-300" : "h-4 w-4 rounded border border-gray-300"}
           style={{ backgroundColor: currentColor }}
         />
-        Color
+        {!swatchOnly && 'Color'}
       </button>
 
       {isOpen && (
-        <div className="absolute top-full left-0 z-10 mt-1 rounded-lg border border-gray-200 bg-white p-3 shadow-lg">
+        <div
+          className="fixed z-50 rounded-lg border border-gray-200 bg-white p-3 shadow-lg max-h-[70vh] overflow-auto"
+          style={{ top: `${menuPos.top}px`, left: `${menuPos.left}px`, width: 220 }}
+        >
           <div className="grid grid-cols-4 gap-2">
             {PRESET_COLORS.map((color) => (
               <button
@@ -106,10 +131,7 @@ export function ColorPicker({ currentColor, onColorChange, disabled = false }: C
 
       {/* Click outside to close */}
       {isOpen && (
-        <div
-          className="fixed inset-0 z-0"
-          onClick={() => setIsOpen(false)}
-        />
+        <div className="fixed inset-0 z-40" onClick={() => setIsOpen(false)} />
       )}
     </div>
   );

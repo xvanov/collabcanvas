@@ -30,7 +30,7 @@ export function PolylineTool({ isActive, points, previewPoint }: PolylineToolPro
 
   // Get active layer color
   const activeLayer = layers.find(l => l.id === activeLayerId);
-  const color = activeLayer?.name ? '#3B82F6' : '#3B82F6'; // Default blue, could use layer-specific colors
+  const color = activeLayer?.color || '#3B82F6';
 
   // Check if scale is set
   const hasScale = canvasScale.scaleLine !== null;
