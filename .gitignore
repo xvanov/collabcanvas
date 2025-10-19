@@ -33,3 +33,4 @@ firebase-*-debug.log*
 
 .*test-results.*
 *test-results*
+.cursor/*
