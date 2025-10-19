@@ -121,7 +121,7 @@ describe('Toolbar', () => {
     const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
     fireEvent.click(shapesDropdown);
     
-    const button = screen.getByRole('button', { name: /line/i });
+    const button = screen.getByRole('button', { name: /^Create Line$/i });
     expect(button).toBeInTheDocument();
   });
 

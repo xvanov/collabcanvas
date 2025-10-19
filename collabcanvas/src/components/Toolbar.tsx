@@ -25,13 +25,15 @@ interface ToolbarProps {
   onToggleLayers?: () => void;
   onToggleAlignment?: () => void;
   onToggleGrid?: () => void;
+  onActivatePolylineTool?: () => void;
+  onActivatePolygonTool?: () => void;
 }
 
 /**
  * Toolbar component
  * Top navigation bar with user authentication info, FPS counter, zoom level, and shape creation controls
  */
-export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid }: ToolbarProps) {
+export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid, onActivatePolylineTool, onActivatePolygonTool }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
   const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
@@ -235,6 +237,29 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
     },
   ];
 
+  const annotationButtons = [
+    {
+      id: 'polyline',
+      label: 'Polyline (Wall Measurement)',
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 6l6 6 4-4 6 6" />
+        </svg>
+      ),
+      onClick: onActivatePolylineTool,
+    },
+    {
+      id: 'polygon',
+      label: 'Polygon (Room Area)',
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 2l4 8h8l-6 6 2 8-6-4-6 4 2-8-6-6h8z" />
+        </svg>
+      ),
+      onClick: onActivatePolygonTool,
+    },
+  ];
+
   return (
     <div className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
       <div className="flex items-center gap-4">
@@ -260,8 +285,34 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
             </button>
 
             {isShapesMenuOpen && (
-              <div className="absolute top-full left-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
+              <div className="absolute top-full left-0 mt-2 w-64 bg-white rounded-lg shadow-lg border border-gray-200 z-50">
                 <div className="py-2">
+                  {/* Annotation Tools Section */}
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    Measurement Tools
+                  </div>
+                  {annotationButtons.map(({ id, label, icon, onClick }) => (
+                    <button
+                      key={id}
+                      onClick={() => {
+                        if (onClick) onClick();
+                        setIsShapesMenuOpen(false);
+                      }}
+                      disabled={!currentUser || !onClick}
+                      className="flex items-center gap-3 w-full px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {icon}
+                      {label}
+                    </button>
+                  ))}
+                  
+                  {/* Divider */}
+                  <div className="my-2 border-t border-gray-200"></div>
+                  
+                  {/* Basic Shapes Section */}
+                  <div className="px-4 py-2 text-xs font-semibold text-gray-500 uppercase">
+                    Basic Shapes
+                  </div>
                   {shapeButtons.map(({ type, label, icon }) => (
                     <button
                       key={type}

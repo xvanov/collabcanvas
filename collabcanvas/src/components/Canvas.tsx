@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, useImperativeHandle, forwardRef } from 'react';
+import { useEffect, useRef, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { Stage, Layer, Line, Circle, Image } from 'react-konva';
 import Konva from 'konva';
 import { Shape } from './Shape';
@@ -11,6 +11,10 @@ import { AlignmentToolbar } from './AlignmentToolbar';
 import { SnapIndicators } from './SnapIndicators';
 import { ScaleLine } from './ScaleLine';
 import { MeasurementInput } from './MeasurementInput';
+import { MeasurementDisplay } from './MeasurementDisplay';
+import { PolylineTool } from './PolylineTool';
+import { PolygonTool } from './PolygonTool';
+import { createPolylineShape, createPolygonShape } from '../services/shapeService';
 import { useCanvasStore } from '../store/canvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
@@ -30,6 +34,9 @@ interface CanvasProps {
 export interface CanvasHandle {
   getViewportCenter: () => { x: number; y: number };
   getStage: () => Konva.Stage | null;
+  activatePolylineTool: () => void;
+  activatePolygonTool: () => void;
+  deactivateDrawingTools: () => void;
 }
 /**
  * Main canvas component with Konva integration
@@ -42,13 +49,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   // Imperative stage position and scale to avoid React re-renders during pan/zoom
   const stagePosRef = useRef({ x: 0, y: 0 });
   const stageScaleRef = useRef(1);
-  const [stagePos, setStagePos] = useState({ x: 0, y: 0 });
-  const [stageScale, setStageScale] = useState(1);
   // Mouse position for snap indicators
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   // Measurement input modal state
   const [showMeasurementInput, setShowMeasurementInput] = useState(false);
   const [pendingScaleLine, setPendingScaleLine] = useState<{ endX: number; endY: number } | null>(null);
+  // Drawing tool states
+  const [activeDrawingTool, setActiveDrawingTool] = useState<'polyline' | 'polygon' | null>(null);
+  const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([]);
+  const [drawingPreviewPoint, setDrawingPreviewPoint] = useState<{ x: number; y: number } | null>(null);
   // Imperative current-user cursor to avoid React re-renders on mousemove
   const overlaysLayerRef = useRef<Konva.Layer>(null);
   const currentCursorRef = useRef<Konva.Circle>(null);
@@ -58,8 +67,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
-  // Throttle React state updates during pan/zoom to prevent RAF queue buildup
-  const pendingStateUpdateRef = useRef<number | null>(null);
 
   // Store state
   const { shapes, updateShapePosition } = useShapes();
@@ -85,6 +92,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const updateScaleLine = useCanvasStore((state) => state.updateScaleLine);
   const deleteScaleLine = useCanvasStore((state) => state.deleteScaleLine);
   const setIsScaleMode = useCanvasStore((state) => state.setIsScaleMode);
+  const createShape = useCanvasStore((state) => state.createShape);
   
   // Debug: Track activeLayerId changes
   useEffect(() => {
@@ -103,25 +111,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     releaseShapeLock,
   } = useLocks();
 
-  // Throttled state update function to prevent RAF queue buildup in Chrome
-  const scheduleStateUpdate = (pos: { x: number; y: number }, scale: number) => {
-    if (pendingStateUpdateRef.current) {
-      cancelAnimationFrame(pendingStateUpdateRef.current);
-    }
-    
-    pendingStateUpdateRef.current = requestAnimationFrame(() => {
-      setStagePos(pos);
-      setStageScale(scale);
-      pendingStateUpdateRef.current = null;
-    });
-  };
-
-  // Initialize refs with initial state values
-  useEffect(() => {
-    stagePosRef.current = stagePos;
-    stageScaleRef.current = stageScale;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  // REMOVED scheduleStateUpdate - No longer updating React state during zoom/pan for performance
 
   // Cursor update function (throttling handled in usePresence)
   // Cache cursor for Firefox performance optimization
@@ -181,9 +171,6 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       if (rafId.current) {
         cancelAnimationFrame(rafId.current);
       }
-      if (pendingStateUpdateRef.current) {
-        cancelAnimationFrame(pendingStateUpdateRef.current);
-      }
     };
   }, [onFpsUpdate]);
 
@@ -227,10 +214,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     stage.position(newPos);
     stage.scale({ x: clampedScale, y: clampedScale });
     
-    // Update React state only for UI display (throttled)
-    scheduleStateUpdate(newPos, clampedScale);
-    
-    // Notify parent of zoom change
+    // REMOVED: scheduleStateUpdate - Don't trigger React re-renders during zoom!
+    // Only notify parent for zoom indicator display
     if (onZoomChange) {
       onZoomChange(clampedScale);
     }
@@ -348,11 +333,18 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       updateCursorPosition(stageX, stageY);
     }
 
-    // Update mouse position for snap indicators
-    setMousePosition({
-      x: stageX,
-      y: stageY,
-    });
+    // Update mouse position for snap indicators - ONLY if snap is enabled
+    if (gridState.isSnapEnabled) {
+      setMousePosition({
+        x: stageX,
+        y: stageY,
+      });
+    }
+
+    // Update drawing preview point
+    if (activeDrawingTool) {
+      setDrawingPreviewPoint({ x: stageX, y: stageY });
+    }
 
     // Handle drag selection
     if (isSelecting.current) {
@@ -383,8 +375,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       // Update stage directly without React re-render
       stage.position(newPos);
       
-      // Update React state only for UI display (throttled)
-      scheduleStateUpdate(newPos, stageScaleRef.current);
+      // REMOVED: scheduleStateUpdate - Don't trigger React re-renders during pan!
     }
   };
 
@@ -429,35 +420,117 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     isSelecting.current = false;
   };
 
-  // Handle canvas click - deselect shapes when clicking empty space or handle scale tool
+  // Handle canvas click - deselect shapes when clicking empty space or handle scale tool or drawing tools
   const handleStageClick = (e: Konva.KonvaEventObject<MouseEvent>) => {
     // If clicking on the stage itself (not a shape), deselect
     if (e.target === stageRef.current) {
-      // Handle scale tool clicks
-      if (canvasScale.isScaleMode) {
-        const stage = stageRef.current;
-        if (stage) {
-          const pointerPosition = stage.getPointerPosition();
-          if (pointerPosition) {
-            // Get actual current stage position and scale
-            const stagePos = stage.position();
-            const stageScale = stage.scaleX(); // Use scaleX since scale is uniform
-            
-            // Convert screen coordinates to canvas coordinates
-            const canvasX = (pointerPosition.x - stagePos.x) / stageScale;
-            const canvasY = (pointerPosition.y - stagePos.y) / stageScale;
-            
-            // Handle scale tool click logic
+      const stage = stageRef.current;
+      if (stage) {
+        const pointerPosition = stage.getPointerPosition();
+        if (pointerPosition) {
+          // Get actual current stage position and scale
+          const stagePos = stage.position();
+          const stageScale = stage.scaleX(); // Use scaleX since scale is uniform
+          
+          // Convert screen coordinates to canvas coordinates
+          const canvasX = (pointerPosition.x - stagePos.x) / stageScale;
+          const canvasY = (pointerPosition.y - stagePos.y) / stageScale;
+          
+          // Handle scale tool clicks
+          if (canvasScale.isScaleMode) {
             handleScaleToolClick(canvasX, canvasY);
+            return; // Don't deselect when in scale mode
+          }
+          
+          // Handle polyline/polygon tool clicks
+          if (activeDrawingTool) {
+            handleDrawingToolClick(canvasX, canvasY, e);
+            return; // Don't deselect when drawing
           }
         }
-        return; // Don't deselect when in scale mode
       }
       
       deselectShape();
     }
   };
 
+  // Complete the current drawing
+  const completeDrawing = useCallback(() => {
+    if (!currentUser || !activeDrawingTool) return;
+    
+    if (activeDrawingTool === 'polyline' && drawingPoints.length < 2) return;
+    if (activeDrawingTool === 'polygon' && drawingPoints.length < 3) return;
+
+    const activeLayer = layers.find(l => l.id === activeLayerId);
+    const shapeColor = activeLayer?.name ? '#3B82F6' : '#3B82F6';
+
+    const shape = activeDrawingTool === 'polyline'
+      ? createPolylineShape(drawingPoints, shapeColor, currentUser.uid, activeLayerId)
+      : createPolygonShape(drawingPoints, shapeColor, currentUser.uid, activeLayerId);
+
+    createShape(shape);
+
+    // Reset drawing state
+    setDrawingPoints([]);
+    setDrawingPreviewPoint(null);
+    setActiveDrawingTool(null);
+  }, [currentUser, activeDrawingTool, drawingPoints, layers, activeLayerId, createShape]);
+
+  // Handle drawing tool clicks (polyline/polygon)
+  const handleDrawingToolClick = useCallback((x: number, y: number, e: Konva.KonvaEventObject<MouseEvent>) => {
+    if (!activeDrawingTool || !currentUser) return;
+
+    const point = { x, y };
+
+    // Check if double-click to complete
+    if (e.evt.detail === 2 && drawingPoints.length >= 2) {
+      completeDrawing();
+      return;
+    }
+
+    // Check if clicking near first point for polygon (snap to close)
+    if (activeDrawingTool === 'polygon' && drawingPoints.length >= 3) {
+      const firstPoint = drawingPoints[0];
+      const distance = Math.sqrt(
+        Math.pow(point.x - firstPoint.x, 2) + Math.pow(point.y - firstPoint.y, 2)
+      );
+      const snapThreshold = 10; // Fixed pixel threshold
+      
+      if (distance < snapThreshold) {
+        completeDrawing();
+        return;
+      }
+    }
+
+    // Add point to drawing
+    setDrawingPoints(prev => [...prev, point]);
+  }, [activeDrawingTool, currentUser, drawingPoints, completeDrawing]);
+
+  // Handle Escape key to cancel or undo point
+  useEffect(() => {
+    const handleDrawingKeyDown = (e: KeyboardEvent) => {
+      if (!activeDrawingTool) return;
+
+      if (e.key === 'Escape') {
+        if (drawingPoints.length > 0) {
+          // Undo last point
+          setDrawingPoints(prev => prev.slice(0, -1));
+        } else {
+          // Cancel drawing
+          setActiveDrawingTool(null);
+          setDrawingPoints([]);
+          setDrawingPreviewPoint(null);
+        }
+      } else if (e.key === 'Enter') {
+        completeDrawing();
+      }
+    };
+
+    if (activeDrawingTool) {
+      window.addEventListener('keydown', handleDrawingKeyDown);
+      return () => window.removeEventListener('keydown', handleDrawingKeyDown);
+    }
+  }, [activeDrawingTool, drawingPoints, completeDrawing]);
   // Handle scale tool clicks
   const handleScaleToolClick = (x: number, y: number) => {
     if (!canvasScale.isScaleMode || !currentUser) return;
@@ -533,19 +606,35 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     // Shape component already updates the store
   };
 
-  // Expose method to get viewport center for shape creation
+  // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     getViewportCenter: () => {
       const stage = stageRef.current;
       if (!stage) return { x: 200, y: 200 };
 
       // Calculate the center of the visible viewport in stage coordinates
-      const centerX = (dimensions.width / 2 - stagePos.x) / stageScale;
-      const centerY = (dimensions.height / 2 - stagePos.y) / stageScale;
+      // Use refs for current values, not state
+      const centerX = (dimensions.width / 2 - stagePosRef.current.x) / stageScaleRef.current;
+      const centerY = (dimensions.height / 2 - stagePosRef.current.y) / stageScaleRef.current;
 
       return { x: centerX, y: centerY };
     },
     getStage: () => stageRef.current,
+    activatePolylineTool: () => {
+      setActiveDrawingTool('polyline');
+      setDrawingPoints([]);
+      setDrawingPreviewPoint(null);
+    },
+    activatePolygonTool: () => {
+      setActiveDrawingTool('polygon');
+      setDrawingPoints([]);
+      setDrawingPreviewPoint(null);
+    },
+    deactivateDrawingTools: () => {
+      setActiveDrawingTool(null);
+      setDrawingPoints([]);
+      setDrawingPreviewPoint(null);
+    },
   }));
   return (
     <div
@@ -593,7 +682,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             {canvasScale.scaleLine && (
            <ScaleLine
              scaleLine={canvasScale.scaleLine}
-             scale={stageScale}
+             scale={stageScaleRef.current}
            />
             )}
           </Layer>
@@ -603,10 +692,12 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             {(() => {
               if (!gridState.isVisible) return null;
               
-              const visibleWidth = dimensions.width / stageScaleRef.current;
-              const visibleHeight = dimensions.height / stageScaleRef.current;
-              const startX = -stagePosRef.current.x / stageScaleRef.current;
-              const startY = -stagePosRef.current.y / stageScaleRef.current;
+              // Use refs to avoid triggering React re-renders
+              const currentScale = stageScaleRef.current;
+              const visibleWidth = dimensions.width / currentScale;
+              const visibleHeight = dimensions.height / currentScale;
+              const startX = -stagePosRef.current.x / currentScale;
+              const startY = -stagePosRef.current.y / currentScale;
               const endX = startX + visibleWidth;
               const endY = startY + visibleHeight;
               const gridSize = gridState.size;
@@ -623,7 +714,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                         key={`v-${i}`}
                         points={[x, startY - gridSize, x, endY + gridSize]}
                         stroke={gridState.color}
-                        strokeWidth={1 / stageScale}
+                        strokeWidth={1 / currentScale}
                         opacity={gridState.opacity}
                         listening={false}
                       />
@@ -636,7 +727,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                         key={`h-${i}`}
                         points={[startX - gridSize, y, endX + gridSize, y]}
                         stroke={gridState.color}
-                        strokeWidth={1 / stageScale}
+                        strokeWidth={1 / currentScale}
                         opacity={gridState.opacity}
                         listening={false}
                       />
@@ -646,6 +737,24 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               );
             })()}
           </Layer>
+
+          {/* Drawing tools layer - active polyline/polygon drawing */}
+          {activeDrawingTool === 'polyline' && (
+            <PolylineTool
+              isActive={true}
+              onComplete={() => setActiveDrawingTool(null)}
+              points={drawingPoints}
+              previewPoint={drawingPreviewPoint}
+            />
+          )}
+          {activeDrawingTool === 'polygon' && (
+            <PolygonTool
+              isActive={true}
+              onComplete={() => setActiveDrawingTool(null)}
+              points={drawingPoints}
+              previewPoint={drawingPreviewPoint}
+            />
+          )}
 
           {/* Shapes layer - interactive */}
           <Layer>
@@ -703,6 +812,30 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   isInteractionEnabled={Boolean(currentUser)}
                   selectedShapeIds={selectedShapeIds}
                   onMoveSelectedShapes={moveSelectedShapes}
+                />
+              );
+            })}
+          </Layer>
+
+          {/* Measurement displays layer - non-interactive */}
+          <Layer listening={false}>
+            {shapes.map((shape) => {
+              if (shape.type !== 'polyline' && shape.type !== 'polygon') return null;
+              
+              const shapeLayerId = shape.layerId || 'default-layer';
+              const layer = layers.find(l => l.id === shapeLayerId);
+              const isLayerVisible = layer ? layer.visible : true;
+              
+              if (!isLayerVisible) return null;
+              
+              const isInActiveLayer = shapeLayerId === activeLayerId;
+              const opacity = isInActiveLayer ? 1 : 0.3;
+              
+              return (
+                <MeasurementDisplay
+                  key={`measure-${shape.id}`}
+                  shape={shape}
+                  opacity={opacity}
                 />
               );
             })}
@@ -767,9 +900,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
         viewport={{
           width: dimensions.width,
           height: dimensions.height,
-          offsetX: stagePos.x,
-          offsetY: stagePos.y,
-          scale: stageScale,
+          offsetX: stagePosRef.current.x,
+          offsetY: stagePosRef.current.y,
+          scale: stageScaleRef.current,
         }}
       />
 
