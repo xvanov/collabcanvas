@@ -11,6 +11,11 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
 
+// Fallback: Check if running locally and use local env var
+if (!process.env.OPENAI_API_KEY && process.env.NODE_ENV === 'development') {
+  console.warn('⚠️ OPENAI_API_KEY not found. AI assistant will not work.');
+}
+
 // CORS configuration
 const corsOptions = {
   origin: true, // Allow all origins in production, or specify your domain
