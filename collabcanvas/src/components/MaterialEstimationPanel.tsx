@@ -7,6 +7,7 @@ import { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import type { MaterialSpec } from '../types/material';
 import { downloadBOMAsCSV } from '../services/materialService';
+import { updateBOMWithPrices } from '../services/pricingService';
 
 interface MaterialEstimationPanelProps {
   isVisible: boolean;
@@ -15,13 +16,21 @@ interface MaterialEstimationPanelProps {
 
 export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimationPanelProps) {
   const billOfMaterials = useCanvasStore(state => state.billOfMaterials);
+  const setBillOfMaterials = useCanvasStore(state => state.setBillOfMaterials);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
+  const [storeNumber, setStoreNumber] = useState<string>(() => (billOfMaterials?.storeNumber || '3620'));
 
   if (!isVisible) return null;
 
   const handleExportCSV = () => {
     if (!billOfMaterials) return;
     downloadBOMAsCSV(billOfMaterials);
+  };
+
+  const handleRefreshPrices = async () => {
+    if (!billOfMaterials) return;
+    const updated = await updateBOMWithPrices(billOfMaterials);
+    setBillOfMaterials(updated);
   };
 
   // Get unique categories
@@ -35,6 +44,8 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
       ? billOfMaterials.totalMaterials
       : billOfMaterials.totalMaterials.filter(m => m.category === selectedCategory)
     : [];
+
+  const allPriced = !!billOfMaterials && billOfMaterials.totalMaterials.every(m => typeof m.priceUSD === 'number');
 
   return (
     <div className="fixed right-4 top-20 w-96 bg-white rounded-lg shadow-2xl border border-gray-200 z-50 max-h-[600px] flex flex-col">
@@ -50,12 +61,33 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
         </div>
         <div className="flex items-center gap-2">
           {billOfMaterials && (
+            <div className="flex items-center gap-2">
+              <label className="text-sm text-gray-600" htmlFor="store-number">Store:</label>
+              <input
+                id="store-number"
+                className="w-20 px-2 py-1 text-sm border border-gray-300 rounded"
+                value={storeNumber}
+                onChange={e => setStoreNumber(e.target.value)}
+                onBlur={() => setBillOfMaterials({ ...billOfMaterials, storeNumber })}
+              />
+            </div>
+          )}
+          {billOfMaterials && (
             <button
               onClick={handleExportCSV}
               className="px-3 py-1 text-sm bg-blue-600 text-white rounded hover:bg-blue-700 transition-colors"
               title="Export as CSV"
             >
               Export CSV
+            </button>
+          )}
+          {billOfMaterials && (
+            <button
+              onClick={handleRefreshPrices}
+              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
+              title="Refresh Prices"
+            >
+              Refresh Prices
             </button>
           )}
           <button
@@ -118,19 +150,27 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
         ) : (
           <div className="space-y-3">
             {filteredMaterials.map((material, index) => (
-              <MaterialItem key={`${material.id}-${index}`} material={material} />
+              <MaterialItem key={`${material.id}-${index}`} material={material} showItemTotal={allPriced} />
             ))}
           </div>
         )}
       </div>
 
-      {/* Footer Summary */}
+      {/* Footer Summary with Grand Total */}
       {billOfMaterials && (
         <div className="border-t border-gray-200 p-4 bg-gray-50">
           <div className="flex justify-between items-center text-sm">
             <span className="font-medium text-gray-700">Total Items:</span>
             <span className="font-semibold text-gray-900">
               {filteredMaterials.reduce((sum, m) => sum + m.quantity, 0).toFixed(0)}
+            </span>
+          </div>
+          <div className="flex justify-between items-center text-sm mt-1">
+            <span className="font-medium text-gray-700">Grand Total:</span>
+            <span className="font-semibold text-gray-900">
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(
+                filteredMaterials.reduce((sum, m) => sum + (typeof m.priceUSD === 'number' ? m.quantity * m.priceUSD : 0), 0)
+              )}
             </span>
           </div>
           {billOfMaterials.notes && (
@@ -145,7 +185,7 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
 /**
  * Individual material item display
  */
-function MaterialItem({ material }: { material: MaterialSpec }) {
+function MaterialItem({ material, showItemTotal }: { material: MaterialSpec; showItemTotal: boolean }) {
   return (
     <div className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
       <div className="flex justify-between items-start mb-1">
@@ -165,6 +205,24 @@ function MaterialItem({ material }: { material: MaterialSpec }) {
           {material.quantity.toFixed(0)} <span className="text-gray-500 text-sm">{material.unit}</span>
         </span>
       </div>
+      <div className="flex justify-between items-center mt-1">
+        <span className="text-sm text-gray-600">Unit Price:</span>
+        <span className="font-semibold text-gray-900">
+          {typeof material.priceUSD === 'number'
+            ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.priceUSD as number)
+            : 'N/A'}
+        </span>
+      </div>
+      {showItemTotal && (
+        <div className="flex justify-between items-center mt-1">
+          <span className="text-sm text-gray-600">Total:</span>
+          <span className="font-semibold text-gray-900">
+            {typeof material.priceUSD === 'number'
+              ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.quantity * (material.priceUSD as number))
+              : 'N/A'}
+          </span>
+        </div>
+      )}
       {material.wasteFactor && (
         <div className="mt-1 text-xs text-gray-500">
           Includes {(material.wasteFactor * 100).toFixed(0)}% waste factor

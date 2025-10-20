@@ -167,17 +167,24 @@ export function generateBOMExport(
   bom: BillOfMaterials,
   projectName?: string
 ): BOMExportData {
-  const headers = ['Category', 'Item', 'Quantity', 'Unit', 'Notes'];
+  const headers = ['Category', 'Item', 'Quantity', 'Unit', 'Notes', 'Price', 'Link (Home Depot)', 'Total'];
   const rows: string[][] = [];
 
   // Add all materials
   bom.totalMaterials.forEach(material => {
+    const price = typeof material.priceUSD === 'number' ? material.priceUSD.toFixed(2) : '';
+    const link = material.homeDepotLink || '';
+    const total = typeof material.priceUSD === 'number' ? (material.quantity * material.priceUSD).toFixed(2) : '';
+
     rows.push([
       material.category,
       material.name,
       material.quantity.toString(),
       material.unit,
       material.notes || '',
+      price,
+      link,
+      total,
     ]);
   });
 

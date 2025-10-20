@@ -13,7 +13,7 @@ import {
   mergeMaterialCalculations,
 } from './materialService';
 import { DEFAULT_WALL_ASSUMPTIONS, DEFAULT_FLOOR_ASSUMPTIONS } from '../data/defaultAssumptions';
-import type { BillOfMaterials } from '../types/material';
+import type { BillOfMaterials, MaterialSpec } from '../types/material';
 
 describe('materialService', () => {
   const mockUserId = 'test-user-123';
@@ -109,7 +109,7 @@ describe('materialService', () => {
             category: 'framing',
             unit: 'piece',
             quantity: 10,
-          },
+          } as MaterialSpec,
         ],
         createdAt: Date.now(),
         createdBy: mockUserId,
@@ -165,6 +165,92 @@ describe('materialService', () => {
       const csv = bomToCSV(exportData);
 
       expect(csv).toContain('"Material, 2x4"');
+    });
+  });
+
+  describe('BOM Export with Pricing (CSV columns)', () => {
+    it('should include Price, Link (Home Depot), and Total headers', () => {
+      const mockBom: BillOfMaterials = {
+        id: 'bom-1',
+        calculations: [],
+        totalMaterials: [
+          {
+            id: 'mat-1',
+            name: '2x4 Stud',
+            category: 'framing',
+            unit: 'piece',
+            quantity: 10,
+          } as MaterialSpec,
+        ],
+        createdAt: Date.now(),
+        createdBy: mockUserId,
+        updatedAt: Date.now(),
+      };
+
+      const exportData = generateBOMExport(mockBom, 'Project X');
+
+      expect(exportData.headers).toContain('Price');
+      expect(exportData.headers).toContain('Link (Home Depot)');
+      expect(exportData.headers).toContain('Total');
+    });
+
+    it('should output numeric price/link/total in rows when price available', () => {
+      const mockBom: BillOfMaterials = {
+        id: 'bom-2',
+        calculations: [],
+        totalMaterials: [
+          {
+            id: 'mat-1',
+            name: 'Drywall Sheet',
+            category: 'surface',
+            unit: 'sqft',
+            quantity: 32,
+            priceUSD: 1.25,
+            homeDepotLink: 'https://www.homedepot.com/p/123',
+          } as MaterialSpec,
+        ],
+        createdAt: Date.now(),
+        createdBy: mockUserId,
+        updatedAt: Date.now(),
+      };
+
+      const exportData = generateBOMExport(mockBom, 'Project Y');
+
+      const row = exportData.rows.find(r => r.includes('Drywall Sheet'))!;
+      expect(row).toContain('1.25');
+      expect(row).toContain('https://www.homedepot.com/p/123');
+      expect(row).toContain((32 * 1.25).toFixed(2));
+
+      const csv = bomToCSV(exportData);
+      expect(csv).toContain('Price');
+      expect(csv).toContain('Link (Home Depot)');
+      expect(csv).toContain('Total');
+      expect(csv).toContain('1.25');
+      expect(csv).toContain((32 * 1.25).toFixed(2));
+    });
+
+    it('should leave empty cells when price not available', () => {
+      const mockBom: BillOfMaterials = {
+        id: 'bom-3',
+        calculations: [],
+        totalMaterials: [
+          {
+            id: 'mat-2',
+            name: 'Primer',
+            category: 'paint',
+            unit: 'gallon',
+            quantity: 2,
+          } as MaterialSpec,
+        ],
+        createdAt: Date.now(),
+        createdBy: mockUserId,
+        updatedAt: Date.now(),
+      };
+
+      const exportData = generateBOMExport(mockBom, 'Project Z');
+      const csv = bomToCSV(exportData);
+      expect(csv).toContain('Primer');
+      expect(csv).not.toMatch(/Primer.*,[0-9]+\.[0-9]{2}/);
     });
   });
 

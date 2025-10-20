@@ -59,6 +59,9 @@ export interface MaterialSpec {
   quantity: number;
   wasteFactor?: number; // Percentage as decimal (e.g., 0.1 for 10%)
   notes?: string;
+  /** Optional Home Depot pricing fields populated by server-side lookup */
+  priceUSD?: number; // unit price in USD
+  homeDepotLink?: string; // product link
 }
 
 /**
@@ -134,6 +137,8 @@ export interface BillOfMaterials {
   createdBy: string;
   updatedAt: number;
   notes?: string;
+  /** BOM-level store number selection (e.g., '3620' for Durham, NC) */
+  storeNumber?: string;
 }
 
 /**

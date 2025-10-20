@@ -44,7 +44,7 @@ export const app: FirebaseApp = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
 export const firestore: Firestore = getFirestore(app);
 export const rtdb: Database = getDatabase(app);
-export const functions: Functions = getFunctions(app);
+export const functions: Functions = getFunctions(app, 'us-central1');
 export const storage: FirebaseStorage = getStorage(app);
 
 // Export network control functions for offline handling
