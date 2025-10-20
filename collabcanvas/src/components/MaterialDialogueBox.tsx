@@ -5,7 +5,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
-import type { DialogueMessage } from '../types/dialogue';
+import type { DialogueMessage, DialogueContext } from '../types/dialogue';
 import { processDialogueRequest } from '../services/aiDialogueService';
 
 interface MaterialDialogueBoxProps {
@@ -54,17 +54,39 @@ export function MaterialDialogueBox({ isVisible, onClose }: MaterialDialogueBoxP
       // Start new dialogue or continue existing
       if (!dialogue) {
         startDialogue(messageText);
+        // Wait for state update
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } else {
+        // Add user message to history first
+        const userMessage: DialogueMessage = {
+          id: `msg-${Date.now()}`,
+          type: 'user',
+          content: messageText,
+          timestamp: Date.now(),
+        };
+        
+        updateDialogue({
+          messageHistory: [...dialogue.messageHistory, userMessage],
+        });
+        
+        // Wait for state update
+        await new Promise(resolve => setTimeout(resolve, 50));
       }
 
-      // Wait for state update
-      await new Promise(resolve => setTimeout(resolve, 100));
-
       // Get updated dialogue from store
-      const currentDialogue = useCanvasStore.getState().materialDialogue;
+      let currentDialogue = useCanvasStore.getState().materialDialogue;
       if (!currentDialogue) {
         console.error('Failed to create dialogue');
         setIsProcessing(false);
         return;
+      }
+
+      // If we're in gathering stage (answering a clarification), parse the answer
+      if (currentDialogue.stage === 'gathering' && dialogue) {
+        const updates = parseUserResponse(currentDialogue, messageText);
+        updateDialogue(updates);
+        await new Promise(resolve => setTimeout(resolve, 50));
+        currentDialogue = useCanvasStore.getState().materialDialogue!;
       }
 
       // Process the request
@@ -119,6 +141,122 @@ export function MaterialDialogueBox({ isVisible, onClose }: MaterialDialogueBoxP
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  /**
+   * Parse user response to clarification and update request specifications
+   */
+  const parseUserResponse = (_currentDialogue: DialogueContext, userAnswer: string): Partial<DialogueContext> => {
+    const currentDialogue = _currentDialogue;
+    const answer = userAnswer.toLowerCase();
+    const currentRequest = currentDialogue.currentRequest;
+    
+    if (!currentRequest) return currentDialogue;
+
+    // Parse framing type responses
+    if (answer.includes('lumber') || answer.includes('wood')) {
+      const spacing = answer.includes('24') ? 24 : 16;
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            framing: { type: 'lumber' as const, spacing: spacing as 16 | 24 },
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+    
+    if (answer.includes('metal') || answer.includes('steel')) {
+      const spacing = answer.includes('24') ? 24 : 16;
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            framing: { type: 'metal' as const, spacing: spacing as 16 | 24 },
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    // Parse floor type responses
+    if (answer.includes('epoxy')) {
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            type: 'epoxy' as const,
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    if (answer.includes('tile')) {
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            type: 'tile' as const,
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    if (answer.includes('carpet')) {
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            type: 'carpet' as const,
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    if (answer.includes('hardwood') || answer.includes('wood floor')) {
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            type: 'hardwood' as const,
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    // If user says "default" or "yes" or "proceed", use defaults
+    if (answer.includes('default') || answer.includes('yes') || answer.includes('proceed')) {
+      return {
+        ...currentDialogue,
+        currentRequest: {
+          ...currentRequest,
+          specifications: {
+            ...currentRequest.specifications,
+            framing: { type: 'lumber' as const, spacing: 16 as const },
+          },
+        },
+        stage: 'calculating' as const,
+      };
+    }
+
+    return currentDialogue;
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {

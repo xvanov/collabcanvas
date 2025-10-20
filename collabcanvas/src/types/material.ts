@@ -62,20 +62,33 @@ export interface MaterialSpec {
 }
 
 /**
- * Wall material assumptions
+ * Insulation types
+ */
+export type InsulationType = 'none' | 'batt' | 'spray-foam' | 'rigid-foam';
+
+/**
+ * Wall material assumptions with granular control
  */
 export interface WallAssumptions {
   framing: {
     type: FramingType;
     spacing: FramingSpacing;
+    include?: boolean; // Allow excluding if client provides
   };
   surface: {
     type: SurfaceType;
     thickness: DrywallThickness | FRPThickness;
+    includeDrywall?: boolean; // Include drywall layer (default: true for FRP, always true for drywall)
+    includeFRP?: boolean; // Include FRP layer (only for type: 'frp')
   };
   finish: {
     coats: number;
     includePrimer: boolean;
+    include?: boolean; // Allow excluding paint if client provides
+  };
+  insulation?: {
+    type: InsulationType;
+    rValue?: number; // R-value (e.g., R-13, R-19)
   };
   height?: number; // Wall height in feet (default: 8)
   doors?: number;

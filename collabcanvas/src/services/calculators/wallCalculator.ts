@@ -18,6 +18,7 @@ import {
   calculatePaintMaterials,
   calculateTrimMaterials,
 } from '../../data/materials';
+import { calculateInsulation } from '../../data/insulationMaterials';
 
 /**
  * Calculate complete wall materials based on assumptions
@@ -30,30 +31,63 @@ export function calculateWallMaterials(
   const height = assumptions.height || 8;
   const area = lengthFeet * height;
 
-  // 1. Framing materials
-  const framingInput: WallFramingInput = {
-    length: lengthFeet,
-    height,
-    spacing: assumptions.framing.spacing,
-    type: assumptions.framing.type,
-  };
-  
-  const framingMaterials = calculateFramingMaterials(framingInput);
-  materials.push(...framingMaterials);
+  // 1. Framing materials (unless client is providing)
+  if (assumptions.framing.include !== false) {
+    const framingInput: WallFramingInput = {
+      length: lengthFeet,
+      height,
+      spacing: assumptions.framing.spacing,
+      type: assumptions.framing.type,
+    };
+    
+    const framingMaterials = calculateFramingMaterials(framingInput);
+    materials.push(...framingMaterials);
+  }
 
-  // 2. Surface materials (drywall or FRP)
-  const surfaceInput: WallSurfaceInput = {
-    area,
-    type: assumptions.surface.type,
-    thickness: assumptions.surface.thickness,
-    framingType: assumptions.framing.type,
-  };
-  
-  const surfaceMaterials = calculateSurfaceMaterials(surfaceInput);
-  materials.push(...surfaceMaterials);
+  // 2. Insulation (if specified)
+  if (assumptions.insulation && assumptions.insulation.type !== 'none') {
+    const insulationMaterials = calculateInsulation(
+      area,
+      assumptions.insulation.type,
+      assumptions.insulation.rValue || 13,
+      assumptions.framing.spacing
+    );
+    materials.push(...insulationMaterials);
+  }
 
-  // 3. Finish materials (paint, if applicable)
-  if (assumptions.finish.coats > 0) {
+  // 3. Surface materials (drywall and/or FRP)
+  // Only include drywall if not explicitly excluded
+  if (assumptions.surface.includeDrywall !== false && assumptions.surface.type !== 'frp') {
+    // Regular drywall
+    const drywallMaterials = calculateDrywallMaterials(
+      area,
+      assumptions.surface.thickness as '1/2"' | '5/8"',
+      assumptions.framing.type
+    );
+    materials.push(...drywallMaterials);
+  } else if (assumptions.surface.type === 'frp') {
+    // FRP with optional drywall underneath
+    if (assumptions.surface.includeDrywall !== false) {
+      const drywallMaterials = calculateDrywallMaterials(
+        area,
+        '1/2"',
+        assumptions.framing.type
+      );
+      materials.push(...drywallMaterials);
+    }
+    
+    // FRP panels (unless explicitly excluded)
+    if (assumptions.surface.includeFRP !== false) {
+      const frpMaterials = calculateFRPMaterials(
+        area,
+        assumptions.surface.thickness as '0.090"' | '0.120"'
+      );
+      materials.push(...frpMaterials);
+    }
+  }
+
+  // 4. Finish materials (paint, if applicable and not excluded)
+  if (assumptions.finish.include !== false && assumptions.finish.coats > 0) {
     const paintMaterials = calculatePaintMaterials(
       area,
       assumptions.finish.coats,
@@ -117,18 +151,35 @@ export function calculateFramingMaterials(input: WallFramingInput): MaterialSpec
  * Calculate surface materials based on type
  */
 export function calculateSurfaceMaterials(input: WallSurfaceInput): MaterialSpec[] {
+  const materials: MaterialSpec[] = [];
+  
   if (input.type === 'drywall') {
-    return calculateDrywallMaterials(
+    materials.push(...calculateDrywallMaterials(
       input.area,
       input.thickness as '1/2"' | '5/8"',
       input.framingType
-    );
-  } else {
-    return calculateFRPMaterials(
+    ));
+  } else if (input.type === 'frp') {
+    // FRP is typically installed over drywall
+    // Include drywall by default (can be disabled via includeDrywall: false)
+    const inputWithDrywall = input as WallSurfaceInput & { includeDrywall?: boolean };
+    const includeDrywall = inputWithDrywall.includeDrywall !== false;
+    
+    if (includeDrywall) {
+      materials.push(...calculateDrywallMaterials(
+        input.area,
+        '1/2"', // Standard drywall under FRP
+        input.framingType
+      ));
+    }
+    
+    materials.push(...calculateFRPMaterials(
       input.area,
       input.thickness as '0.090"' | '0.120"'
-    );
+    ));
   }
+  
+  return materials;
 }
 
 /**

@@ -16,10 +16,15 @@ export const DEFAULT_WALL_ASSUMPTIONS: WallAssumptions = {
   surface: {
     type: 'drywall',
     thickness: '1/2"',
+    includeDrywall: true,
   },
   finish: {
     coats: 2,
     includePrimer: true,
+  },
+  insulation: {
+    type: 'none',
+    rValue: 13,
   },
   height: 8, // Standard 8-foot walls
   doors: 0,
@@ -60,6 +65,7 @@ export const FRP_WALL_ASSUMPTIONS: WallAssumptions = {
   surface: {
     type: 'frp',
     thickness: '0.090"',
+    includeDrywall: true, // FRP is installed over drywall
   },
   finish: {
     coats: 0, // FRP doesn't need painting

@@ -533,6 +533,7 @@ export type {
   DrywallThickness,
   FRPThickness,
   TileSize,
+  InsulationType,
   MaterialSpec,
   WallAssumptions,
   FloorAssumptions,
