@@ -99,10 +99,18 @@ function extractMeasurementsFromLayers(
 ): ExtractedMeasurements {
   const measurements: ExtractedMeasurements = {};
 
+  console.log('📊 Extract Measurements Called:');
+  console.log('  - Total layers:', layers.length);
+  console.log('  - Total shapes:', shapes.size);
+  console.log('  - Scale factor:', scaleFactor);
+  console.log('  - Request:', request);
+
   // Determine target type (excluding 'ceiling' which isn't supported yet)
   const inferredType = request.targetType || inferTypeFromQuery(request.originalQuery);
   const targetType: 'wall' | 'floor' | undefined = 
     inferredType === 'ceiling' ? undefined : inferredType;
+
+  console.log('🎯 Target type:', targetType);
 
   // Find relevant layer
   const targetLayer = request.targetLayer
@@ -110,44 +118,69 @@ function extractMeasurementsFromLayers(
     : findRelevantLayer(layers, targetType);
 
   if (!targetLayer) {
+    console.log('❌ No target layer found!');
     return measurements;
   }
+
+  console.log('✅ Target layer:', targetLayer.name, 'with', targetLayer.shapes.length, 'shapes');
 
   // Extract measurements based on target type
   if (targetType === 'wall' || targetType === undefined) {
     // Look for polylines (wall measurements)
-    const polylines = targetLayer.shapes
-      .map(shapeId => shapes.get(shapeId))
-      .filter((shape): shape is Shape => shape !== undefined && shape.type === 'polyline');
+    // Filter by shape.layerId instead of layer.shapes array for better sync
+    const polylines = Array.from(shapes.values()).filter(shape => {
+      const shapeLayerId = shape.layerId || 'default-layer';
+      const matches = shapeLayerId === targetLayer.id && shape.type === 'polyline';
+      if (shapeLayerId === targetLayer.id) {
+        console.log(`  Shape ${shape.id}: type=${shape.type}, layerId=${shape.layerId}`);
+      }
+      return matches;
+    });
+
+    console.log(`📏 Found ${polylines.length} polylines in "${targetLayer.name}" (by layerId)`);
 
     if (polylines.length > 0) {
       const segments = polylines.map(polyline => {
         const length = calculatePolylineLength(polyline, scaleFactor);
+        console.log(`  Polyline ${polyline.id}: ${length.toFixed(2)} feet`);
         return { length };
       });
 
+      const totalLength = segments.reduce((sum, s) => sum + s.length, 0);
+      console.log(`✅ Total wall length: ${totalLength.toFixed(2)} feet`);
+
       measurements.walls = {
-        totalLength: segments.reduce((sum, s) => sum + s.length, 0),
+        totalLength,
         segments,
         layerName: targetLayer.name,
       };
+    } else {
+      console.log('⚠️ No polylines found in layer');
     }
   }
 
   if (targetType === 'floor' || targetType === undefined) {
     // Look for polygons (floor areas)
-    const polygons = targetLayer.shapes
-      .map(shapeId => shapes.get(shapeId))
-      .filter((shape): shape is Shape => shape !== undefined && shape.type === 'polygon');
+    // Filter by shape.layerId instead of layer.shapes array for better sync
+    const polygons = Array.from(shapes.values()).filter(shape => {
+      const shapeLayerId = shape.layerId || 'default-layer';
+      return shapeLayerId === targetLayer.id && shape.type === 'polygon';
+    });
+
+    console.log(`📐 Found ${polygons.length} polygons in "${targetLayer.name}" (by layerId)`);
 
     if (polygons.length > 0) {
       const areas = polygons.map(polygon => {
         const area = calculatePolygonArea(polygon, scaleFactor);
+        console.log(`  Polygon ${polygon.id}: ${area.toFixed(2)} sq ft`);
         return { area };
       });
 
+      const totalArea = areas.reduce((sum, a) => sum + a.area, 0);
+      console.log(`✅ Total floor area: ${totalArea.toFixed(2)} sq ft`);
+
       measurements.floors = {
-        totalArea: areas.reduce((sum, a) => sum + a.area, 0),
+        totalArea,
         areas,
         layerName: targetLayer.name,
       };
@@ -178,18 +211,29 @@ function inferTypeFromQuery(query: string): 'wall' | 'floor' | undefined {
  * Find relevant layer based on type
  */
 function findRelevantLayer(layers: Layer[], type: 'wall' | 'floor' | undefined): Layer | null {
-  if (!type) return layers[0] || null;
+  console.log('🔍 Finding layer for type:', type);
+  console.log('📋 Available layers:', layers.map(l => ({ id: l.id, name: l.name, shapeCount: l.shapes.length })));
+  
+  if (!type) {
+    const firstLayer = layers[0] || null;
+    console.log('⚠️ No type specified, using first layer:', firstLayer?.name);
+    return firstLayer;
+  }
 
-  // Look for layer with matching name
+  // Look for layer with matching name (case-insensitive)
   const keywords = type === 'wall' ? ['wall', 'framing'] : ['floor', 'flooring'];
   
   for (const layer of layers) {
     const lowerName = layer.name.toLowerCase();
+    console.log(`🔎 Checking layer "${layer.name}" (${layer.shapes.length} shapes)`);
+    
     if (keywords.some(kw => lowerName.includes(kw))) {
+      console.log(`✅ Found matching layer: "${layer.name}"`);
       return layer;
     }
   }
 
+  console.log('❌ No matching layer found for type:', type);
   return null;
 }
 
@@ -264,13 +308,14 @@ function identifyMissingInformation(
     return missing;
   }
 
-  // For walls: Check if we have framing type specified
+  // For walls: Check if we have framing, surface type, and height specified
   if (measurements.walls) {
     const specs = request.specifications as Partial<WallAssumptions> | undefined;
+    
     if (!specs?.framing) {
       missing.push({
         field: 'framingType',
-        question: 'What type of framing would you like?',
+        question: 'What type of framing?',
         type: 'choice',
         options: [
           { label: 'Lumber (16" spacing)', value: 'lumber-16' },
@@ -279,6 +324,30 @@ function identifyMissingInformation(
           { label: 'Metal (24" spacing)', value: 'metal-24' },
         ],
         defaultValue: 'lumber-16',
+      });
+    }
+    
+    if (!specs?.surface) {
+      missing.push({
+        field: 'surfaceType',
+        question: 'What wall surface?',
+        type: 'choice',
+        options: [
+          { label: 'Drywall (1/2")', value: 'drywall-half' },
+          { label: 'Drywall (5/8")', value: 'drywall-five-eighths' },
+          { label: 'FRP Panels (0.090")', value: 'frp-090' },
+          { label: 'FRP Panels (0.120")', value: 'frp-120' },
+        ],
+        defaultValue: 'drywall-half',
+      });
+    }
+    
+    if (!specs?.height) {
+      missing.push({
+        field: 'wallHeight',
+        question: 'Wall height? (Common: 8ft residential, 10ft commercial)',
+        type: 'number',
+        defaultValue: 8,
       });
     }
   }
@@ -364,7 +433,57 @@ async function generateEstimate(
       userId
     );
 
-    message = `Based on the "${measurements.walls.layerName || 'selected'}" layer, I found ${measurements.walls.totalLength.toFixed(1)} linear feet of walls.\n\nCalculated materials with:\n- ${assumptions.framing.type} framing at ${assumptions.framing.spacing}" spacing\n- ${assumptions.surface.thickness} ${assumptions.surface.type}\n- ${assumptions.finish.coats} coat${assumptions.finish.coats > 1 ? 's' : ''} of paint${assumptions.finish.includePrimer ? ' with primer' : ''}`;
+    const wallArea = measurements.walls.totalLength * (assumptions.height || 8);
+
+    // Build transparent assumptions message
+    message = `Based on the "${measurements.walls.layerName || 'selected'}" layer, I found ${measurements.walls.totalLength.toFixed(1)} linear feet of walls.\n\n📋 Assumptions:\n`;
+    message += `- Wall height: ${assumptions.height || 8} feet\n`;
+    message += `- Framing: ${assumptions.framing.type} at ${assumptions.framing.spacing}" on center\n`;
+    
+    // Show insulation if specified
+    if (assumptions.insulation && assumptions.insulation.type !== 'none') {
+      message += `- Insulation: ${assumptions.insulation.type} (R-${assumptions.insulation.rValue || 13})\n`;
+    } else {
+      message += `- Insulation: None\n`;
+    }
+    
+    // Show surface details
+    if (assumptions.surface.type === 'frp') {
+      message += `- Surface: ${assumptions.surface.thickness} FRP panels\n`;
+      message += `  ${assumptions.surface.includeDrywall !== false ? '→ Installed over 1/2" drywall' : '→ Direct to framing'}\n`;
+    } else {
+      message += `- Surface: ${assumptions.surface.thickness} ${assumptions.surface.type}\n`;
+    }
+    
+    if (assumptions.finish.coats > 0) {
+      message += `- Finish: ${assumptions.finish.coats} coat${assumptions.finish.coats > 1 ? 's' : ''} of paint${assumptions.finish.includePrimer ? ' with primer' : ''}\n`;
+    } else if (assumptions.surface.type === 'frp') {
+      message += `- Finish: No paint (FRP is pre-finished)\n`;
+    }
+    
+    if (assumptions.doors || assumptions.windows) {
+      message += `- Openings: ${assumptions.doors || 0} doors, ${assumptions.windows || 0} windows\n`;
+    }
+    
+    message += `\n📐 Total wall area: ${wallArea.toFixed(1)} sq ft\n`;
+    message += `\n💡 You can refine by saying:\n`;
+    message += `- "Change height to 10 feet"\n`;
+    
+    if (assumptions.insulation?.type === 'none') {
+      message += `- "Add R-19 batt insulation"\n`;
+    } else {
+      message += `- "Remove insulation"\n`;
+    }
+    
+    message += `- "Switch to ${assumptions.framing.type === 'lumber' ? 'metal' : 'lumber'} framing"\n`;
+    
+    if (assumptions.surface.type === 'frp') {
+      message += `- "Use drywall instead" or "No drywall under FRP"\n`;
+    } else {
+      message += `- "Use FRP panels instead"\n`;
+    }
+    
+    message += `- "Add 2 doors and 3 windows"`;
   } else if (measurements.floors) {
     const assumptions = mergeWithDefaults(
       request.specifications || {},

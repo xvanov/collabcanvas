@@ -44,7 +44,7 @@ export function ColorPicker({ currentColor, onColorChange, disabled = false, swa
     const margin = 8;
     const estWidth = 220; // estimated popover width
     const estHeight = 300; // estimated popover height
-    let left = Math.min(Math.max(margin, rect.left), window.innerWidth - estWidth - margin);
+    const left = Math.min(Math.max(margin, rect.left), window.innerWidth - estWidth - margin);
     let top = rect.bottom + margin;
     const spaceBelow = window.innerHeight - rect.bottom;
     if (spaceBelow < estHeight + margin) {

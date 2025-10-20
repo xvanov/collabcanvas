@@ -85,7 +85,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /rectangle/i });
@@ -96,7 +96,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /circle/i });
@@ -107,7 +107,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /text/i });
@@ -118,7 +118,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /^Create Line$/i });
@@ -196,7 +196,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} onCreateShape={mockOnCreateShape} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /rectangle/i });
@@ -209,7 +209,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /rectangle/i });
@@ -278,7 +278,7 @@ describe('Toolbar', () => {
     render(<Toolbar fps={60} zoom={1} />);
     
     // Click the Shapes dropdown to open it
-    const shapesDropdown = screen.getByRole('button', { name: /shapes/i });
+    const shapesDropdown = screen.getByRole('button', { name: /components/i });
     fireEvent.click(shapesDropdown);
     
     const button = screen.getByRole('button', { name: /rectangle/i });

@@ -3,5 +3,6 @@
  */
 
 import { aiCommand } from './aiCommand';
+import { materialEstimateCommand } from './materialEstimateCommand';
 
-export { aiCommand };
+export { aiCommand, materialEstimateCommand };

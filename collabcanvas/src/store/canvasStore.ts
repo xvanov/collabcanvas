@@ -138,12 +138,14 @@ interface CanvasState {
   materialDialogue: DialogueContext | null;
   billOfMaterials: BillOfMaterials | null;
   userMaterialPreferences: UserMaterialPreferences | null;
+  isAccumulatingBOM: boolean; // Force accumulation mode
   startMaterialDialogue: (request: string) => void;
   updateMaterialDialogue: (updates: Partial<DialogueContext>) => void;
   clearMaterialDialogue: () => void;
   setBillOfMaterials: (bom: BillOfMaterials | null) => void;
-  addMaterialCalculation: (calculation: MaterialCalculation) => void;
+  addMaterialCalculation: (calculation: MaterialCalculation, forceAccumulate?: boolean) => void;
   setUserMaterialPreferences: (preferences: UserMaterialPreferences) => void;
+  setIsAccumulatingBOM: (isAccumulating: boolean) => void;
 }
 
 export const useCanvasStore = create<CanvasState>((set, get) => {
@@ -881,7 +883,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       const updatedShapeIds: string[] = [];
       set((state) => {
         const newLayers = state.layers.map(layer => 
-          layer.id === id ? { ...layer, ...updates } : layer
+        layer.id === id ? { ...layer, ...updates } : layer
         );
         let newShapes = state.shapes;
         if (isColorChange) {
@@ -922,42 +924,47 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       const layerToDelete = state.layers.find(layer => layer.id === id);
       if (!layerToDelete) return state;
       
-      // Compute shapes to delete by checking shape.layerId to be robust
-      const shapeIdsToDelete: string[] = [];
+      // Find shapes that belong to this layer
+      const shapeIdsToMove: string[] = [];
       state.shapes.forEach((shape, shapeId) => {
         const shapeLayerId = shape.layerId || 'default-layer';
-        if (shapeLayerId === id) shapeIdsToDelete.push(shapeId);
+        if (shapeLayerId === id) shapeIdsToMove.push(shapeId);
       });
 
-      // Delete all shapes that belong to this layer from local state
-      const updatedShapes = new Map(state.shapes);
-      shapeIdsToDelete.forEach(shapeId => {
-        updatedShapes.delete(shapeId);
+      // Move shapes to default layer instead of deleting them
+        const updatedShapes = new Map(state.shapes);
+      shapeIdsToMove.forEach(shapeId => {
+          const shape = updatedShapes.get(shapeId);
+          if (shape) {
+          updatedShapes.set(shapeId, { ...shape, layerId: 'default-layer' });
+        }
       });
 
       const remainingLayers = state.layers.filter(layer => layer.id !== id);
-      // Also scrub shape ids from any layer.shapes arrays to keep them clean
-      const cleanedLayers = remainingLayers.map(layer => ({
-        ...layer,
-        shapes: layer.shapes.filter(sid => !shapeIdsToDelete.includes(sid)),
-      }));
+      
+      // Add moved shapes to default layer
+      const cleanedLayers = remainingLayers.map(layer => {
+        if (layer.id === 'default-layer') {
+        return {
+            ...layer,
+            shapes: [...layer.shapes.filter(sid => !shapeIdsToMove.includes(sid)), ...shapeIdsToMove],
+          };
+        }
+        return {
+          ...layer,
+          shapes: layer.shapes.filter(sid => !shapeIdsToMove.includes(sid)),
+        };
+      });
 
-      // Persist deletes to Firestore (best-effort)
+      // Persist layer deletion to Firestore (shapes are just moved, not deleted)
       if (state.currentUser) {
-        import('../services/firestore').then(({ deleteLayer: deleteLayerInFs, deleteShape: deleteShapeInFs }) => {
-          // Delete shapes in Firestore
-          shapeIdsToDelete.forEach(shapeId => {
-            deleteShapeInFs(shapeId).catch((error: unknown) => {
-              console.error('❌ Failed to delete shape in Firestore:', { shapeId, error });
-            });
-          });
-          // Delete layer in Firestore
+        import('../services/firestore').then(({ deleteLayer: deleteLayerInFs }) => {
           deleteLayerInFs(id).catch((error: unknown) => {
             console.error('❌ Failed to delete layer in Firestore:', { layerId: id, error });
           });
         });
       }
-
+      
       return {
         shapes: updatedShapes,
         layers: cleanedLayers,
@@ -1625,6 +1632,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
   materialDialogue: null,
   billOfMaterials: null,
   userMaterialPreferences: null,
+  isAccumulatingBOM: false,
 
   startMaterialDialogue: (request: string) =>
     set((state) => {
@@ -1683,15 +1691,82 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       billOfMaterials: bom,
     })),
 
-  addMaterialCalculation: (calculation: MaterialCalculation) =>
+  addMaterialCalculation: (calculation: MaterialCalculation, forceAccumulate?: boolean) =>
     set((state) => {
       const currentBom = state.billOfMaterials;
       const currentUser = state.currentUser;
+      const materialDialogue = state.materialDialogue;
       
       if (!currentUser) return state;
 
+      // Force accumulation if explicitly requested (for multi-area BOM)
+      if (forceAccumulate || state.isAccumulatingBOM) {
+        console.log('🔒 Force accumulate mode - adding to BOM');
+        
+        if (!currentBom) {
+          return {
+            billOfMaterials: {
+              id: `bom-${Date.now()}`,
+              calculations: [calculation],
+              totalMaterials: calculation.materials,
+              createdAt: Date.now(),
+              createdBy: currentUser.uid,
+              updatedAt: Date.now(),
+            },
+            isAccumulatingBOM: true,
+          };
+        }
+        
+        const allMaterials = [...currentBom.totalMaterials, ...calculation.materials];
+        const consolidatedMaterials = consolidateMaterials(allMaterials);
+        
+        console.log('📦 Force accumulated:', {
+          previousMaterials: currentBom.totalMaterials.length,
+          newMaterials: calculation.materials.length,
+          consolidatedMaterials: consolidatedMaterials.length,
+        });
+        
+        return {
+          billOfMaterials: {
+            ...currentBom,
+            calculations: [...currentBom.calculations, calculation],
+            totalMaterials: consolidatedMaterials,
+            updatedAt: Date.now(),
+          },
+          isAccumulatingBOM: true,
+        };
+      }
+
+      // Determine if this is a refinement or a new calculation
+      // Check if this is for the same target (wall/floor/layer) as last calculation
+      const lastCalc = materialDialogue?.lastCalculation;
+      
+      // Different areas have different measurement types:
+      // - Walls have totalLength (linear feet)
+      // - Floors have totalArea (square feet)
+      // If measurement types differ, it's definitely a new area
+      const hasSameMeasurementType = 
+        (lastCalc?.totalLength && calculation.totalLength) ||
+        (lastCalc?.totalArea && calculation.totalArea && !lastCalc?.totalLength && !calculation.totalLength);
+      
+      const isSameMeasurement = hasSameMeasurementType &&
+        lastCalc.totalLength === calculation.totalLength &&
+        lastCalc.totalArea === calculation.totalArea;
+      
+      const isRefinement = lastCalc !== null && isSameMeasurement;
+      
+      console.log('📊 BOM Update Logic:', {
+        hasLastCalc: !!lastCalc,
+        hasSameMeasurementType,
+        isSameMeasurement,
+        isRefinement,
+        lastCalcType: lastCalc?.totalLength ? 'walls' : lastCalc?.totalArea ? 'floors' : 'unknown',
+        newCalcType: calculation.totalLength ? 'walls' : calculation.totalArea ? 'floors' : 'unknown',
+      });
+
       if (!currentBom) {
         // Create new BOM
+        console.log('✨ Creating new BOM');
         return {
           billOfMaterials: {
             id: `bom-${Date.now()}`,
@@ -1704,12 +1779,39 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         };
       }
 
-      // Add to existing BOM
+      if (isRefinement) {
+        // Replace the last calculation instead of adding
+        console.log('🔄 Replacing last calculation (refinement)');
+        const updatedCalculations = [...currentBom.calculations];
+        updatedCalculations[updatedCalculations.length - 1] = calculation;
+        
+        return {
+          billOfMaterials: {
+            ...currentBom,
+            calculations: updatedCalculations,
+            totalMaterials: calculation.materials, // Use only the latest materials
+            updatedAt: Date.now(),
+          },
+        };
+      }
+
+      // Add new calculation (different layer or new area)
+      // Consolidate materials from all calculations
+      console.log('➕ Adding new calculation to BOM (accumulating)');
+      const allMaterials = [...currentBom.totalMaterials, ...calculation.materials];
+      const consolidatedMaterials = consolidateMaterials(allMaterials);
+      
+      console.log('📦 BOM totals:', {
+        previousMaterials: currentBom.totalMaterials.length,
+        newMaterials: calculation.materials.length,
+        consolidatedMaterials: consolidatedMaterials.length,
+      });
+      
       return {
         billOfMaterials: {
           ...currentBom,
           calculations: [...currentBom.calculations, calculation],
-          totalMaterials: [...currentBom.totalMaterials, ...calculation.materials],
+          totalMaterials: consolidatedMaterials,
           updatedAt: Date.now(),
         },
       };
@@ -1719,8 +1821,31 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     set(() => ({
       userMaterialPreferences: preferences,
     })),
+
+  setIsAccumulatingBOM: (isAccumulating: boolean) =>
+    set(() => ({
+      isAccumulatingBOM: isAccumulating,
+    })),
   };
 });
+
+/**
+ * Helper: Consolidate duplicate materials by summing quantities
+ */
+function consolidateMaterials(materials: MaterialCalculation['materials']): MaterialCalculation['materials'] {
+  const consolidated = new Map<string, typeof materials[0]>();
+
+  materials.forEach((material) => {
+    const existing = consolidated.get(material.id);
+    if (existing) {
+      existing.quantity += material.quantity;
+    } else {
+      consolidated.set(material.id, { ...material });
+    }
+  });
+
+  return Array.from(consolidated.values());
+}
 
 if (typeof window !== 'undefined' && isHarnessEnabled()) {
   const storeApi = {
