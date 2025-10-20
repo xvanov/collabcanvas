@@ -16,14 +16,6 @@ if (!process.env.OPENAI_API_KEY && process.env.NODE_ENV === 'development') {
   console.warn('⚠️ OPENAI_API_KEY not found. AI assistant will not work.');
 }
 
-// CORS configuration
-const corsOptions = {
-  origin: true, // Allow all origins in production, or specify your domain
-  methods: ['GET', 'POST', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
-  credentials: true,
-};
-
 // Define command schema using Zod
 const CommandSchema = z.object({
   type: z.enum(['CREATE', 'MOVE', 'RESIZE', 'ROTATE', 'DELETE', 'ALIGN', 'EXPORT', 'LAYER', 'COLOR', 'DUPLICATE']),
@@ -154,7 +146,7 @@ Return ONLY the JSON, no other text.`;
 }
 
 export const aiCommand = onCall({
-  cors: corsOptions,
+  cors: true, // Enable CORS for all origins (Firebase Functions v2 handles this automatically)
 }, async (request) => {
   try {
     const { commandText, userId } = request.data;
