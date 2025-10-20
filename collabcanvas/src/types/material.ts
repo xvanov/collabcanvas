@@ -6,7 +6,7 @@
 /**
  * Material categories for construction
  */
-export type MaterialCategory = 'framing' | 'surface' | 'finish' | 'flooring' | 'trim';
+export type MaterialCategory = 'framing' | 'surface' | 'finish' | 'flooring' | 'trim' | 'insulation';
 
 /**
  * Wall framing types

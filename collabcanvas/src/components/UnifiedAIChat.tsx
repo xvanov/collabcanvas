@@ -160,11 +160,25 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
     console.log('👁️ Vision query - analyzing plan...');
     console.log('📷 Image URL:', backgroundImage!.url);
     
-    // For local emulator URLs, we'd need to fetch and convert to base64
-    // For now, try with the URL (works in production)
-    const visionResult = await materialAI.analyzePlanImage(messageText, backgroundImage!.url);
+    // Add "analyzing" message
+    const analyzingMessage: ChatMessage = {
+      id: `msg-analyzing-${Date.now()}`,
+      type: 'assistant',
+      content: '👁️ Analyzing the plan image... This may take 10-15 seconds.',
+      timestamp: Date.now(),
+    };
+    setChatMessages(prev => [...prev, analyzingMessage]);
     
-    if (visionResult) {
+    try {
+      const visionResult = await materialAI.analyzePlanImage(messageText, backgroundImage!.url);
+      
+      // Remove analyzing message
+      setChatMessages(prev => prev.filter(m => m.id !== analyzingMessage.id));
+      
+      if (!visionResult) {
+        throw new Error('No response from Vision AI');
+      }
+      
       console.log('👁️ Vision AI result:', visionResult);
       
       // Add vision AI response to chat
@@ -208,6 +222,20 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
           });
         }
       }
+    } catch (error) {
+      console.error('Vision query error:', error);
+      
+      // Remove analyzing message
+      setChatMessages(prev => prev.filter(m => !m.id.includes('analyzing')));
+      
+      // Show error
+      const errorMessage: ChatMessage = {
+        id: `msg-${Date.now()}`,
+        type: 'error',
+        content: `Vision analysis failed: ${error instanceof Error ? error.message : String(error)}\n\nTip: This feature works best in production with publicly accessible images.`,
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
     }
   };
 

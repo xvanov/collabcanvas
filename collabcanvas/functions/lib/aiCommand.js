@@ -123,7 +123,8 @@ Return ONLY the JSON, no other text.`;
     }
 }
 exports.aiCommand = (0, https_1.onCall)({
-    cors: true, // Enable CORS for all origins (Firebase Functions v2 handles this automatically)
+    cors: true,
+    secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret
 }, async (request) => {
     try {
         const { commandText, userId } = request.data;

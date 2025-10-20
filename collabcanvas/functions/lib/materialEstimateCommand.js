@@ -17,6 +17,8 @@ const openai = new openai_1.OpenAI({
 exports.materialEstimateCommand = (0, https_1.onCall)({
     cors: true,
     maxInstances: 10,
+    memory: '512MiB',
+    secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret
 }, async (request) => {
     var _a, _b;
     try {

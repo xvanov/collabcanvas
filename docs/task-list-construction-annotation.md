@@ -888,6 +888,375 @@ describe('Material Integration', () => {
 - [ ] Verify CSV exports
 - [ ] Test in Chrome and Firefox
 
+## **PR-5: Home Depot Pricing Integration** 
+**Goal**: Add pricing and product links to BOM using Home Depot API
+**Status**: 🔄 Ready for Implementation
+
+### **Features**
+- Home Depot product search integration via SerpAPI
+- Automatic price lookup for BOM items
+- Product links for easy ordering
+- Total cost calculation
+- API rate limiting (250 free searches)
+- Manual testing only (no API tests)
+
+### **Files Modified/Created**
+```
+src/services/
+├── homeDepotService.ts (NEW)
+├── pricingService.ts (NEW)
+└── serpApiService.ts (NEW)
+
+src/components/
+├── MaterialPanel/
+│   ├── PricingDisplay.tsx (NEW)
+│   └── ProductLink.tsx (NEW)
+
+src/types/
+└── pricingTypes.ts (NEW)
+
+.env (MODIFIED - add SERP_API_KEY)
+```
+
+### **API Integration Details**
+
+#### **SerpAPI Home Depot Integration**
+```typescript
+// serpApiService.ts
+interface SerpApiResponse {
+  organic_results: Array<{
+    title: string;
+    link: string;
+    price: {
+      raw: string;
+      extracted: number;
+    };
+    thumbnail: string;
+    snippet: string;
+  }>;
+  search_information: {
+    total_results: number;
+  };
+}
+
+class SerpApiService {
+  private readonly API_KEY: string;
+  private readonly BASE_URL = 'https://serpapi.com/search.json';
+  private searchCount = 0;
+  private readonly MAX_SEARCHES = 250;
+
+  constructor() {
+    this.API_KEY = process.env.SERP_API_KEY || '';
+    if (!this.API_KEY) {
+      throw new Error('SERP_API_KEY not found in environment variables');
+    }
+  }
+
+  async searchHomeDepot(query: string): Promise<SerpApiResponse> {
+    if (this.searchCount >= this.MAX_SEARCHES) {
+      throw new Error('API search limit reached (250 searches)');
+    }
+
+    const params = new URLSearchParams({
+      engine: 'home_depot',
+      q: query,
+      api_key: this.API_KEY
+    });
+
+    const response = await fetch(`${this.BASE_URL}?${params}`);
+    const data = await response.json();
+    
+    this.searchCount++;
+    return data;
+  }
+
+  getRemainingSearches(): number {
+    return this.MAX_SEARCHES - this.searchCount;
+  }
+}
+```
+
+#### **Pricing Service Integration**
+```typescript
+// pricingService.ts
+interface MaterialPricing {
+  materialName: string;
+  quantity: number;
+  unit: string;
+  homeDepotPrice?: number;
+  productLink?: string;
+  productTitle?: string;
+  thumbnail?: string;
+  totalCost?: number;
+  searchQuery: string;
+}
+
+class PricingService {
+  private serpApi: SerpApiService;
+
+  constructor() {
+    this.serpApi = new SerpApiService();
+  }
+
+  async getMaterialPricing(material: MaterialSpec): Promise<MaterialPricing> {
+    const searchQuery = this.buildSearchQuery(material);
+    
+    try {
+      const results = await this.serpApi.searchHomeDepot(searchQuery);
+      const bestMatch = this.findBestMatch(results.organic_results, material);
+      
+      return {
+        materialName: material.name,
+        quantity: material.quantity,
+        unit: material.unit,
+        homeDepotPrice: bestMatch?.price?.extracted,
+        productLink: bestMatch?.link,
+        productTitle: bestMatch?.title,
+        thumbnail: bestMatch?.thumbnail,
+        totalCost: bestMatch?.price?.extracted ? 
+          bestMatch.price.extracted * material.quantity : undefined,
+        searchQuery
+      };
+    } catch (error) {
+      console.warn(`Failed to get pricing for ${material.name}:`, error);
+      return {
+        materialName: material.name,
+        quantity: material.quantity,
+        unit: material.unit,
+        searchQuery
+      };
+    }
+  }
+
+  private buildSearchQuery(material: MaterialSpec): string {
+    // Build optimized search queries for Home Depot
+    const baseQuery = material.name.toLowerCase();
+    
+    // Add common Home Depot keywords
+    const keywords = ['home depot', 'construction', 'building'];
+    return `${baseQuery} ${keywords.join(' ')}`;
+  }
+
+  private findBestMatch(results: any[], material: MaterialSpec): any {
+    // Find the best matching product based on name similarity
+    if (!results || results.length === 0) return null;
+    
+    // Simple matching - could be enhanced with fuzzy matching
+    const materialName = material.name.toLowerCase();
+    return results.find(result => 
+      result.title.toLowerCase().includes(materialName) ||
+      materialName.includes(result.title.toLowerCase().split(' ')[0])
+    ) || results[0]; // Fallback to first result
+  }
+
+  async getBomPricing(bom: MaterialSpec[]): Promise<MaterialPricing[]> {
+    const pricingPromises = bom.map(material => 
+      this.getMaterialPricing(material)
+    );
+    
+    return Promise.all(pricingPromises);
+  }
+
+  getTotalCost(pricing: MaterialPricing[]): number {
+    return pricing.reduce((total, item) => {
+      return total + (item.totalCost || 0);
+    }, 0);
+  }
+}
+```
+
+### **UI Components**
+
+#### **Enhanced Material Panel**
+```typescript
+// MaterialPanel/PricingDisplay.tsx
+interface PricingDisplayProps {
+  pricing: MaterialPricing[];
+  totalCost: number;
+  remainingSearches: number;
+}
+
+const PricingDisplay: React.FC<PricingDisplayProps> = ({ 
+  pricing, 
+  totalCost, 
+  remainingSearches 
+}) => {
+  return (
+    <div className={styles.pricingDisplay}>
+      <div className={styles.header}>
+        <h3>Material Pricing (Home Depot)</h3>
+        <div className={styles.apiStatus}>
+          <span className={styles.searchCount}>
+            {remainingSearches} searches remaining
+          </span>
+        </div>
+      </div>
+      
+      <div className={styles.pricingTable}>
+        <table>
+          <thead>
+            <tr>
+              <th>Material</th>
+              <th>Quantity</th>
+              <th>Unit Price</th>
+              <th>Total Cost</th>
+              <th>Product Link</th>
+            </tr>
+          </thead>
+          <tbody>
+            {pricing.map((item, index) => (
+              <tr key={index}>
+                <td>{item.materialName}</td>
+                <td>{item.quantity} {item.unit}</td>
+                <td>
+                  {item.homeDepotPrice ? 
+                    `$${item.homeDepotPrice.toFixed(2)}` : 
+                    'Price not found'
+                  }
+                </td>
+                <td>
+                  {item.totalCost ? 
+                    `$${item.totalCost.toFixed(2)}` : 
+                    'N/A'
+                  }
+                </td>
+                <td>
+                  {item.productLink ? (
+                    <ProductLink 
+                      url={item.productLink}
+                      title={item.productTitle}
+                      thumbnail={item.thumbnail}
+                    />
+                  ) : (
+                    'No product found'
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+      
+      <div className={styles.totalSection}>
+        <div className={styles.totalCost}>
+          <strong>Total Estimated Cost: ${totalCost.toFixed(2)}</strong>
+        </div>
+        <div className={styles.disclaimer}>
+          <small>
+            Prices are estimates from Home Depot. Actual prices may vary.
+            {remainingSearches < 50 && (
+              <span className={styles.warning}>
+                ⚠️ Low API searches remaining ({remainingSearches})
+              </span>
+            )}
+          </small>
+        </div>
+      </div>
+    </div>
+  );
+};
+```
+
+#### **Product Link Component**
+```typescript
+// MaterialPanel/ProductLink.tsx
+interface ProductLinkProps {
+  url: string;
+  title?: string;
+  thumbnail?: string;
+}
+
+const ProductLink: React.FC<ProductLinkProps> = ({ url, title, thumbnail }) => {
+  return (
+    <a 
+      href={url} 
+      target="_blank" 
+      rel="noopener noreferrer"
+      className={styles.productLink}
+    >
+      {thumbnail && (
+        <img 
+          src={thumbnail} 
+          alt={title || 'Product image'} 
+          className={styles.thumbnail}
+        />
+      )}
+      <span className={styles.linkText}>
+        {title ? title.substring(0, 50) + '...' : 'View Product'}
+      </span>
+    </a>
+  );
+};
+```
+
+### **Environment Setup Documentation**
+
+#### **Setup Instructions**
+```markdown
+# Home Depot Pricing Integration Setup
+
+## Prerequisites
+- SerpAPI account with Home Depot API access
+- 250 free searches available (or paid plan)
+
+## Setup Steps
+
+### 1. Get SerpAPI Key
+1. Sign up at https://serpapi.com/
+2. Navigate to your dashboard
+3. Copy your API key
+
+### 2. Configure Environment
+Add to your `.env` file:
+```bash
+SERP_API_KEY=your_api_key_here
+```
+
+### 3. Test API Connection
+```bash
+# Test with a simple search
+curl "https://serpapi.com/search.json?engine=home_depot&q=2x4+lumber&api_key=YOUR_API_KEY"
+```
+
+### 4. Usage in Application
+The pricing service will automatically:
+- Search Home Depot for each BOM item
+- Extract prices and product links
+- Calculate total costs
+- Track remaining API searches
+
+## API Limits & Considerations
+- **Free Plan**: 250 searches per month
+- **Rate Limiting**: Built-in to prevent exceeding limits
+- **Error Handling**: Graceful fallback when API fails
+- **Manual Testing**: No automated tests to preserve API quota
+
+## Troubleshooting
+- **API Key Issues**: Verify key is correctly set in .env
+- **Search Limits**: Check remaining searches in UI
+- **No Results**: Some materials may not have exact matches
+- **Price Accuracy**: Prices are estimates, verify before ordering
+```
+
+### **Manual Testing Checklist**
+- [ ] Set up SerpAPI key in .env file
+- [ ] Test API connection with simple search
+- [ ] Generate BOM with common materials (2x4 lumber, drywall, paint)
+- [ ] Verify pricing data appears in Material Panel
+- [ ] Check product links open correctly
+- [ ] Verify total cost calculation
+- [ ] Test with materials that may not have exact matches
+- [ ] Check API search counter decreases correctly
+- [ ] Test error handling when API limit reached
+- [ ] Verify pricing display in Chrome and Firefox
+
+### **Implementation Notes**
+- **No Automated Tests**: To preserve API quota, only manual testing
+- **Rate Limiting**: Built-in protection against exceeding 250 searches
+- **Error Handling**: Graceful fallback when pricing unavailable
+- **Search Optimization**: Optimized queries for better Home Depot matches
+- **UI Integration**: Seamless integration with existing Material Panel
+
 ## **Success Criteria**
 
 ### **MVP Success Criteria**
@@ -896,6 +1265,8 @@ describe('Material Integration', () => {
 - [ ] Layer color system works with inheritance
 - [ ] AI generates useful material calculations
 - [ ] CSV export works for material lists
+- [ ] Home Depot pricing integration works
+- [ ] Product links and total costs display correctly
 - [ ] All features work in Chrome and Firefox
 - [ ] Performance is smooth with large plans
 
@@ -903,5 +1274,6 @@ describe('Material Integration', () => {
 - [ ] All user stories have acceptance criteria met
 - [ ] 95%+ measurement accuracy
 - [ ] AI calculations are reliable
+- [ ] Pricing integration works with common materials
 - [ ] All tests passing in Chrome and Firefox
 - [ ] Documentation complete

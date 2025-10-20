@@ -189,6 +189,37 @@ Transform CollabCanvas into a focused construction annotation tool with AI-power
 - [ ] Organized, readable format
 - [ ] Use existing canvas export for plan sharing
 
+### **Epic 6: Home Depot Pricing Integration**
+
+#### **US-6.1: Automatic Material Pricing**
+**As a** contractor  
+**I want to** get real-time pricing from Home Depot for my BOM items  
+**So that** I can estimate project costs accurately  
+
+**Acceptance Criteria**:
+- [ ] Integrate with SerpAPI Home Depot search
+- [ ] Automatically search for each BOM item
+- [ ] Display unit price and total cost for each material
+- [ ] Show product links for easy ordering
+- [ ] Calculate total project cost
+- [ ] Track remaining API searches (250 limit)
+- [ ] Handle API failures gracefully
+- [ ] Show pricing disclaimer about estimates
+
+#### **US-6.2: Enhanced Material Panel with Pricing**
+**As a** contractor  
+**I want to** see pricing information alongside my material calculations  
+**So that** I can make informed purchasing decisions  
+
+**Acceptance Criteria**:
+- [ ] Add pricing columns to material display
+- [ ] Show Home Depot product thumbnails
+- [ ] Display clickable product links
+- [ ] Show API search counter
+- [ ] Highlight low API search warnings
+- [ ] Maintain existing BOM functionality
+- [ ] Responsive design for pricing table
+
 ---
 
 ## **3. Technical Considerations**
@@ -215,6 +246,8 @@ Transform CollabCanvas into a focused construction annotation tool with AI-power
 - **PolylineTool.tsx**: Wall measurement tool
 - **PolygonTool.tsx**: Room area tool
 - **MaterialPanel.tsx**: Material calculations display
+- **PricingDisplay.tsx**: Home Depot pricing integration
+- **ProductLink.tsx**: Product link component
 
 ### **Data Structure Extensions**
 
@@ -270,6 +303,34 @@ interface MaterialSpec {
     minPerRoom: number;
   };
 }
+
+interface MaterialPricing {
+  materialName: string;
+  quantity: number;
+  unit: string;
+  homeDepotPrice?: number;
+  productLink?: string;
+  productTitle?: string;
+  thumbnail?: string;
+  totalCost?: number;
+  searchQuery: string;
+}
+
+interface SerpApiResponse {
+  organic_results: Array<{
+    title: string;
+    link: string;
+    price: {
+      raw: string;
+      extracted: number;
+    };
+    thumbnail: string;
+    snippet: string;
+  }>;
+  search_information: {
+    total_results: number;
+  };
+}
 ```
 
 ---
@@ -315,6 +376,28 @@ interface MaterialSpec {
 
 **Risk**: AI response quality and calculation accuracy
 **Mitigation**: Focus on one comprehensive use case (walls)
+
+### **Week 3: Home Depot Pricing Integration**
+**Goal**: Add real-time pricing to material calculations
+
+#### **Tasks**:
+1. **SerpAPI Integration** (2 days)
+   - Home Depot search API setup
+   - Pricing service implementation
+   - Error handling and rate limiting
+
+2. **UI Enhancement** (2 days)
+   - Pricing display components
+   - Product link integration
+   - Total cost calculations
+
+3. **Testing & Documentation** (1 day)
+   - Manual testing with real BOMs
+   - API setup documentation
+   - Performance verification
+
+**Risk**: API rate limits and search accuracy
+**Mitigation**: Manual testing only, optimized search queries
 
 ---
 
@@ -381,6 +464,22 @@ interface MaterialSpec {
 - Gradual feature rollout
 - Performance monitoring
 - Optimization sprints
+
+#### **Pitfall 8: API Rate Limiting**
+**Risk**: Exceeding 250 free SerpAPI searches
+**Mitigation**:
+- Built-in search counter
+- Rate limiting protection
+- Manual testing only (no automated tests)
+- Clear warnings when approaching limits
+
+#### **Pitfall 9: Pricing Accuracy Expectations**
+**Risk**: Users expect exact pricing matches
+**Mitigation**:
+- Clear disclaimers about estimate nature
+- Show search queries used
+- Allow manual price overrides
+- Emphasize verification before ordering
 
 ---
 
@@ -678,6 +777,8 @@ const CONSTRUCTION_MATERIALS = {
 - [ ] Add arrows with text annotations
 - [ ] Color-coded layers by trade
 - [ ] AI material estimation for rooms and walls
+- [ ] Home Depot pricing integration
+- [ ] Product links and total cost display
 - [ ] Running totals display
 - [ ] Export annotated plans
 - [ ] Maintain 60 FPS performance
@@ -687,6 +788,7 @@ const CONSTRUCTION_MATERIALS = {
 - [ ] All user stories have acceptance criteria met
 - [ ] 95%+ measurement accuracy
 - [ ] <1% error rate in AI calculations
+- [ ] Pricing integration works with common materials
 - [ ] Performance maintained with new features
 - [ ] All tests passing
 - [ ] User feedback incorporated
