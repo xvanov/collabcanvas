@@ -15,8 +15,10 @@ const openai = new OpenAI({
  * Uses OpenAI to parse natural language requests for construction material estimation
  */
 export const materialEstimateCommand = onCall({
-  cors: true,
+  cors: true, // Enable CORS for all origins
   maxInstances: 10,
+  memory: '512MiB', // Increase memory for GPT-4o Vision
+  secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret
 }, async (request) => {
   try {
     const { userMessage, context, planImageUrl } = request.data;

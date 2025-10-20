@@ -26,7 +26,7 @@ export function calculateBattInsulation(
   materials.push({
     id: 'insulation-batt',
     name: `${insulationType} Batt Insulation (${widthLabel} wide)`,
-    category: 'framing',
+    category: 'insulation',
     unit: 'square-feet',
     quantity: battsNeeded,
     wasteFactor: WASTE_FACTORS.lumber,
@@ -55,7 +55,7 @@ export function calculateSprayFoamInsulation(
   materials.push({
     id: 'insulation-spray-foam',
     name: `Spray Foam Insulation Kit (R-${rValue})`,
-    category: 'framing',
+    category: 'insulation',
     unit: 'piece',
     quantity: kitsNeeded,
     notes: `${thickness}" thick for R-${rValue}`,
@@ -80,7 +80,7 @@ export function calculateRigidFoamInsulation(
   materials.push({
     id: 'insulation-rigid-foam',
     name: `Rigid Foam Board R-${rValue} (4'x8')`,
-    category: 'framing',
+    category: 'insulation',
     unit: 'piece',
     quantity: sheetsNeeded,
     wasteFactor: WASTE_FACTORS.lumber,
@@ -90,7 +90,7 @@ export function calculateRigidFoamInsulation(
   materials.push({
     id: 'foam-adhesive',
     name: 'Foam Board Adhesive',
-    category: 'framing',
+    category: 'insulation',
     unit: 'piece',
     quantity: Math.ceil(sheetsNeeded / 10), // 1 tube per 10 boards
     notes: 'Adhesive tubes',

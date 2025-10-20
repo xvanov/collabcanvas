@@ -298,6 +298,16 @@ function identifyMissingInformation(
 ): MissingInformation[] {
   const missing: MissingInformation[] = [];
 
+  // Check if this is a trim-only request (has doors/windows but no wall/floor request)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const specs = request.specifications as any;
+  const isTrimOnly = (specs?.doors || specs?.windows) && !measurements.walls && !measurements.floors;
+  
+  if (isTrimOnly) {
+    // Trim doesn't need wall/floor measurements, skip to calculation
+    return missing;
+  }
+
   // Check if we have any measurements
   if (!measurements.walls && !measurements.floors) {
     missing.push({
@@ -420,8 +430,30 @@ async function generateEstimate(
   let calculation: MaterialCalculation;
   let message: string;
 
-  // Calculate based on what measurements we have
-  if (measurements.walls) {
+  // Check if this is trim-only (no walls/floors needed)
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const specs = request.specifications as any;
+  const isTrimOnly = (specs?.doors || specs?.windows) && !measurements.walls && !measurements.floors;
+  
+  if (isTrimOnly) {
+    // Import trim service
+    const { calculateTrimEstimate } = await import('./trimEstimateService');
+    
+    calculation = calculateTrimEstimate(
+      specs.doors || 0,
+      specs.windows || 0,
+      userId,
+      0 // No baseboard length for standalone trim
+    );
+
+    message = `Calculated trim materials:\n`;
+    message += `- Doors: ${specs.doors || 0}\n`;
+    message += `- Windows: ${specs.windows || 0}\n\n`;
+    message += `Materials:\n`;
+    calculation.materials.forEach(mat => {
+      message += `- ${mat.name}: ${mat.quantity.toFixed(0)} ${mat.unit}\n`;
+    });
+  } else if (measurements.walls) {
     const assumptions = mergeWithDefaults(
       request.specifications || {},
       'wall'

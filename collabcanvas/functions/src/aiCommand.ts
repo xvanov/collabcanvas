@@ -147,6 +147,7 @@ Return ONLY the JSON, no other text.`;
 
 export const aiCommand = onCall({
   cors: true, // Enable CORS for all origins (Firebase Functions v2 handles this automatically)
+  secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret
 }, async (request) => {
   try {
     const { commandText, userId } = request.data;
