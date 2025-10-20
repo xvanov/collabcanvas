@@ -301,10 +301,21 @@ function identifyMissingInformation(
   // Check if this is a trim-only request (has doors/windows but no wall/floor request)
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const specs = request.specifications as any;
-  const isTrimOnly = (specs?.doors || specs?.windows) && !measurements.walls && !measurements.floors;
+  const hasDoorWindowSpecs = (specs?.doors !== undefined || specs?.windows !== undefined);
+  const hasNoMeasurements = !measurements.walls && !measurements.floors;
+  const isTrimOnly = hasDoorWindowSpecs && hasNoMeasurements;
+  
+  console.log('🔍 Trim-only check:', {
+    hasDoorWindowSpecs,
+    doors: specs?.doors,
+    windows: specs?.windows,
+    hasNoMeasurements,
+    isTrimOnly,
+  });
   
   if (isTrimOnly) {
     // Trim doesn't need wall/floor measurements, skip to calculation
+    console.log('✂️ Trim-only calculation - skipping wall/floor questions');
     return missing;
   }
 
