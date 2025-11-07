@@ -1,0 +1,89 @@
+# generated: 2025-11-06 19:22
+# project: collabcanvas
+# project_key: collabcanvas
+# tracking_system: file-system
+# story_location: "{project-root}/docs/stories"
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted: Epic tech context created (required before drafting stories)
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Under SM review (via code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be 'contexted' before stories can be 'drafted'
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
+
+generated: 2025-11-06 19:22
+project: collabcanvas
+project_key: collabcanvas
+tracking_system: file-system
+story_location: "{project-root}/docs/stories"
+
+development_status:
+  # Epic 1: MVP - Minimum Viable Product
+  epic-1: contexted
+  1-1-critical-bug-fixes-performance-optimization: in-progress
+  1-2-home-page-project-management-system: drafted
+  1-3-four-view-navigation-scope-view: backlog
+  1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support
+  epic-2: backlog
+  2-1-counter-tool-fixture-counting: backlog
+  2-2-multi-floor-project-support: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: Phase 3 - Construction Project Bidding Engine
+  epic-3: backlog
+  3-1-advanced-labor-hours-calculation: backlog
+  3-2-enhanced-cpm-labor-integration-visualization: backlog
+  3-3-advanced-margin-calculation-bid-customization: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Phase 4 - Multi-Supplier Cost Optimization & Advanced Features
+  epic-4: backlog
+  4-1-multi-supplier-cost-optimization: backlog
+  4-2-additional-supplier-integrations-price-comparison-dashboard: backlog
+  epic-4-retrospective: optional
+
+  # Epic 4.5: Multi-Scenario Support
+  epic-4-5: backlog
+  4-5-1-scenario-saving-management: backlog
+  4-5-2-scenario-comparison-editing: backlog
+  epic-4-5-retrospective: optional
+
+  # Epic 5: Phase 5 - Machine Learning Enhancement & Historical Project Database
+  epic-5: backlog
+  5-1-ml-model-historical-project-database: backlog
+  5-2-predictive-accuracy-pattern-recognition: backlog
+  epic-5-retrospective: optional
+
+  # Epic 6: Phase 6 - AI-Powered Annotation & Workflow Automation
+  epic-6: backlog
+  6-1-ai-annotation-assistant: backlog
+  6-2-advanced-collaboration-integrations: backlog
+  epic-6-retrospective: optional
+
+  # Epic 7: Phase 7 - Market Expansion
+  epic-7: backlog
+  7-1-commercial-construction-support: backlog
+  7-2-specialty-trades-api: backlog
+  epic-7-retrospective: optional
+

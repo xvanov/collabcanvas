@@ -15,6 +15,11 @@
     "test:ci": "SKIP_AI_TESTS=true vitest run",
     "test:ai": "vitest run src/services/aiService*.test.ts",
     "test:perf": "playwright test --config test/perf/playwright.perf.config.ts",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:headed": "playwright test --headed",
+    "test:e2e:debug": "playwright test --debug",
+    "test:e2e:report": "playwright show-report",
     "deploy": "npm run build:production && firebase deploy --only hosting",
     "deploy:rules": "firebase deploy --only firestore:rules,database:rules"
   },
@@ -28,7 +33,9 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.36.0",
+    "@faker-js/faker": "^9.9.0",
     "@firebase/rules-unit-testing": "^5.0.0",
+    "@playwright/test": "^1.50.0",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.0",
     "@types/node": "^24.6.0",
@@ -48,7 +55,6 @@
     "typescript": "~5.9.3",
     "typescript-eslint": "^8.45.0",
     "vite": "^7.1.7",
-    "vitest": "^3.2.4",
-    "@playwright/test": "^1.50.0"
+    "vitest": "^3.2.4"
   }
 }

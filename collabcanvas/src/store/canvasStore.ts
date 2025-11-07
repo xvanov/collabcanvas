@@ -9,6 +9,7 @@ import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
 import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore, saveBackgroundImage, saveScaleLine, deleteScaleLineFromFirestore, deleteBackgroundImageFromFirestore, subscribeToBoardState } from '../services/firestore';
+import { deleteConstructionPlanImage } from '../services/storage';
 import { AIService } from '../services/aiService';
 import { AICommandExecutor } from '../services/aiCommandExecutor';
 
@@ -126,8 +127,8 @@ interface CanvasState {
   
   // Construction Annotation Tool State
   canvasScale: CanvasScale;
-  setBackgroundImage: (image: BackgroundImage | null) => void;
-  setScaleLine: (scaleLine: ScaleLine | null) => void;
+  setBackgroundImage: (image: BackgroundImage | null, skipFirestoreSync?: boolean) => void;
+  setScaleLine: (scaleLine: ScaleLine | null, skipFirestoreSync?: boolean) => void;
   updateScaleLine: (updates: Partial<ScaleLine>) => void;
   deleteScaleLine: () => void;
   setIsScaleMode: (isScaleMode: boolean) => void;
@@ -1449,7 +1450,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     isImageUploadMode: false,
   },
 
-  setBackgroundImage: (image: BackgroundImage | null) =>
+  setBackgroundImage: (image: BackgroundImage | null, skipFirestoreSync = false) =>
     set((state) => {
       const newState = {
         canvasScale: {
@@ -1459,7 +1460,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       };
       
       // Save to Firestore if user is authenticated (async operation)
-      if (state.currentUser) {
+      // Skip Firestore sync when syncing from Firestore subscription to avoid loops
+      if (state.currentUser && !skipFirestoreSync) {
         if (image) {
           saveBackgroundImage({
             url: image.url,
@@ -1469,16 +1471,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
             console.error('❌ Failed to save background image to Firestore:', error);
           });
         } else {
+          // Delete from both Firestore and Storage
+          const previousImageUrl = state.canvasScale.backgroundImage?.url;
+          
+          // Delete from Firestore
           deleteBackgroundImageFromFirestore(state.currentUser.uid).catch((error) => {
             console.error('❌ Failed to delete background image from Firestore:', error);
           });
+          
+          // Delete from Storage if URL exists
+          if (previousImageUrl) {
+            deleteConstructionPlanImage(previousImageUrl).catch((error) => {
+              console.error('❌ Failed to delete background image from Storage:', error);
+              // Don't throw - Storage deletion failure shouldn't block Firestore deletion
+            });
+          }
         }
       }
       
       return newState;
     }),
 
-  setScaleLine: (scaleLine: ScaleLine | null) =>
+  setScaleLine: (scaleLine: ScaleLine | null, skipFirestoreSync = false) =>
     set((state) => {
       const newState = {
         canvasScale: {
@@ -1488,7 +1502,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       };
       
       // Save to Firestore if user is authenticated (async operation)
-      if (state.currentUser) {
+      // Skip Firestore sync when syncing from Firestore subscription to avoid loops
+      if (state.currentUser && !skipFirestoreSync) {
         if (scaleLine) {
           saveScaleLine({
             id: scaleLine.id,
@@ -1603,6 +1618,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
             uploadedAt: typeof boardState.backgroundImage.uploadedAt === 'number' ? boardState.backgroundImage.uploadedAt : Date.now(),
             uploadedBy: boardState.backgroundImage.uploadedBy || 'unknown',
           });
+        } else if (!boardState.backgroundImage && state.canvasScale.backgroundImage) {
+          // Clear background image if it was deleted from Firestore by another client
+          // Use skipFirestoreSync to avoid recursive deletion loops
+          state.setBackgroundImage(null, true);
         }
         
         // Load scale line if it exists
@@ -1621,6 +1640,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
             updatedAt: typeof boardState.scaleLine.updatedAt === 'number' ? boardState.scaleLine.updatedAt : Date.now(),
             updatedBy: boardState.scaleLine.updatedBy,
           });
+        } else if (!boardState.scaleLine && state.canvasScale.scaleLine) {
+          // Clear scale line if it was deleted from Firestore by another client
+          // Use skipFirestoreSync to avoid recursive deletion loops
+          state.setScaleLine(null, true);
         }
       }
     });

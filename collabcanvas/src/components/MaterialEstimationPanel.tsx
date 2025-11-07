@@ -29,8 +29,14 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
 
   const handleRefreshPrices = async () => {
     if (!billOfMaterials) return;
-    const updated = await updateBOMWithPrices(billOfMaterials);
-    setBillOfMaterials(updated);
+    console.log('[PRICING] Refresh Prices button clicked');
+    try {
+      const updated = await updateBOMWithPrices(billOfMaterials);
+      setBillOfMaterials(updated);
+      console.log('[PRICING] Prices updated successfully');
+    } catch (error) {
+      console.error('[PRICING] Failed to refresh prices:', error);
+    }
   };
 
   // Get unique categories

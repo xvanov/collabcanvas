@@ -7,6 +7,7 @@ import {
   onSnapshot,
   serverTimestamp,
   query,
+  deleteField,
   type QuerySnapshot,
   type DocumentData,
 } from 'firebase/firestore';
@@ -521,13 +522,12 @@ export const saveScaleLine = async (
  */
 export const deleteScaleLineFromFirestore = async (userId: string): Promise<void> => {
   try {
-    const boardState: Partial<FirestoreBoardState> = {
-      scaleLine: undefined,
+    // Use updateDoc with deleteField() to properly remove the field from Firestore
+    await updateDoc(boardDoc, {
+      scaleLine: deleteField(),
       updatedAt: serverTimestamp(),
       updatedBy: userId,
-    };
-    
-    await setDoc(boardDoc, boardState, { merge: true });
+    });
     console.log('🎯 Scale line deleted from Firestore');
   } catch (error) {
     console.error('❌ Failed to delete scale line:', error);
@@ -540,13 +540,12 @@ export const deleteScaleLineFromFirestore = async (userId: string): Promise<void
  */
 export const deleteBackgroundImageFromFirestore = async (userId: string): Promise<void> => {
   try {
-    const boardState: Partial<FirestoreBoardState> = {
-      backgroundImage: undefined,
+    // Use updateDoc with deleteField() to properly remove the field from Firestore
+    await updateDoc(boardDoc, {
+      backgroundImage: deleteField(),
       updatedAt: serverTimestamp(),
       updatedBy: userId,
-    };
-    
-    await setDoc(boardDoc, boardState, { merge: true });
+    });
     console.log('🎯 Background image deleted from Firestore');
   } catch (error) {
     console.error('❌ Failed to delete background image:', error);

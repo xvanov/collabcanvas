@@ -1,0 +1,924 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollabCanvas - Design Direction Mockups</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f8fafc;
+            color: #0f172a;
+            line-height: 1.6;
+        }
+
+        .header {
+            background: white;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1.5rem 2rem;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .subtitle {
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .nav-controls {
+            display: flex;
+            gap: 1rem;
+            margin-top: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .nav-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .nav-btn:hover {
+            background: #f8fafc;
+            border-color: #cbd5e1;
+        }
+
+        .nav-btn.active {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+
+        .direction-container {
+            display: none;
+            padding: 2rem;
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        .direction-container.active {
+            display: block;
+        }
+
+        .direction-header {
+            margin-bottom: 2rem;
+        }
+
+        .direction-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .direction-philosophy {
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-bottom: 1rem;
+        }
+
+        .direction-characteristics {
+            display: flex;
+            gap: 2rem;
+            flex-wrap: wrap;
+            font-size: 0.875rem;
+            color: #475569;
+        }
+
+        .char-item {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .char-label {
+            font-weight: 600;
+        }
+
+        .mockup-frame {
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 2rem;
+        }
+
+        .mockup-header {
+            background: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 1rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #475569;
+        }
+
+        .mockup-content {
+            padding: 1.5rem;
+        }
+
+        /* Direction 1: Sidebar Navigation - Spacious */
+        .dir-1 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --sidebar-bg: #f8fafc;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        .dir-1 .app-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            min-height: 600px;
+            background: var(--bg);
+        }
+
+        .dir-1 .sidebar {
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+        }
+
+        .dir-1 .sidebar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+            margin-bottom: 2rem;
+            color: var(--primary);
+        }
+
+        .dir-1 .nav-item {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            margin-bottom: 0.5rem;
+            cursor: pointer;
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .dir-1 .nav-item:hover {
+            background: white;
+            color: var(--text);
+        }
+
+        .dir-1 .nav-item.active {
+            background: var(--primary);
+            color: white;
+        }
+
+        .dir-1 .main-content {
+            padding: 2rem;
+        }
+
+        .dir-1 .page-header {
+            margin-bottom: 2rem;
+        }
+
+        .dir-1 .page-title {
+            font-size: 1.75rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .dir-1 .page-subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .dir-1 .content-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .dir-1 .card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1.5rem;
+        }
+
+        .dir-1 .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .dir-1 .card-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        /* Direction 2: Top Navigation - Dense Dashboard */
+        .dir-2 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --topbar-bg: #0f172a;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        .dir-2 .app-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+
+        .dir-2 .topbar {
+            background: var(--topbar-bg);
+            color: white;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .dir-2 .topbar-logo {
+            font-size: 1.25rem;
+            font-weight: 700;
+        }
+
+        .dir-2 .topbar-nav {
+            display: flex;
+            gap: 2rem;
+        }
+
+        .dir-2 .topbar-nav-item {
+            color: rgba(255,255,255,0.7);
+            font-size: 0.875rem;
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .dir-2 .topbar-nav-item:hover,
+        .dir-2 .topbar-nav-item.active {
+            color: white;
+        }
+
+        .dir-2 .main-content {
+            padding: 1.5rem 2rem;
+            flex: 1;
+        }
+
+        .dir-2 .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .dir-2 .stat-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 1rem;
+        }
+
+        .dir-2 .stat-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 0.25rem;
+        }
+
+        .dir-2 .stat-value {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--primary);
+        }
+
+        /* Direction 3: Three-View Tabs - Balanced */
+        .dir-3 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+            --tab-active: #0f172a;
+            --tab-bg: #f8fafc;
+        }
+
+        .dir-3 .app-layout {
+            display: flex;
+            flex-direction: column;
+            min-height: 600px;
+        }
+
+        .dir-3 .view-tabs {
+            background: var(--tab-bg);
+            border-bottom: 1px solid var(--border);
+            padding: 0 2rem;
+            display: flex;
+            gap: 0;
+        }
+
+        .dir-3 .view-tab {
+            padding: 1rem 1.5rem;
+            border-bottom: 2px solid transparent;
+            cursor: pointer;
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: var(--text-muted);
+            transition: all 0.2s;
+        }
+
+        .dir-3 .view-tab:hover {
+            color: var(--text);
+        }
+
+        .dir-3 .view-tab.active {
+            color: var(--tab-active);
+            border-bottom-color: var(--tab-active);
+        }
+
+        .dir-3 .view-content {
+            flex: 1;
+            padding: 2rem;
+            overflow-y: auto;
+        }
+
+        /* Direction 4: Split View - Critical Path + Canvas */
+        .dir-4 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        .dir-4 .app-layout {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 600px;
+        }
+
+        .dir-4 .split-pane {
+            border-right: 1px solid var(--border);
+            padding: 1.5rem;
+            overflow-y: auto;
+        }
+
+        .dir-4 .split-pane:last-child {
+            border-right: none;
+        }
+
+        .dir-4 .pane-header {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        /* Direction 5: Card-Based - Spacious Explorer */
+        .dir-5 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        .dir-5 .app-layout {
+            padding: 2rem;
+            min-height: 600px;
+        }
+
+        .dir-5 .card-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .dir-5 .large-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 2rem;
+            min-height: 400px;
+        }
+
+        .dir-5 .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .dir-5 .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+        }
+
+        /* Direction 6: Minimalist - Content First */
+        .dir-6 {
+            --primary: #0f172a;
+            --bg: #ffffff;
+            --border: #e2e8f0;
+            --text: #0f172a;
+            --text-muted: #64748b;
+        }
+
+        .dir-6 .app-layout {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 3rem 2rem;
+            min-height: 600px;
+        }
+
+        .dir-6 .minimal-header {
+            text-align: center;
+            margin-bottom: 3rem;
+        }
+
+        .dir-6 .minimal-title {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .dir-6 .minimal-subtitle {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .dir-6 .content-section {
+            margin-bottom: 3rem;
+        }
+
+        .dir-6 .section-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 1rem;
+        }
+
+        /* Common Components */
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary, #0f172a);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+        }
+
+        .btn-secondary {
+            background: #f8fafc;
+            color: #0f172a;
+            border: 1px solid #e2e8f0;
+        }
+
+        .input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid #e2e8f0;
+            font-size: 0.875rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: #10b981;
+            color: white;
+        }
+
+        .badge-warning {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .cpm-node {
+            background: white;
+            border: 2px solid #0f172a;
+            border-radius: 8px;
+            padding: 1rem;
+            min-width: 120px;
+            text-align: center;
+        }
+
+        .cpm-node-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .cpm-node-duration {
+            font-size: 0.75rem;
+            color: #64748b;
+        }
+
+        .canvas-area {
+            background: #f8fafc;
+            border: 1px dashed #cbd5e1;
+            border-radius: 8px;
+            min-height: 400px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #64748b;
+            font-size: 0.875rem;
+        }
+
+        .bom-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .bom-table th {
+            text-align: left;
+            padding: 0.75rem;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .bom-table td {
+            padding: 0.75rem;
+            border-bottom: 1px solid #f1f5f9;
+            font-size: 0.875rem;
+        }
+
+        .scenario-selector {
+            display: flex;
+            gap: 0.75rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .scenario-btn {
+            padding: 0.5rem 1rem;
+            border: 1px solid #e2e8f0;
+            background: white;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.875rem;
+        }
+
+        .scenario-btn.active {
+            background: #0f172a;
+            color: white;
+            border-color: #0f172a;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🎨 CollabCanvas Design Direction Mockups</h1>
+        <p class="subtitle">Explore 6 different design approaches for your three-view navigation (Critical Path, Spatial Canvas, Estimate)</p>
+        
+        <div class="nav-controls">
+            <button class="nav-btn active" onclick="showDirection(1)">1. Sidebar Navigation</button>
+            <button class="nav-btn" onclick="showDirection(2)">2. Top Navigation</button>
+            <button class="nav-btn" onclick="showDirection(3)">3. Three-View Tabs</button>
+            <button class="nav-btn" onclick="showDirection(4)">4. Split View</button>
+            <button class="nav-btn" onclick="showDirection(5)">5. Card-Based</button>
+            <button class="nav-btn" onclick="showDirection(6)">6. Minimalist</button>
+        </div>
+    </div>
+
+    <!-- Direction 1: Sidebar Navigation - Spacious -->
+    <div id="dir-1" class="direction-container dir-1 active">
+        <div class="direction-header">
+            <div class="direction-name">1. Sidebar Navigation - Spacious</div>
+            <div class="direction-philosophy">Professional & Efficient • Traditional desktop app pattern • Clear navigation hierarchy</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Sidebar navigation</div>
+                <div class="char-item"><span class="char-label">Density:</span> Spacious</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Persistent sidebar</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Power users, complex workflows</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Project Dashboard View</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="sidebar">
+                        <div class="sidebar-logo">CollabCanvas</div>
+                        <div class="nav-item active">📊 Dashboard</div>
+                        <div class="nav-item">🗺️ Critical Path</div>
+                        <div class="nav-item">✏️ Canvas</div>
+                        <div class="nav-item">💰 Estimate</div>
+                        <div class="nav-item">⚙️ Settings</div>
+                    </div>
+                    <div class="main-content">
+                        <div class="page-header">
+                            <div class="page-title">Projects</div>
+                            <div class="page-subtitle">Manage your construction projects</div>
+                        </div>
+                        <div class="content-grid">
+                            <div class="card">
+                                <div class="card-title">Active Projects</div>
+                                <div class="card-value">12</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Estimates This Month</div>
+                                <div class="card-value">8</div>
+                            </div>
+                            <div class="card">
+                                <div class="card-title">Avg. Accuracy</div>
+                                <div class="card-value">94%</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction 2: Top Navigation - Dense Dashboard -->
+    <div id="dir-2" class="direction-container dir-2">
+        <div class="direction-header">
+            <div class="direction-name">2. Top Navigation - Dense Dashboard</div>
+            <div class="direction-philosophy">Information-Rich • Maximum data visibility • Efficient use of space</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Top navigation</div>
+                <div class="char-item"><span class="char-label">Density:</span> Dense</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Top bar</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Data-heavy workflows, quick scanning</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Dashboard with Top Navigation</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="topbar">
+                        <div class="topbar-logo">CollabCanvas</div>
+                        <div class="topbar-nav">
+                            <div class="topbar-nav-item active">Dashboard</div>
+                            <div class="topbar-nav-item">Critical Path</div>
+                            <div class="topbar-nav-item">Canvas</div>
+                            <div class="topbar-nav-item">Estimate</div>
+                        </div>
+                    </div>
+                    <div class="main-content">
+                        <div class="dashboard-grid">
+                            <div class="stat-card">
+                                <div class="stat-label">Active Projects</div>
+                                <div class="stat-value">12</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Estimates</div>
+                                <div class="stat-value">8</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Accuracy</div>
+                                <div class="stat-value">94%</div>
+                            </div>
+                            <div class="stat-card">
+                                <div class="stat-label">Time Saved</div>
+                                <div class="stat-value">24h</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction 3: Three-View Tabs - Balanced -->
+    <div id="dir-3" class="direction-container dir-3">
+        <div class="direction-header">
+            <div class="direction-name">3. Three-View Tabs - Balanced</div>
+            <div class="direction-philosophy">Clear View Switching • Equal importance to all views • Easy navigation between time/space/money</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Tab-based navigation</div>
+                <div class="char-item"><span class="char-label">Density:</span> Balanced</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Tabs for Critical Path / Canvas / Estimate</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Equal emphasis on all three views</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Three-View Tab Navigation</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="view-tabs">
+                        <div class="view-tab active">🗺️ Critical Path</div>
+                        <div class="view-tab">✏️ Canvas</div>
+                        <div class="view-tab">💰 Estimate</div>
+                    </div>
+                    <div class="view-content">
+                        <h3 style="margin-bottom: 1rem;">Critical Path View</h3>
+                        <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Demo</div>
+                                <div class="cpm-node-duration">2 days</div>
+                            </div>
+                            <div style="align-self: center;">→</div>
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Framing</div>
+                                <div class="cpm-node-duration">5 days</div>
+                            </div>
+                            <div style="align-self: center;">→</div>
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Plumbing</div>
+                                <div class="cpm-node-duration">3 days</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction 4: Split View - Critical Path + Canvas -->
+    <div id="dir-4" class="direction-container dir-4">
+        <div class="direction-header">
+            <div class="direction-name">4. Split View - Side-by-Side</div>
+            <div class="direction-philosophy">Simultaneous Context • See time and space together • Power user efficiency</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Split panes</div>
+                <div class="char-item"><span class="char-label">Density:</span> Balanced</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Resizable panes</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Context switching, power users</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Split View: Critical Path + Canvas</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="split-pane">
+                        <div class="pane-header">Critical Path</div>
+                        <div style="display: flex; flex-direction: column; gap: 1rem;">
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Demo</div>
+                                <div class="cpm-node-duration">2 days</div>
+                            </div>
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Framing</div>
+                                <div class="cpm-node-duration">5 days</div>
+                            </div>
+                            <div class="cpm-node">
+                                <div class="cpm-node-title">Plumbing</div>
+                                <div class="cpm-node-duration">3 days</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="split-pane">
+                        <div class="pane-header">Canvas</div>
+                        <div class="canvas-area">
+                            Construction Plan Canvas Area
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction 5: Card-Based - Spacious Explorer -->
+    <div id="dir-5" class="direction-container dir-5">
+        <div class="direction-header">
+            <div class="direction-name">5. Card-Based - Spacious Explorer</div>
+            <div class="direction-philosophy">Visual Organization • Card-based layout • Easy to scan and explore</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Card grid</div>
+                <div class="char-item"><span class="char-label">Density:</span> Spacious</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Card selection</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Visual learners, exploration</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Card-Based Project View</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="card-grid">
+                        <div class="large-card">
+                            <div class="card-header">
+                                <div class="card-title">Critical Path</div>
+                                <span class="badge badge-success">Active</span>
+                            </div>
+                            <div style="display: flex; gap: 1rem; flex-wrap: wrap;">
+                                <div class="cpm-node">
+                                    <div class="cpm-node-title">Demo</div>
+                                    <div class="cpm-node-duration">2 days</div>
+                                </div>
+                                <div class="cpm-node">
+                                    <div class="cpm-node-title">Framing</div>
+                                    <div class="cpm-node-duration">5 days</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="large-card">
+                            <div class="card-header">
+                                <div class="card-title">Canvas</div>
+                                <span class="badge badge-warning">In Progress</span>
+                            </div>
+                            <div class="canvas-area" style="min-height: 300px;">
+                                Construction Plan Canvas
+                            </div>
+                        </div>
+                        <div class="large-card">
+                            <div class="card-header">
+                                <div class="card-title">Estimate</div>
+                                <span class="badge badge-success">Complete</span>
+                            </div>
+                            <div style="font-size: 0.875rem;">
+                                <div style="margin-bottom: 0.5rem;">Total: $24,500</div>
+                                <div>Materials: $18,200</div>
+                                <div>Labor: $6,300</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Direction 6: Minimalist - Content First -->
+    <div id="dir-6" class="direction-container dir-6">
+        <div class="direction-header">
+            <div class="direction-name">6. Minimalist - Content First</div>
+            <div class="direction-philosophy">Ultra-Clean • Maximum focus • Minimal chrome</div>
+            <div class="direction-characteristics">
+                <div class="char-item"><span class="char-label">Layout:</span> Centered, minimal</div>
+                <div class="char-item"><span class="char-label">Density:</span> Very spacious</div>
+                <div class="char-item"><span class="char-label">Navigation:</span> Subtle, contextual</div>
+                <div class="char-item"><span class="char-label">Best for:</span> Focus, distraction-free work</div>
+            </div>
+        </div>
+
+        <div class="mockup-frame">
+            <div class="mockup-header">Minimalist Layout</div>
+            <div class="mockup-content">
+                <div class="app-layout">
+                    <div class="minimal-header">
+                        <div class="minimal-title">Kitchen Remodel</div>
+                        <div class="minimal-subtitle">Project Dashboard</div>
+                    </div>
+                    <div class="content-section">
+                        <div class="section-title">Views</div>
+                        <div style="display: flex; gap: 1rem; justify-content: center;">
+                            <button class="btn btn-primary">Critical Path</button>
+                            <button class="btn btn-secondary">Canvas</button>
+                            <button class="btn btn-secondary">Estimate</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function showDirection(num) {
+            // Hide all directions
+            document.querySelectorAll('.direction-container').forEach(dir => {
+                dir.classList.remove('active');
+            });
+            
+            // Show selected direction
+            document.getElementById('dir-' + num).classList.add('active');
+            
+            // Update nav buttons
+            document.querySelectorAll('.nav-btn').forEach(btn => {
+                btn.classList.remove('active');
+            });
+            event.target.classList.add('active');
+        }
+    </script>
+</body>
+</html>

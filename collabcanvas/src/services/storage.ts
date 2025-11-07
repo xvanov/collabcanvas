@@ -73,7 +73,8 @@ export async function deleteConstructionPlanImage(imageUrl: string): Promise<voi
   try {
     // Extract the storage path from the URL
     const url = new URL(imageUrl);
-    const pathMatch = url.pathname.match(/\/o\/(.+)\?/);
+    // Match path with optional query parameters: /o/path?query or /o/path
+    const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
     
     if (!pathMatch) {
       throw new Error('Invalid image URL');

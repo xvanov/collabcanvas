@@ -139,6 +139,8 @@ export interface BillOfMaterials {
   notes?: string;
   /** BOM-level store number selection (e.g., '3620' for Durham, NC) */
   storeNumber?: string;
+  /** Delivery zip code for pricing (e.g., '04401' for Bangor, ME) */
+  deliveryZip?: string;
 }
 
 /**
