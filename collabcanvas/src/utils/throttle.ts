@@ -156,3 +156,59 @@ export function createCoalescingThrottle<T extends (...args: any[]) => any>(
 
   return coalescingFunc;
 }
+
+/**
+ * Batch update utility for grouping multiple updates together
+ * Uses requestAnimationFrame to batch updates within a single frame
+ */
+export class BatchUpdater {
+  private pendingUpdates: Array<() => void> = [];
+  private rafId: number | null = null;
+
+  /**
+   * Schedule an update to be batched
+   * @param update - Function to execute in batch
+   */
+  schedule(update: () => void): void {
+    this.pendingUpdates.push(update);
+    
+    if (this.rafId === null) {
+      this.rafId = requestAnimationFrame(() => {
+        this.flush();
+      });
+    }
+  }
+
+  /**
+   * Execute all pending updates immediately
+   */
+  flush(): void {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+
+    const updates = this.pendingUpdates;
+    this.pendingUpdates = [];
+    
+    // Execute all updates
+    updates.forEach(update => {
+      try {
+        update();
+      } catch (error) {
+        console.error('Error in batched update:', error);
+      }
+    });
+  }
+
+  /**
+   * Cancel all pending updates
+   */
+  cancel(): void {
+    if (this.rafId !== null) {
+      cancelAnimationFrame(this.rafId);
+      this.rafId = null;
+    }
+    this.pendingUpdates = [];
+  }
+}

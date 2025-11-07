@@ -93,3 +93,95 @@ export function getRelativePointerPosition(stage: Konva.Stage): { x: number; y: 
   return transform.point(pointer);
 }
 
+/**
+ * Viewport bounds in world coordinates (after pan/zoom transform)
+ */
+export interface ViewportBounds {
+  minX: number;
+  minY: number;
+  maxX: number;
+  maxY: number;
+}
+
+/**
+ * Calculates viewport bounds in world coordinates
+ * @param viewportWidth - Width of viewport in pixels
+ * @param viewportHeight - Height of viewport in pixels
+ * @param offsetX - X offset (pan) in pixels
+ * @param offsetY - Y offset (pan) in pixels
+ * @param scale - Zoom scale
+ * @returns Viewport bounds in world coordinates
+ */
+export function calculateViewportBounds(
+  viewportWidth: number,
+  viewportHeight: number,
+  offsetX: number,
+  offsetY: number,
+  scale: number
+): ViewportBounds {
+  // Convert viewport pixel coordinates to world coordinates
+  const minX = -offsetX / scale;
+  const minY = -offsetY / scale;
+  const maxX = minX + viewportWidth / scale;
+  const maxY = minY + viewportHeight / scale;
+  
+  return { minX, minY, maxX, maxY };
+}
+
+/**
+ * Checks if a shape is visible in the viewport
+ * Uses bounding box intersection test
+ * @param shapeX - Shape X position
+ * @param shapeY - Shape Y position
+ * @param shapeWidth - Shape width
+ * @param shapeHeight - Shape height
+ * @param viewportBounds - Viewport bounds in world coordinates
+ * @param padding - Extra padding around viewport to include shapes near edge (default: 100)
+ * @returns True if shape is visible or near viewport
+ */
+export function isShapeVisible(
+  shapeX: number,
+  shapeY: number,
+  shapeWidth: number,
+  shapeHeight: number,
+  viewportBounds: ViewportBounds,
+  padding = 100
+): boolean {
+  // Expand viewport bounds by padding to include shapes near edge
+  const expandedMinX = viewportBounds.minX - padding;
+  const expandedMinY = viewportBounds.minY - padding;
+  const expandedMaxX = viewportBounds.maxX + padding;
+  const expandedMaxY = viewportBounds.maxY + padding;
+  
+  // Calculate shape bounds
+  const shapeMinX = shapeX;
+  const shapeMinY = shapeY;
+  const shapeMaxX = shapeX + shapeWidth;
+  const shapeMaxY = shapeY + shapeHeight;
+  
+  // Check for intersection (AABB collision detection)
+  return !(
+    shapeMaxX < expandedMinX ||
+    shapeMinX > expandedMaxX ||
+    shapeMaxY < expandedMinY ||
+    shapeMinY > expandedMaxY
+  );
+}
+
+/**
+ * Filters shapes to only those visible in the viewport
+ * @param shapes - Array of shapes to filter
+ * @param viewportBounds - Viewport bounds in world coordinates
+ * @param padding - Extra padding around viewport (default: 100)
+ * @returns Filtered array of visible shapes
+ */
+export function filterVisibleShapes<T extends { x: number; y: number; w: number; h: number }>(
+  shapes: T[],
+  viewportBounds: ViewportBounds,
+  padding = 100
+): T[] {
+  return shapes.filter(shape => 
+    isShapeVisible(shape.x, shape.y, shape.w, shape.h, viewportBounds, padding)
+  );
+}
+

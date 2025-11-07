@@ -143,7 +143,7 @@ async function fetchFromSerpApi(
     
     // Check for SerpAPI errors in response
     if (data.error) {
-      const error = `SerpAPI error: ${data.error}`;
+      const error = `Unable to find price - ${data.error}`;
       console.warn(`[PRICING] ${error} for query: ${query}`);
       return { priceUSD: null, link: null, error };
     }
@@ -151,7 +151,7 @@ async function fetchFromSerpApi(
     const results = data?.organic_results || [];
     
     if (!Array.isArray(results) || results.length === 0) {
-      const error = 'No results found';
+      const error = 'Unable to find price - no products found';
       console.warn(`[PRICING] ${error} for query: ${query}`);
       return { priceUSD: null, link: null, error };
     }
@@ -171,7 +171,7 @@ async function fetchFromSerpApi(
     }
     
     if (priceUSD === null) {
-      const error = 'Price not found in result';
+      const error = 'Unable to find price - price not available in product listing';
       console.warn(`[PRICING] ${error} for query: ${query}`);
       return { priceUSD: null, link, error };
     }
@@ -191,7 +191,7 @@ async function fetchFromSerpApi(
         await sleep(delay);
         return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
       }
-      return { priceUSD: null, link: null, error: 'Request timeout' };
+      return { priceUSD: null, link: null, error: 'Unable to find price - service timed out after 15 seconds' };
     }
     
     console.error(`[PRICING] SerpAPI fetch error (attempt ${attempt}/${MAX_RETRIES}):`, error);
@@ -204,7 +204,7 @@ async function fetchFromSerpApi(
       return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
     }
     
-    return { priceUSD: null, link: null, error };
+    return { priceUSD: null, link: null, error: 'Unable to find price - service unavailable' };
   }
 }
 
@@ -274,11 +274,11 @@ export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
         
         if (ageMs < CACHE_TTL_MS) {
           console.log(`[PRICING] Cache hit for: ${materialName} (age: ${Math.round(ageMs / 1000 / 60)} minutes)`);
-          return {
-            success: true,
-            priceUSD: d && typeof d.priceUSD === 'number' ? d.priceUSD : null,
-            link: d && d.link ? d.link : null,
-          };
+      return {
+        success: true,
+        priceUSD: d && typeof d.priceUSD === 'number' ? d.priceUSD : null,
+        link: d && d.link ? d.link : null,
+      };
         } else {
           console.log(`[PRICING] Cache expired for: ${materialName} (age: ${Math.round(ageMs / 1000 / 60 / 60)} hours)`);
         }

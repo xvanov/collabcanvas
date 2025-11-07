@@ -43,19 +43,30 @@ export async function updateBOMWithPrices(bom: BillOfMaterials): Promise<BillOfM
           ...m,
           priceUSD: data.priceUSD,
           ...(data.link ? { homeDepotLink: data.link } : {}),
+          priceError: undefined, // Clear any previous error
         });
       } else {
+        const errorMsg = data.error || 'Unable to find price';
         console.warn(`[PRICING] ⚠️ No price found for: ${m.name}${data.error ? ` - ${data.error}` : ''}`);
-        updatedMaterials.push({ ...m });
+        updatedMaterials.push({ 
+          ...m,
+          priceError: errorMsg, // Store error message for UI display
+        });
       }
     } catch (error) {
+      const errorMsg = error instanceof Error ? error.message : 'Unable to find price - request failed';
       console.error(`[PRICING] ❌ Error fetching price for ${m.name}:`, error);
       console.error(`[PRICING] Error details:`, {
         message: error instanceof Error ? error.message : String(error),
         stack: error instanceof Error ? error.stack : undefined,
         name: error instanceof Error ? error.name : undefined
       });
-      updatedMaterials.push({ ...m });
+      updatedMaterials.push({ 
+        ...m,
+        priceError: errorMsg.includes('timeout') 
+          ? 'Unable to find price - service timed out after 30 seconds' 
+          : errorMsg
+      });
     }
   }
   

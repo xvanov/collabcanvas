@@ -62,6 +62,7 @@ export interface MaterialSpec {
   /** Optional Home Depot pricing fields populated by server-side lookup */
   priceUSD?: number; // unit price in USD
   homeDepotLink?: string; // product link
+  priceError?: string; // Error message if price lookup failed (e.g., "Unable to find price - service timed out")
 }
 
 /**

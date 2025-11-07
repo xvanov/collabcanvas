@@ -12,6 +12,7 @@ import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFire
 import { deleteConstructionPlanImage } from '../services/storage';
 import { AIService } from '../services/aiService';
 import { AICommandExecutor } from '../services/aiCommandExecutor';
+import { BatchUpdater } from '../utils/throttle';
 
 interface CanvasState {
   // Shapes
@@ -155,6 +156,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
   
   // Initialize AI service
   const aiService = new AIService();
+  
+  // Initialize BatchUpdater for batching rapid shape updates
+  const batchUpdater = new BatchUpdater();
   
   // Set up history service callback
   historyService.setOnActionApplied(async (action: CanvasAction) => {
@@ -468,65 +472,73 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     }
   },
 
-  updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) =>
-    set((state) => {
-      const shape = state.shapes.get(id);
-      if (!shape) return state;
-      
-      // Store previous position for undo
-      const previousX = shape.x;
-      const previousY = shape.y;
-      
-      const newShapes = new Map(state.shapes);
-      newShapes.set(id, {
-        ...shape,
-        x,
-        y,
-        updatedAt: Date.now(),
-        updatedBy,
-        clientUpdatedAt,
+  updateShapePosition: (id: string, x: number, y: number, updatedBy: string, clientUpdatedAt: number) => {
+    // Batch rapid position updates together to reduce render calls
+    batchUpdater.schedule(() => {
+      set((state) => {
+        const shape = state.shapes.get(id);
+        if (!shape) return state;
+        
+        // Store previous position for undo
+        const previousX = shape.x;
+        const previousY = shape.y;
+        
+        const newShapes = new Map(state.shapes);
+        newShapes.set(id, {
+          ...shape,
+          x,
+          y,
+          updatedAt: Date.now(),
+          updatedBy,
+          clientUpdatedAt,
+        });
+        
+        // Push move action to history
+        if (state.currentUser && (x !== previousX || y !== previousY)) {
+          const action = createAction.move(id, x, y, previousX, previousY, state.currentUser.uid);
+          historyService.pushAction(action);
+        }
+        
+        return { 
+          shapes: newShapes,
+          history: historyService.getHistoryState(),
+        };
       });
-      
-      // Push move action to history
-      if (state.currentUser && (x !== previousX || y !== previousY)) {
-        const action = createAction.move(id, x, y, previousX, previousY, state.currentUser.uid);
-        historyService.pushAction(action);
-      }
-      
-      return { 
-        shapes: newShapes,
-        history: historyService.getHistoryState(),
-      };
-    }),
+    });
+  },
 
-  updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) =>
-    set((state) => {
-      const shape = state.shapes.get(id);
-      if (!shape) return state;
-      
-      // Store previous value for undo
-      const previousValue = shape[property];
-      
-      const newShapes = new Map(state.shapes);
-      newShapes.set(id, {
-        ...shape,
-        [property]: value,
-        updatedAt: Date.now(),
-        updatedBy,
-        clientUpdatedAt,
+  updateShapeProperty: (id: string, property: keyof Shape, value: unknown, updatedBy: string, clientUpdatedAt: number) => {
+    // Batch rapid property updates together to reduce render calls
+    batchUpdater.schedule(() => {
+      set((state) => {
+        const shape = state.shapes.get(id);
+        if (!shape) return state;
+        
+        // Store previous value for undo
+        const previousValue = shape[property];
+        
+        const newShapes = new Map(state.shapes);
+        newShapes.set(id, {
+          ...shape,
+          [property]: value,
+          updatedAt: Date.now(),
+          updatedBy,
+          clientUpdatedAt,
+        });
+        
+        // Push update action to history
+        if (state.currentUser && value !== previousValue) {
+          const action = createAction.update(id, property, value, previousValue, state.currentUser.uid);
+          historyService.pushAction(action);
+        }
+        
+        return { 
+          shapes: newShapes,
+          history: historyService.getHistoryState(),
+        };
       });
-      
-      // Push update action to history
-      if (state.currentUser && value !== previousValue) {
-        const action = createAction.update(id, property, value, previousValue, state.currentUser.uid);
-        historyService.pushAction(action);
-      }
-      
-      return { 
-        shapes: newShapes,
-        history: historyService.getHistoryState(),
-      };
-    }),
+    });
+  },
   
   setShapes: (shapes: Shape[]) =>
     set(() => ({

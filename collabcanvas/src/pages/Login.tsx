@@ -1,4 +1,5 @@
 import { useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../hooks/useAuth';
 
 interface LoginProps {
@@ -12,12 +13,18 @@ interface LoginProps {
  */
 export function Login({ onAuthenticated }: LoginProps) {
   const { user, loading, error, signInWithGoogle } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
-    if (user && onAuthenticated) {
-      onAuthenticated();
+    if (user) {
+      if (onAuthenticated) {
+        onAuthenticated();
+      } else {
+        // Redirect to dashboard after login
+        navigate('/', { replace: true });
+      }
     }
-  }, [user, onAuthenticated]);
+  }, [user, navigate, onAuthenticated]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50">

@@ -38,9 +38,9 @@ story_location: "{project-root}/docs/stories"
 development_status:
   # Epic 1: MVP - Minimum Viable Product
   epic-1: contexted
-  1-1-critical-bug-fixes-performance-optimization: in-progress
-  1-2-home-page-project-management-system: drafted
-  1-3-four-view-navigation-scope-view: backlog
+  1-1-critical-bug-fixes-performance-optimization: done
+  1-2-home-page-project-management-system: done
+  1-3-four-view-navigation-scope-view: ready-for-dev
   1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: backlog
   epic-1-retrospective: optional
 

@@ -1,0 +1,305 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>3</storyId>
+    <title>Four-View Navigation & Scope View</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-07T04:21:59Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-3-four-view-navigation-scope-view.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>As a contractor</asA>
+    <iWant>I want four distinct views (Scope, Time, Space, Money) with scope of work upload capability</iWant>
+    <soThat>so that I can organize my project workflow and provide scope context for accurate estimates</soThat>
+    <tasks>
+      <task id="1" ac="1,4" title="Implement Four-View Navigation Structure">
+        <subtask>Create `pages/Project.tsx` component with tab navigation</subtask>
+        <subtask>Set up React Router nested routes: `/projects/:projectId/scope`, `/projects/:projectId/time`, `/projects/:projectId/space`, `/projects/:projectId/money`</subtask>
+        <subtask>Implement tab navigation bar with four tabs: Scope | Time | Space | Money</subtask>
+        <subtask>Add active tab highlighting based on current route</subtask>
+        <subtask>Implement smooth view transitions</subtask>
+        <subtask>Add deep linking support (URL-based navigation)</subtask>
+        <subtask>Add unit tests for routing and navigation</subtask>
+        <subtask>Add E2E tests for tab switching and deep linking</subtask>
+      </task>
+      <task id="2" ac="2,3" title="Implement Scope View Component">
+        <subtask>Create `components/scope/ScopeView.tsx` component</subtask>
+        <subtask>Implement CSV file upload UI with drag-and-drop support</subtask>
+        <subtask>Create CSV parser for 2-column format (scope, description)</subtask>
+        <subtask>Validate CSV format (require exactly 2 columns: scope, description)</subtask>
+        <subtask>Display parsed scope content as structured list/table</subtask>
+        <subtask>Add empty state when no scope uploaded</subtask>
+        <subtask>Add loading state during CSV parsing</subtask>
+        <subtask>Add error handling for invalid CSV format</subtask>
+        <subtask>Add unit tests for CSV parser</subtask>
+        <subtask>Add E2E tests for CSV upload flow</subtask>
+      </task>
+      <task id="3" ac="3,8" title="Implement Scope Store and Service">
+        <subtask>Create `store/scopeStore.ts` with Zustand store</subtask>
+        <subtask>Create `services/scopeService.ts` for Firebase operations</subtask>
+        <subtask>Implement `uploadScope(projectId, items)` to save scope to Firestore</subtask>
+        <subtask>Implement `getScope(projectId)` to fetch scope from Firestore</subtask>
+        <subtask>Implement `updateScope(projectId, items)` to update scope</subtask>
+        <subtask>Add real-time scope updates using Firestore listeners</subtask>
+        <subtask>Store scope in Firestore: `/projects/{projectId}/scope` document</subtask>
+        <subtask>Add unit tests for scopeService functions</subtask>
+        <subtask>Add integration tests for Firestore operations</subtask>
+      </task>
+      <task id="4" ac="5,6" title="Implement View Indicators System">
+        <subtask>Create indicator badge component for tabs</subtask>
+        <subtask>Implement indicator state management (track which views have new content)</subtask>
+        <subtask>Add indicator display logic: show badge when BOM generated (Money tab), CPM generated (Time tab)</subtask>
+        <subtask>Implement indicator dismissal: remove badge when user clicks tab</subtask>
+        <subtask>Store indicator state in Zustand store or component state</subtask>
+        <subtask>Add unit tests for indicator logic</subtask>
+        <subtask>Add E2E tests for indicator display and dismissal</subtask>
+      </task>
+      <task id="5" ac="7,8" title="Implement Real-time Presence Tracking">
+        <subtask>Extend RTDB presence system with `currentView` field</subtask>
+        <subtask>Update presence when user switches views: set `currentView` to active view ('scope' | 'time' | 'space' | 'money')</subtask>
+        <subtask>Create presence indicator component showing users per view</subtask>
+        <subtask>Display presence indicators on tabs showing who is in each view</subtask>
+        <subtask>Set up RTDB listener for `/presence/{userId}` to track all users' current views</subtask>
+        <subtask>Update presence on view change and cleanup on component unmount</subtask>
+        <subtask>Add unit tests for presence tracking logic</subtask>
+        <subtask>Add integration tests for RTDB presence updates</subtask>
+        <subtask>Add E2E tests for multi-user presence indicators</subtask>
+      </task>
+      <task id="6" ac="1,4" title="Integrate Space View (Existing Canvas)">
+        <subtask>Ensure existing `components/canvas/Canvas.tsx` integrates with new routing structure</subtask>
+        <subtask>Update Canvas component to work with `/projects/:projectId/space` route</subtask>
+        <subtask>Verify existing canvas functionality preserved (annotation, layers, shapes)</subtask>
+        <subtask>Ensure canvas updates trigger real-time sync via existing Firestore listeners</subtask>
+        <subtask>Add E2E tests to verify canvas functionality in new routing structure</subtask>
+      </task>
+      <task id="7" ac="1,4" title="Implement Time View Placeholder">
+        <subtask>Create `components/time/TimeView.tsx` placeholder component</subtask>
+        <subtask>Display empty state: "CPM to be implemented" message</subtask>
+        <subtask>Ensure Time view is accessible via `/projects/:projectId/time` route</subtask>
+        <subtask>Add placeholder for future CPM visualization (Story 1.4 will implement CPM generation)</subtask>
+      </task>
+      <task id="8" ac="1,4" title="Implement Money View Placeholder">
+        <subtask>Create `components/money/MoneyView.tsx` placeholder component</subtask>
+        <subtask>Display empty state: "BOM to be implemented" message</subtask>
+        <subtask>Ensure Money view is accessible via `/projects/:projectId/money` route</subtask>
+        <subtask>Add placeholder for future BOM display (Story 1.4 will implement BOM generation)</subtask>
+      </task>
+      <task id="9" ac="8" title="Update Firestore Security Rules">
+        <subtask>Add security rules for `/projects/{projectId}/scope` document</subtask>
+        <subtask>Allow read: authenticated users who own project or are collaborators</subtask>
+        <subtask>Allow write: authenticated users who own project or are editors</subtask>
+        <subtask>Test security rules with Firebase emulator</subtask>
+        <subtask>Add integration tests for security rules</subtask>
+      </task>
+      <task id="10" ac="7" title="Update RTDB Security Rules">
+        <subtask>Update RTDB rules to allow `currentView` field in presence data</subtask>
+        <subtask>Ensure users can only update their own presence</subtask>
+        <subtask>Test RTDB rules with Firebase emulator</subtask>
+        <subtask>Add integration tests for RTDB presence rules</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>1. **Four-View Navigation**
+   - **Given** I have selected a project
+   - **When** I view the project
+   - **Then** I see top navigation bar with four tabs: Scope | Time | Space | Money
+
+2. **Scope View Display**
+   - **Given** I have selected a project
+   - **When** I click on the Scope tab
+   - **Then** I see Scope view with CSV upload capability
+
+3. **CSV Upload and Parsing**
+   - **Given** I am in Scope view
+   - **When** I upload a CSV file with 2 columns (scope, description)
+   - **Then** The scope content is parsed and displayed as structured content
+
+4. **Tab Switching**
+   - **Given** I am viewing a project
+   - **When** I switch between tabs (Scope, Time, Space, Money)
+   - **Then** The view changes smoothly and my current view is highlighted
+
+5. **View Indicators**
+   - **Given** I am viewing a project
+   - **When** content is generated (BOM in Money, CPM in Time)
+   - **Then** The corresponding tab shows an indicator badge
+
+6. **Indicator Dismissal**
+   - **Given** I am viewing a project with generated content
+   - **When** I click on a tab with an indicator
+   - **Then** The indicator disappears and I see the generated content
+
+7. **Presence Indicators**
+   - **Given** I am viewing a project
+   - **When** other users are viewing the same project
+   - **Then** I see presence indicators showing who is in each view/tab
+
+8. **Real-time Sync**
+   - **Given** I am viewing a project with other users
+   - **When** I make changes in any view
+   - **Then** Changes sync in real-time across all views for all users</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="CollabCanvas - Product Requirements Document" section="Four-View Navigation Structure">
+        Top navigation bar with four tabs: Scope | Time | Space | Money. Scope View: CSV upload (2 columns: scope, description). View indicators: Tabs show indicators when new content is generated. Deep linking support. Real-time collaboration across views with presence indicators showing who's in each view/tab. Changes sync across all views in real-time.
+      </doc>
+      <doc path="docs/epics.md" title="CollabCanvas - Epic Breakdown" section="Story 1.3: Four-View Navigation &amp; Scope View">
+        Covers FR-2.1, FR-2.2, FR-2.3, FR-3.2, FR-9.1, FR-9.2, FR-9.3. Four-view navigation with Scope View CSV upload, tab switching, view indicators, presence tracking per view, and real-time sync across all views. Prerequisites: Story 1.2 (project management).
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Four-View Navigation">
+        React Router nested routes: `/projects/:projectId/scope`, `/projects/:projectId/time`, `/projects/:projectId/space`, `/projects/:projectId/money`. Component: `pages/Project.tsx` with tab navigation. Deep linking support for direct navigation to specific views. URL-based navigation preserves browser history.
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Real-time Collaboration">
+        Extend RTDB presence with currentView field. RTDB: `/presence/{userId}` with `currentView` field. `currentView`: 'scope' | 'time' | 'space' | 'money'. Update presence when user switches views. Display presence indicators per view/tab. Firestore listeners for persistent data (scope, CPM, BOM). RTDB listeners for ephemeral data (presence, cursors).
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Scope View Data">
+        Firestore structured data (items array). Scope document: `/projects/{projectId}/scope` in Firestore. Document structure: `{items: Array&lt;{scope: string, description: string}&gt;, uploadedAt: Timestamp, uploadedBy: string}`. CSV format: 2 columns required - "scope" (e.g., demo, roof, siding) and "description" (detailed description).
+      </doc>
+      <doc path="docs/tech-spec-epic-1.md" title="Epic Technical Specification: MVP" section="Story 1.3">
+        Four-view navigation structure with Scope View CSV upload, tab switching, view indicators, presence tracking per view, and real-time sync. Routing pattern: React Router nested routes. State management: Hybrid Zustand stores (scopeStore, timeStore, moneyStore, canvasStore). Data model: Scope document in Firestore, Presence with currentView in RTDB.
+      </doc>
+      <doc path="docs/tech-spec-epic-1.md" title="Epic Technical Specification: MVP" section="Data Models and Contracts">
+        Scope Document structure: `{items: Array&lt;{scope: string, description: string}&gt;, uploadedAt: Timestamp, uploadedBy: string}`. Presence structure: `{userId, name, color, currentView: 'scope' | 'time' | 'space' | 'money', cursor, lastSeen, isActive}`. CSV format: 2 columns - "scope" and "description".
+      </doc>
+    </docs>
+    <code>
+      <artifact path="collabcanvas/src/pages/Project.tsx" kind="component" symbol="Project component" reason="Existing Project page with basic four-view navigation structure to extend" lines="1-204">
+        Project page component showing React Router nested routes pattern, tab navigation with NavLink, Routes/Route setup for four views. Key patterns: `useParams()` for projectId, nested Routes (lines 194-200), NavLink with active state styling (lines 130-180), default redirect to space view (lines 109-113). Extend this component to add Scope View implementation and enhance presence tracking.
+      </artifact>
+      <artifact path="collabcanvas/src/App.tsx" kind="component" symbol="App routing" reason="Root routing structure showing nested route pattern" lines="36-61">
+        Main App component showing React Router setup with nested routes. Key pattern: `/projects/:projectId/*` route (line 50) enables nested routing for four views. ProtectedRoute component (lines 11-30) shows authentication guard pattern. Follow same pattern for project-level route protection.
+      </artifact>
+      <artifact path="collabcanvas/src/store/projectStore.ts" kind="store" symbol="projectStore" reason="Zustand store pattern to follow for scopeStore.ts implementation" lines="1-100">
+        Zustand store implementation showing state management patterns, real-time sync with Firestore listeners, and store structure. Key patterns: `create&lt;State&gt;((set, get) =&gt; {...})` for store definition, Firestore listener setup, state updates with `set()`. Follow same pattern for scopeStore.ts.
+      </artifact>
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="firestore operations" reason="Firebase Firestore operations pattern to follow for scopeService.ts" lines="114-270">
+        Firestore service layer showing Firebase operations, document CRUD patterns, and real-time listener setup. Key patterns: `createShape()` (lines 114-192) for document creation, `subscribeToShapes()` (lines 246-269) for real-time listeners, `updateShapeProperty()` (lines 215-234) for updates. Use `doc()`, `setDoc()`, `updateDoc()`, `onSnapshot()` from Firebase SDK. Follow same patterns for scopeService.ts.
+      </artifact>
+      <artifact path="collabcanvas/src/services/rtdb.ts" kind="service" symbol="presence operations" reason="RTDB presence operations to extend with currentView field" lines="1-110">
+        RTDB service showing presence operations. Key patterns: `setPresence()` (lines 41-61) for setting presence, `updateCursor()` (lines 66-86) for cursor updates, `subscribeToPresence()` (lines 99-110) for presence listeners. Extend `PresenceData` interface (lines 16-26) to include `currentView` field. Update `setPresence()` and add `updateCurrentView()` function.
+      </artifact>
+      <artifact path="collabcanvas/src/hooks/usePresence.ts" kind="hook" symbol="usePresence" reason="Presence hook to extend with currentView tracking" lines="1-254">
+        Presence hook showing RTDB presence management. Key patterns: `setPresence()` on mount (lines 146-175), `subscribeToPresence()` for other users (lines 178-207), cleanup on unmount (lines 210-222). Extend to update `currentView` when user switches views. Add `updateCurrentView()` call when route changes.
+      </artifact>
+      <artifact path="collabcanvas/src/components/canvas/Canvas.tsx" kind="component" symbol="Canvas component" reason="Existing Space view component to integrate with new routing" lines="1-100">
+        Main canvas component showing React component structure and Firebase integration. Key patterns: `forwardRef` pattern, Zustand store hooks, `useEffect` for side effects, component state management. Ensure this component works correctly with `/projects/:projectId/space` route. Verify existing Firestore listeners continue to work for real-time sync.
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="react" version="^19.2.0"/>
+        <package name="react-dom" version="^19.2.0"/>
+        <package name="react-router-dom" version="^7.9.5"/>
+        <package name="zustand" version="^5.0.8"/>
+        <package name="firebase" version="^12.4.0"/>
+        <package name="konva" version="^10.0.2"/>
+        <package name="react-konva" version="^19.0.10"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>**Routing Pattern:**
+- React Router with nested routes: `/projects/:projectId/scope`, `/projects/:projectId/time`, `/projects/:projectId/space`, `/projects/:projectId/money`
+- Component: `pages/Project.tsx` with tab navigation
+- Deep linking support for direct navigation to specific views
+- URL-based navigation preserves browser history</constraint>
+    <constraint>**State Management Pattern:**
+- Zustand store: `scopeStore.ts` for scope view state
+- Service layer: `scopeService.ts` for Firebase operations
+- Real-time sync: Firestore listeners for live scope updates
+- View-specific stores: Each view has its own store (scopeStore, timeStore, moneyStore, canvasStore)</constraint>
+    <constraint>**Data Model:**
+- Scope document: `/projects/{projectId}/scope` in Firestore
+- Document structure: `{items: Array&lt;{scope: string, description: string}&gt;, uploadedAt: Timestamp, uploadedBy: string}`
+- CSV format: 2 columns required - "scope" (e.g., demo, roof, siding) and "description" (detailed description)</constraint>
+    <constraint>**Presence Tracking Pattern:**
+- RTDB: `/presence/{userId}` with `currentView` field
+- `currentView`: 'scope' | 'time' | 'space' | 'money'
+- Update presence when user switches views
+- Display presence indicators per view/tab</constraint>
+    <constraint>**View Indicators Pattern:**
+- Track which views have new content (BOM in Money, CPM in Time)
+- Display badge/indicator on tabs when content is generated
+- Dismiss indicator when user clicks tab to view content
+- Store indicator state in component state or Zustand store</constraint>
+    <constraint>**Real-time Sync Pattern:**
+- Firestore listeners for persistent data (scope, CPM, BOM)
+- RTDB listeners for ephemeral data (presence, cursors)
+- Changes sync automatically across all views for all users</constraint>
+    <constraint>**CSV Parsing Pattern:**
+- Parse CSV file with exactly 2 columns: "scope" and "description"
+- Validate CSV format before parsing
+- Handle errors gracefully (invalid format, missing columns, empty file)
+- Display parsed content as structured list/table</constraint>
+    <constraint>**Security Pattern:**
+- Firestore security rules: Allow read for authenticated users who own project or are collaborators, allow write for owners or editors
+- RTDB security rules: Users can only update their own presence, allow `currentView` field in presence data</constraint>
+    <constraint>**Testing Standards:**
+- Unit tests: Service layer functions (scopeService.ts), CSV parser, indicator logic, presence tracking logic
+- Integration tests: Firebase operations, Firestore security rules, RTDB presence updates, real-time listeners
+- E2E tests: CSV upload flow, tab switching, deep linking, presence indicators, real-time sync across views</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="Scope Service API" kind="TypeScript interface" signature="interface ScopeService {
+  uploadScope(projectId: string, items: Array&lt;{scope: string, description: string}&gt;): Promise&lt;void&gt;;
+  getScope(projectId: string): Promise&lt;Scope&gt;;
+  updateScope(projectId: string, items: Array&lt;{scope: string, description: string}&gt;): Promise&lt;void&gt;;
+  subscribeToScope(projectId: string, callback: (scope: Scope) =&gt; void): () =&gt; void;
+}" path="docs/architecture.md"/>
+    <interface name="Scope Document" kind="Firestore document" signature="interface Scope {
+  items: Array&lt;{
+    scope: string;
+    description: string;
+  }&gt;;
+  uploadedAt: Timestamp;
+  uploadedBy: string;
+}" path="docs/tech-spec-epic-1.md"/>
+    <interface name="Presence with currentView" kind="RTDB document" signature="interface Presence {
+  userId: string;
+  name: string;
+  color: string;
+  currentView: 'scope' | 'time' | 'space' | 'money';
+  cursor: { x: number; y: number };
+  lastSeen: number;
+  isActive: boolean;
+}" path="docs/tech-spec-epic-1.md"/>
+    <interface name="Firestore Security Rules for Scope" kind="Firestore rules" signature="match /projects/{projectId}/scope {
+  allow read: if request.auth != null &amp;&amp; (resource.data.uploadedBy == request.auth.uid || get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid || request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators.map(c =&gt; c.userId));
+  allow create, update: if request.auth != null &amp;&amp; (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid || (request.auth.uid in get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators.map(c =&gt; c.userId) &amp;&amp; getCollaboratorRole(request.auth.uid) == 'editor'));
+  allow delete: if request.auth != null &amp;&amp; get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+}" path="collabcanvas/firestore.rules"/>
+    <interface name="RTDB Security Rules for Presence" kind="RTDB rules" signature="{
+  &quot;presence&quot;: {
+    &quot;$userId&quot;: {
+      &quot;.read&quot;: &quot;auth != null&quot;,
+      &quot;.write&quot;: &quot;auth != null &amp;&amp; auth.uid == $userId&quot;,
+      &quot;currentView&quot;: {
+        &quot;.validate&quot;: &quot;newData.isString() &amp;&amp; (newData.val() == 'scope' || newData.val() == 'time' || newData.val() == 'space' || newData.val() == 'money')&quot;
+      }
+    }
+  }
+}" path="collabcanvas/database.rules.json"/>
+  </interfaces>
+  <tests>
+    <standards>Testing follows established patterns from Story 1.1 and Story 1.2. Unit tests for service layer functions (scopeService.ts), CSV parser, indicator logic, and presence tracking logic. Integration tests for Firebase operations, Firestore security rules, RTDB presence updates, and real-time listeners. E2E tests for CSV upload flow, tab switching, deep linking, presence indicators, and real-time sync across views. Testing frameworks: Vitest for unit/integration tests, Playwright for E2E tests.</standards>
+    <locations>Unit tests: `collabcanvas/src/store/*.test.ts`, `collabcanvas/src/services/*.test.ts`, `collabcanvas/src/components/scope/*.test.tsx`
+Integration tests: `collabcanvas/src/services/*.integration.test.ts`
+E2E tests: `collabcanvas/tests/e2e/*.spec.ts`</locations>
+    <ideas>
+      <test acId="AC1">Test four-view navigation displays correctly with four tabs: Scope, Time, Space, Money. Test tabs are visible and clickable. Test default view (Space) loads when navigating to project.</test>
+      <test acId="AC2">Test Scope tab navigates to Scope view. Test Scope view displays CSV upload capability. Test empty state when no scope uploaded.</test>
+      <test acId="AC3">Test CSV upload accepts file with 2 columns (scope, description). Test CSV parser correctly parses valid CSV. Test parsed content displays as structured list/table. Test error handling for invalid CSV format (wrong number of columns, missing headers, empty file).</test>
+      <test acId="AC4">Test tab switching changes view smoothly. Test active tab highlighting based on current route. Test view transitions are smooth (no flicker, proper loading states). Test all four tabs switch correctly.</test>
+      <test acId="AC5">Test view indicators display when content is generated (BOM in Money tab, CPM in Time tab). Test indicator badge appears on correct tab. Test indicator persists until user clicks tab.</test>
+      <test acId="AC6">Test indicator dismissal when user clicks tab with indicator. Test indicator disappears after viewing content. Test indicator does not reappear unless new content is generated.</test>
+      <test acId="AC7">Test presence indicators show users in each view/tab. Test presence updates when users switch views. Test presence displays correctly on tabs. Test multiple users' presence displays correctly.</test>
+      <test acId="AC8">Test real-time sync across all views. Test scope changes sync to all users in real-time. Test presence changes sync to all users in real-time. Test changes persist after page reload. Test sync works across different views simultaneously.</test>
+    </ideas>
+  </tests>
+</story-context>
+

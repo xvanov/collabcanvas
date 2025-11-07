@@ -20,6 +20,7 @@ import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
+import { calculateViewportBounds, filterVisibleShapes } from '../utils/viewport';
 import type { SelectionBox as SelectionBoxType, UnitType } from '../types';
 
 interface CanvasProps {
@@ -155,6 +156,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
         const fps = Math.round((frameCount.current * 1000) / elapsed);
         onFpsUpdate(fps);
         perfMetrics.recordFps(fps);
+        
+        // Performance warning when FPS drops below 60
+        if (fps < 60) {
+          console.warn(`[PERFORMANCE] FPS dropped to ${fps}. Target: 60 FPS. Consider reducing number of shapes or enabling viewport culling.`);
+        }
         
         frameCount.current = 0;
         lastFrameTime.current = now;
@@ -758,7 +764,29 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
           {/* Shapes layer - interactive */}
           <Layer>
-            {shapes.map((shape) => {
+            {(() => {
+              // Calculate viewport bounds for object culling
+              const viewportBounds = calculateViewportBounds(
+                dimensions.width,
+                dimensions.height,
+                stagePosRef.current.x,
+                stagePosRef.current.y,
+                stageScaleRef.current
+              );
+              
+              // Filter shapes to only render visible ones (viewport culling)
+              // Use padding of 200px to include shapes near viewport edge
+              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              
+              // Log culling stats in development (only if significant reduction)
+              if (import.meta.env.DEV && shapes.length > 50) {
+                const culledCount = shapes.length - visibleShapes.length;
+                if (culledCount > 0) {
+                  console.log(`[PERFORMANCE] Viewport culling: ${visibleShapes.length}/${shapes.length} shapes visible (${culledCount} culled)`);
+                }
+              }
+              
+              return visibleShapes.map((shape) => {
               const isLocked = isShapeLockedByOtherUser(shape.id);
               const isSelected = selectedShapeIds.includes(shape.id);
               // Handle shapes without layerId (created before layer system) - assign them to default layer
@@ -814,12 +842,25 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   onMoveSelectedShapes={moveSelectedShapes}
                 />
               );
-            })}
+            })})()}
           </Layer>
 
           {/* Measurement displays layer - non-interactive */}
           <Layer listening={false}>
-            {shapes.map((shape) => {
+            {(() => {
+              // Calculate viewport bounds for measurement culling
+              const viewportBounds = calculateViewportBounds(
+                dimensions.width,
+                dimensions.height,
+                stagePosRef.current.x,
+                stagePosRef.current.y,
+                stageScaleRef.current
+              );
+              
+              // Filter shapes to only render measurements for visible shapes
+              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              
+              return visibleShapes.map((shape) => {
               if (shape.type !== 'polyline' && shape.type !== 'polygon') return null;
               
               const shapeLayerId = shape.layerId || 'default-layer';
@@ -838,7 +879,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   opacity={opacity}
                 />
               );
-            })}
+            });
+            })()}
           </Layer>
 
           {/* Overlays layer - non-interactive */}

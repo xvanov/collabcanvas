@@ -216,15 +216,24 @@ function MaterialItem({ material, showItemTotal }: { material: MaterialSpec; sho
         <span className="font-semibold text-gray-900">
           {typeof material.priceUSD === 'number'
             ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.priceUSD as number)
+            : material.priceError
+            ? <span className="text-orange-600 text-xs" title={material.priceError}>Unable to find price</span>
             : 'N/A'}
         </span>
       </div>
+      {material.priceError && (
+        <div className="mt-1 text-xs text-orange-600 italic">
+          {material.priceError}
+        </div>
+      )}
       {showItemTotal && (
         <div className="flex justify-between items-center mt-1">
           <span className="text-sm text-gray-600">Total:</span>
           <span className="font-semibold text-gray-900">
             {typeof material.priceUSD === 'number'
               ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.quantity * (material.priceUSD as number))
+              : material.priceError
+              ? <span className="text-orange-600 text-xs">N/A</span>
               : 'N/A'}
           </span>
         </div>
