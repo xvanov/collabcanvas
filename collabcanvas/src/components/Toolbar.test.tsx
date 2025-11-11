@@ -1,6 +1,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { Toolbar } from './Toolbar';
 import { useCanvasStore } from '../store/canvasStore';
 import { usePresence } from '../hooks/usePresence';
@@ -10,6 +11,9 @@ import { useOffline } from '../hooks/useOffline';
 vi.mock('../store/canvasStore');
 vi.mock('../hooks/usePresence');
 vi.mock('../hooks/useOffline');
+vi.mock('./UnifiedAIChat', () => ({
+  UnifiedAIChat: () => null, // Mock UnifiedAIChat to avoid Router dependency
+}));
 
 const mockUseCanvasStore = vi.mocked(useCanvasStore);
 const mockUsePresence = vi.mocked(usePresence);
@@ -82,7 +86,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Create Rectangle button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -93,7 +101,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Create Circle button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -104,7 +116,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Create Text button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -115,7 +131,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Create Line button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -126,7 +146,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Undo button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Edit dropdown to open it
     const editDropdown = screen.getByRole('button', { name: /edit/i });
@@ -137,7 +161,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Redo button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Edit dropdown to open it
     const editDropdown = screen.getByRole('button', { name: /edit/i });
@@ -148,7 +176,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Export button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Tools dropdown to open it
     const toolsDropdown = screen.getByRole('button', { name: /tools/i });
@@ -159,7 +191,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Layers button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Advanced dropdown to open it
     const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
@@ -170,7 +206,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Align button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Advanced dropdown to open it
     const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
@@ -181,7 +221,11 @@ describe('Toolbar', () => {
   });
 
   it('should render Grid button', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Advanced dropdown to open it
     const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
@@ -193,7 +237,11 @@ describe('Toolbar', () => {
 
   it('should call onCreateShape when shape button is clicked', () => {
     const mockOnCreateShape = vi.fn();
-    render(<Toolbar fps={60} zoom={1} onCreateShape={mockOnCreateShape} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} onCreateShape={mockOnCreateShape} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -206,7 +254,11 @@ describe('Toolbar', () => {
   });
 
   it('should call createShape when no onCreateShape prop is provided', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -219,19 +271,31 @@ describe('Toolbar', () => {
   });
 
   it('should display FPS counter', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('60')).toBeInTheDocument();
   });
 
   it('should display zoom level', () => {
-    render(<Toolbar fps={60} zoom={1.5} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1.5} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('150%')).toBeInTheDocument();
   });
 
   it('should display user information when logged in', () => {
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     expect(screen.getByText('Loading...')).toBeInTheDocument();
   });
@@ -275,7 +339,11 @@ describe('Toolbar', () => {
       return mockState;
     });
     
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Shapes dropdown to open it
     const shapesDropdown = screen.getByRole('button', { name: /components/i });
@@ -319,7 +387,11 @@ describe('Toolbar', () => {
       return mockState;
     });
     
-    render(<Toolbar fps={60} zoom={1} />);
+    render(
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1} />
+      </MemoryRouter>
+    );
     
     // Click the Advanced dropdown to open it
     const advancedDropdown = screen.getByRole('button', { name: /advanced/i });
@@ -333,9 +405,11 @@ describe('Toolbar', () => {
 
   it('should render children when provided', () => {
     render(
-      <Toolbar fps={60} zoom={1}>
-        <div data-testid="custom-child">Custom Content</div>
-      </Toolbar>
+      <MemoryRouter>
+        <Toolbar fps={60} zoom={1}>
+          <div data-testid="custom-child">Custom Content</div>
+        </Toolbar>
+      </MemoryRouter>
     );
     
     expect(screen.getByTestId('custom-child')).toBeInTheDocument();

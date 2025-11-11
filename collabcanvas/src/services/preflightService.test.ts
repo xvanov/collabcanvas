@@ -10,7 +10,7 @@ import {
   generateClarifyingQuestions,
   type PreflightValidationResult,
   type ProjectContext,
-} from '../preflightService';
+} from './preflightService';
 
 describe('Pre-flight Validation Service', () => {
   describe('validatePreflight', () => {

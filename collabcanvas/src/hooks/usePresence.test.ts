@@ -1,5 +1,7 @@
+import React from 'react';
 import { describe, it, expect, beforeEach, vi, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { usePresence } from './usePresence';
 import { useAuth } from './useAuth';
 import { useCanvasStore } from '../store/canvasStore';
@@ -65,7 +67,10 @@ describe('usePresence Hook', () => {
 
 
   it('should clean up presence on unmount', async () => {
-    const { unmount } = renderHook(() => usePresence());
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <MemoryRouter>{children}</MemoryRouter>
+    );
+    const { unmount } = renderHook(() => usePresence(), { wrapper });
 
     // Wait for setup
     await act(async () => {
@@ -82,7 +87,10 @@ describe('usePresence Hook', () => {
       user: null,
     });
 
-    renderHook(() => usePresence());
+    const wrapper = ({ children }: { children: React.ReactNode }) => (
+      <MemoryRouter>{children}</MemoryRouter>
+    );
+    renderHook(() => usePresence(), { wrapper });
 
     expect(setPresence).not.toHaveBeenCalled();
   });

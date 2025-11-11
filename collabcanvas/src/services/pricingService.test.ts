@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchPricesForBOM } from '../pricingService';
+import { fetchPricesForBOM } from './pricingService';
 import type { BillOfMaterials } from '../../types/material';
 import { httpsCallable } from 'firebase/functions';
 

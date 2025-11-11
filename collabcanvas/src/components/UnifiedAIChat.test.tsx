@@ -3,14 +3,15 @@
  * Tests AC #1: AI Chat Availability and Context-Awareness
  */
 
+import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { UnifiedAIChat } from '../UnifiedAIChat';
-import { useCanvasStore } from '../../store/canvasStore';
+import { UnifiedAIChat } from './UnifiedAIChat';
+import { useCanvasStore } from '../store/canvasStore';
 
 // Mock the canvas store
-vi.mock('../../store/canvasStore', () => ({
+vi.mock('../store/canvasStore', () => ({
   useCanvasStore: vi.fn((selector) => {
     const mockState = {
       processAICommand: vi.fn(() => Promise.resolve({

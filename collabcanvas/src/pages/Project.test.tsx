@@ -18,6 +18,7 @@ vi.mock('../store/projectStore');
 vi.mock('firebase/firestore', () => ({
   getDoc: vi.fn(),
   doc: vi.fn(() => ({ id: 'project-1' })),
+  collection: vi.fn(),
   firestore: {},
 }));
 vi.mock('../services/firebase', () => ({
