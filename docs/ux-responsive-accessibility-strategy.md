@@ -368,3 +368,7 @@
 ---
 
 _This responsive and accessibility strategy ensures CollabCanvas works for all users, on all devices, with all abilities. Simple, stoic, down-to-earth - accessible by design._
+
+
+
+

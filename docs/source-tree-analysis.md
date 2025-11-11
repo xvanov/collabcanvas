@@ -293,3 +293,7 @@ collabcanvas/
 - **Component Assets**: `src/assets/` - Imported in components
 - **Build Assets**: `dist/assets/` - Generated during build
 
+
+
+
+

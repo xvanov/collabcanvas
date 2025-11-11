@@ -63,6 +63,10 @@ export interface MaterialSpec {
   priceUSD?: number; // unit price in USD
   homeDepotLink?: string; // product link
   priceError?: string; // Error message if price lookup failed (e.g., "Unable to find price - service timed out")
+  /** Actual cost fields (AC: #12-15) */
+  actualCostUSD?: number; // Actual TOTAL cost (entered by user, not unit price)
+  actualCostEnteredAt?: number; // Timestamp when actual cost was entered
+  actualCostEnteredBy?: string; // User ID who entered the actual cost
 }
 
 /**
@@ -142,6 +146,17 @@ export interface BillOfMaterials {
   storeNumber?: string;
   /** Delivery zip code for pricing (e.g., '04401' for Bangor, ME) */
   deliveryZip?: string;
+  /** Margin calculation fields (AC: #8, #9) */
+  margin?: {
+    materialCost: number;
+    laborCost: number;
+    subtotal: number;
+    marginPercentage: number;
+    marginDollars: number;
+    marginTimeSlack: number; // Buffer time in days
+    total: number;
+    calculatedAt: number;
+  };
 }
 
 /**

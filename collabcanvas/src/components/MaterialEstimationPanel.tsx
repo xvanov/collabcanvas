@@ -3,11 +3,11 @@
  * PR-4: Displays material calculations and BOM
  */
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
-import type { MaterialSpec } from '../types/material';
+import type { MaterialSpec, BillOfMaterials } from '../types/material';
 import { downloadBOMAsCSV } from '../services/materialService';
-import { updateBOMWithPrices } from '../services/pricingService';
+import { fetchPricesForBOM, type PriceFetchStats } from '../services/pricingService';
 
 interface MaterialEstimationPanelProps {
   isVisible: boolean;
@@ -19,25 +19,67 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
   const setBillOfMaterials = useCanvasStore(state => state.setBillOfMaterials);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [storeNumber, setStoreNumber] = useState<string>(() => (billOfMaterials?.storeNumber || '3620'));
+  const [fetchingPrices, setFetchingPrices] = useState<Set<string>>(new Set()); // Track which materials are being fetched
+  const [priceStats, setPriceStats] = useState<PriceFetchStats | null>(null);
 
-  if (!isVisible) return null;
-
-  const handleExportCSV = () => {
+  const handleExportCSV = useCallback(() => {
     if (!billOfMaterials) return;
     downloadBOMAsCSV(billOfMaterials);
-  };
+  }, [billOfMaterials]);
 
-  const handleRefreshPrices = async () => {
+  const handleRefreshPrices = useCallback(async () => {
     if (!billOfMaterials) return;
     console.log('[PRICING] Refresh Prices button clicked');
+    
+    // Mark all materials as fetching
+    const materialIds = new Set(billOfMaterials.totalMaterials.map(m => m.id || m.name));
+    setFetchingPrices(materialIds);
+    setPriceStats(null);
+
     try {
-      const updated = await updateBOMWithPrices(billOfMaterials);
-      setBillOfMaterials(updated);
-      console.log('[PRICING] Prices updated successfully');
+      // Progressive update callback - updates BOM as each price completes
+      const updateProgress = (stats: PriceFetchStats, updatedBOM?: BillOfMaterials) => {
+        setPriceStats(stats);
+        
+        // Update BOM state progressively as each price completes
+        if (updatedBOM) {
+          setBillOfMaterials(updatedBOM);
+          
+          // Remove completed materials from fetching set
+          const completedMaterials = updatedBOM.totalMaterials.filter(m => 
+            typeof m.priceUSD === 'number' || m.priceError
+          );
+          const completedIds = new Set(completedMaterials.map(m => m.id || m.name));
+          setFetchingPrices(prev => {
+            const next = new Set(prev);
+            completedIds.forEach(id => next.delete(id));
+            return next;
+          });
+        }
+        
+        console.log(`[PRICING] Progress: ${stats.successful}/${stats.total} complete (${stats.successRate.toFixed(1)}%)`);
+      };
+
+      // Use fetchPricesForBOM with progressive updates
+      const result = await fetchPricesForBOM(
+        { ...billOfMaterials, storeNumber },
+        updateProgress,
+        false // Don't retry failed automatically
+      );
+
+      // Final update (in case callback wasn't called for last item)
+      setBillOfMaterials(result.bom);
+      setPriceStats(result.stats);
+      console.log(`[PRICING] Prices updated successfully: ${result.stats.successful}/${result.stats.total} (${result.stats.successRate.toFixed(1)}%)`);
     } catch (error) {
       console.error('[PRICING] Failed to refresh prices:', error);
+    } finally {
+      setFetchingPrices(new Set());
     }
-  };
+  }, [billOfMaterials, storeNumber, setBillOfMaterials]);
+
+  // Early return AFTER all hooks (Rules of Hooks)
+  if (!isVisible) return null;
 
   // Get unique categories
   const categories = billOfMaterials
@@ -90,11 +132,31 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
           {billOfMaterials && (
             <button
               onClick={handleRefreshPrices}
-              className="px-3 py-1 text-sm bg-green-600 text-white rounded hover:bg-green-700 transition-colors"
-              title="Refresh Prices"
+              disabled={fetchingPrices.size > 0}
+              className={`px-3 py-1 text-sm rounded transition-colors ${
+                fetchingPrices.size > 0
+                  ? 'bg-gray-400 text-white cursor-not-allowed'
+                  : 'bg-green-600 text-white hover:bg-green-700'
+              }`}
+              title={fetchingPrices.size > 0 ? `Fetching prices... (${fetchingPrices.size} remaining)` : 'Refresh Prices'}
             >
-              Refresh Prices
+              {fetchingPrices.size > 0 ? (
+                <span className="flex items-center gap-1">
+                  <svg className="animate-spin h-4 w-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                    <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                    <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                  </svg>
+                  Fetching...
+                </span>
+              ) : (
+                'Refresh Prices'
+              )}
             </button>
+          )}
+          {priceStats && (
+            <div className="text-xs text-gray-600 px-2">
+              {priceStats.successful}/{priceStats.total} priced ({priceStats.successRate.toFixed(0)}%)
+            </div>
           )}
           <button
             onClick={onClose}
@@ -156,7 +218,12 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
         ) : (
           <div className="space-y-3">
             {filteredMaterials.map((material, index) => (
-              <MaterialItem key={`${material.id}-${index}`} material={material} showItemTotal={allPriced} />
+              <MaterialItem 
+                key={`${material.id}-${index}`} 
+                material={material} 
+                showItemTotal={allPriced}
+                isFetching={fetchingPrices.has(material.id || material.name)}
+              />
             ))}
           </div>
         )}
@@ -191,12 +258,22 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
 /**
  * Individual material item display
  */
-function MaterialItem({ material, showItemTotal }: { material: MaterialSpec; showItemTotal: boolean }) {
+function MaterialItem({ material, showItemTotal, isFetching }: { material: MaterialSpec; showItemTotal: boolean; isFetching?: boolean }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg p-3 hover:shadow-md transition-shadow">
+    <div className={`bg-white border rounded-lg p-3 hover:shadow-md transition-all ${
+      isFetching ? 'border-blue-300 bg-blue-50' : 'border-gray-200'
+    }`}>
       <div className="flex justify-between items-start mb-1">
         <div className="flex-1">
-          <h3 className="font-medium text-gray-900 text-sm">{material.name}</h3>
+          <div className="flex items-center gap-2">
+            <h3 className="font-medium text-gray-900 text-sm">{material.name}</h3>
+            {isFetching && (
+              <svg className="animate-spin h-4 w-4 text-blue-600" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+            )}
+          </div>
           {material.notes && (
             <p className="text-xs text-gray-500 mt-0.5">{material.notes}</p>
           )}
@@ -214,11 +291,23 @@ function MaterialItem({ material, showItemTotal }: { material: MaterialSpec; sho
       <div className="flex justify-between items-center mt-1">
         <span className="text-sm text-gray-600">Unit Price:</span>
         <span className="font-semibold text-gray-900">
-          {typeof material.priceUSD === 'number'
-            ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.priceUSD as number)
-            : material.priceError
-            ? <span className="text-orange-600 text-xs" title={material.priceError}>Unable to find price</span>
-            : 'N/A'}
+          {isFetching ? (
+            <span className="text-blue-600 text-xs flex items-center gap-1">
+              <svg className="animate-spin h-3 w-3" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+              </svg>
+              Fetching...
+            </span>
+          ) : typeof material.priceUSD === 'number' ? (
+            <span className="text-green-600">
+              {new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.priceUSD as number)}
+            </span>
+          ) : material.priceError ? (
+            <span className="text-orange-600 text-xs" title={material.priceError}>Unable to find price</span>
+          ) : (
+            'N/A'
+          )}
         </span>
       </div>
       {material.priceError && (

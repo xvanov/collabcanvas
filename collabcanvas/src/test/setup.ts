@@ -24,12 +24,16 @@ vi.mock('firebase/firestore', () => ({
   collection: vi.fn(() => ({})),
   doc: vi.fn(() => ({})),
   addDoc: vi.fn(() => Promise.resolve({ id: 'doc-123' })),
+  setDoc: vi.fn(() => Promise.resolve()),
   updateDoc: vi.fn(() => Promise.resolve()),
   deleteDoc: vi.fn(() => Promise.resolve()),
+  getDoc: vi.fn(() => Promise.resolve({ exists: () => false })),
+  getDocs: vi.fn(() => Promise.resolve({ forEach: vi.fn() })),
   onSnapshot: vi.fn(() => vi.fn()),
   query: vi.fn(() => ({})),
   where: vi.fn(() => ({})),
   orderBy: vi.fn(() => ({})),
+  serverTimestamp: vi.fn(() => ({})),
   connectFirestoreEmulator: vi.fn(() => {})
 }));
 

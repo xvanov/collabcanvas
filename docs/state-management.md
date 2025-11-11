@@ -275,3 +275,7 @@ interface CanvasScale {
 - **Local Storage**: User preferences, diagnostics HUD state
 - **Session Storage**: Not used
 
+
+
+
+

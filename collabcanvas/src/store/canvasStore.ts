@@ -118,7 +118,7 @@ interface CanvasState {
   aiCommandHistory: AICommandHistory[];
   commandQueue: AICommand[];
   isProcessingAICommand: boolean;
-  processAICommand: (commandText: string) => Promise<AICommandResult>;
+  processAICommand: (commandText: string, currentView?: 'scope' | 'time' | 'space' | 'money') => Promise<AICommandResult>;
   executeAICommand: (command: AICommand) => Promise<AICommandResult>;
   clearAIHistory: () => void;
   getAIStatus: () => AIStatus;
@@ -1271,7 +1271,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     commandQueue: [],
   },
 
-  processAICommand: async (commandText: string) => {
+  processAICommand: async (commandText: string, currentView?: 'scope' | 'time' | 'space' | 'money') => {
     const state = get();
     const currentUser = state.currentUser;
     
@@ -1298,8 +1298,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       //   selectedShapes: state.selectedShapeIds
       // };
 
-                // Call the AI service to parse the command
-                const aiServiceResult = await aiService.processCommand(commandText, currentUser.uid);
+                // Call the AI service to parse the command with view context
+                const aiServiceResult = await aiService.processCommand(commandText, currentUser.uid, currentView);
                 
                 // Execute the parsed command
         const command = aiServiceResult.executedCommands[0] as AICommand;

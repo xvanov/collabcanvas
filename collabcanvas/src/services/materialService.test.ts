@@ -252,6 +252,36 @@ describe('materialService', () => {
       expect(csv).toContain('Primer');
       expect(csv).not.toMatch(/Primer.*,[0-9]+\.[0-9]{2}/);
     });
+
+    it('should convert API links (apionline.homedepot.com) to public links (www.homedepot.com) in CSV export', () => {
+      const mockBom: BillOfMaterials = {
+        id: 'bom-4',
+        calculations: [],
+        totalMaterials: [
+          {
+            id: 'mat-3',
+            name: 'Epoxy Primer',
+            category: 'finish',
+            unit: 'gallon',
+            quantity: 1,
+            priceUSD: 48.48,
+            // API link format from SerpAPI
+            homeDepotLink: 'https://apionline.homedepot.com/p/Rust-Oleum-1-gal-Gloss-Clear-Concrete-and-Garage-Floor-Finish-Topcoat-320202/301068197',
+          } as MaterialSpec,
+        ],
+        createdAt: Date.now(),
+        createdBy: mockUserId,
+        updatedAt: Date.now(),
+      };
+
+      const exportData = generateBOMExport(mockBom, 'Project W');
+      const csv = bomToCSV(exportData);
+
+      // Should convert apionline.homedepot.com to www.homedepot.com
+      expect(csv).toContain('www.homedepot.com');
+      expect(csv).not.toContain('apionline.homedepot.com');
+      expect(csv).toContain('https://www.homedepot.com/p/Rust-Oleum-1-gal-Gloss-Clear-Concrete-and-Garage-Floor-Finish-Topcoat-320202/301068197');
+    });
   });
 
   describe('mergeMaterialCalculations', () => {

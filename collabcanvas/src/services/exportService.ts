@@ -1,266 +1,78 @@
 /**
- * Export service for canvas functionality
- * Handles PNG and SVG export with various options
+ * Export Service
+ * Provides both Canvas Export (PNG/SVG) and BOM PDF Export functionality
  */
 
-import type { ExportOptions } from '../types';
-import Konva from 'konva';
+import jsPDF from 'jspdf';
+import type Konva from 'konva';
+import type { BillOfMaterials } from '../types/material';
+import type { ExportOptions, Shape } from '../types';
+import { formatMargin } from './marginService';
+import { calculateVarianceSummary, formatVariancePercentage } from './varianceService';
 
-export interface ExportService {
-  exportCanvas: (options: ExportOptions) => Promise<Blob>;
-  exportSelectedShapes: (options: ExportOptions, selectedIds: string[]) => Promise<Blob>;
-  downloadBlob: (blob: Blob, filename: string) => void;
+// ============================================================================
+// Canvas Export Service (PNG/SVG)
+// ============================================================================
+
+export interface CanvasExportService {
+  exportCanvas(options: ExportOptions): Promise<Blob>;
+  exportSelectedShapes(options: ExportOptions, shapes: Shape[], selectedIds: string[]): Promise<Blob>;
+  downloadBlob(blob: Blob, filename: string): void;
+  generateFilename(options: ExportOptions): string;
 }
 
-/**
- * Default export options
- */
-export const DEFAULT_EXPORT_OPTIONS: ExportOptions = {
-  format: 'PNG',
-  quality: 1.0,
-  includeBackground: true,
-  selectedOnly: false,
-};
-
-/**
- * Export service implementation
- */
-export class CanvasExportService implements ExportService {
-  private stage: Konva.Stage;
-
-  constructor(stage: Konva.Stage) {
-    this.stage = stage;
-  }
-
-  /**
-   * Export the entire canvas
-   */
-  async exportCanvas(options: ExportOptions): Promise<Blob> {
-    if (!this.stage) {
-      throw new Error('Stage not available for export');
-    }
-
-    const { format, quality, includeBackground, width, height } = options;
-
-    try {
-      if (format === 'PNG') {
-        const dataURL = this.stage.toDataURL({
-          mimeType: 'image/png',
-          quality,
-          pixelRatio: quality,
-          width,
-          height,
-          ...(includeBackground ? {} : { backgroundColor: 'transparent' }),
-        });
-
-        return this.dataURLToBlob(dataURL);
-      } else if (format === 'SVG') {
-        // Konva doesn't have native SVG export, so we need to manually convert to SVG
-        return this.exportAsSVG(options);
-      }
-
-      throw new Error(`Unsupported export format: ${format}`);
-    } catch (error) {
-      console.error('Export failed:', error);
-      throw new Error(`Failed to export canvas: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Export canvas as SVG by manually converting Konva stage to SVG
-   */
-  private async exportAsSVG(options: ExportOptions): Promise<Blob> {
-    const { width, height, includeBackground } = options;
-    
-    // Get stage dimensions
-    const stageWidth = width || this.stage.width();
-    const stageHeight = height || this.stage.height();
-    
-    // Start building SVG
-    let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${stageWidth}" height="${stageHeight}" viewBox="0 0 ${stageWidth} ${stageHeight}">`;
-    
-    // Add background if requested
-    if (includeBackground) {
-      svgContent += `<rect width="100%" height="100%" fill="white"/>`;
-    }
-    
-    // Convert each layer to SVG
-    const layers = this.stage.getLayers();
-    layers.forEach((layer) => {
-      const children = layer.getChildren();
-      children.forEach((child) => {
-        svgContent += this.nodeToSVG(child);
-      });
-    });
-    
-    svgContent += '</svg>';
-    
-    // Create blob from SVG content
-    return new Blob([svgContent], { type: 'image/svg+xml' });
-  }
-
-  /**
-   * Export selected shapes as SVG
-   */
-  private async exportSelectedShapesAsSVG(tempStage: Konva.Stage, options: ExportOptions, bounds: { x: number; y: number; width: number; height: number }, padding: number): Promise<Blob> {
-    const { width, height, includeBackground } = options;
-    
-    // Calculate export dimensions
-    const exportWidth = width || bounds.width + padding * 2;
-    const exportHeight = height || bounds.height + padding * 2;
-    
-    // Start building SVG
-    let svgContent = `<svg xmlns="http://www.w3.org/2000/svg" width="${exportWidth}" height="${exportHeight}" viewBox="0 0 ${exportWidth} ${exportHeight}">`;
-    
-    // Add background if requested
-    if (includeBackground) {
-      svgContent += `<rect width="100%" height="100%" fill="white"/>`;
-    }
-    
-    // Convert each layer to SVG, adjusting for bounds
-    const layers = tempStage.getLayers();
-    layers.forEach((layer: Konva.Layer) => {
-      const children = layer.getChildren();
-      children.forEach((child: Konva.Node) => {
-        // Adjust coordinates relative to bounds
-        const adjustedChild = this.adjustNodeForBounds(child, bounds, padding);
-        svgContent += this.nodeToSVG(adjustedChild);
-      });
-    });
-    
-    svgContent += '</svg>';
-    
-    // Create blob from SVG content
-    return new Blob([svgContent], { type: 'image/svg+xml' });
-  }
-
-  /**
-   * Adjust node coordinates for bounds-based export
-   */
-  private adjustNodeForBounds(node: Konva.Node, bounds: { x: number; y: number; width: number; height: number }, padding: number): Konva.Node {
-    const attrs = node.getAttrs();
-    const adjustedAttrs = { ...attrs };
-    
-    // Adjust position relative to bounds
-    adjustedAttrs.x = (attrs.x || 0) - bounds.x + padding;
-    adjustedAttrs.y = (attrs.y || 0) - bounds.y + padding;
-    
-    // Create a clone of the node with adjusted attributes
-    const adjustedNode = node.clone();
-    adjustedNode.setAttrs(adjustedAttrs);
-    return adjustedNode;
-  }
-
-  /**
-   * Convert a Konva node to SVG string
-   */
-  private nodeToSVG(node: Konva.Node): string {
-    const nodeType = node.getClassName();
-    const attrs = node.getAttrs();
-    
-    switch (nodeType) {
-      case 'Rect':
-        return `<rect x="${attrs.x || 0}" y="${attrs.y || 0}" width="${attrs.width || 0}" height="${attrs.height || 0}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${(attrs.x || 0) + (attrs.width || 0)/2} ${(attrs.y || 0) + (attrs.height || 0)/2})"/>`;
-      
-      case 'Circle':
-        return `<circle cx="${attrs.x || 0}" cy="${attrs.y || 0}" r="${attrs.radius || 0}" fill="${attrs.fill || 'transparent'}" stroke="${attrs.stroke || 'none'}" stroke-width="${attrs.strokeWidth || 0}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})"/>`;
-      
-      case 'Text':
-        return `<text x="${attrs.x || 0}" y="${(attrs.y || 0) + (attrs.fontSize || 12)}" font-family="${attrs.fontFamily || 'Arial'}" font-size="${attrs.fontSize || 12}" fill="${attrs.fill || 'black'}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})">${attrs.text || ''}</text>`;
-      
-      case 'Line': {
-        const points = attrs.points || [];
-        const pointsString = points.map((point: number, index: number) => {
-          if (index % 2 === 0) {
-            return `${point + (attrs.x || 0)}`;
+export function createExportService(stage: Konva.Stage): CanvasExportService {
+  return {
+    async exportCanvas(options: ExportOptions): Promise<Blob> {
+      try {
+        if (options.format === 'SVG') {
+          return await exportAsSVG(stage, options);
           } else {
-            return `${point + (attrs.y || 0)}`;
-          }
-        }).join(' ');
-        return `<polyline points="${pointsString}" fill="${attrs.fill || 'none'}" stroke="${attrs.stroke || 'black'}" stroke-width="${attrs.strokeWidth || 1}" transform="rotate(${attrs.rotation || 0} ${attrs.x || 0} ${attrs.y || 0})"/>`;
+          return await exportAsPNG(stage, options);
+        }
+      } catch (error) {
+        throw new Error(`Failed to export canvas: ${error instanceof Error ? error.message : String(error)}`);
       }
-      
-      case 'Group': {
-        let groupContent = `<g transform="translate(${attrs.x || 0}, ${attrs.y || 0}) rotate(${attrs.rotation || 0})">`;
-        const children = (node as Konva.Group).getChildren();
-        children.forEach((child: Konva.Node) => {
-          groupContent += this.nodeToSVG(child);
-        });
-        groupContent += '</g>';
-        return groupContent;
-      }
-      
-      default:
-        console.warn(`Unsupported node type for SVG export: ${nodeType}`);
-        return '';
-    }
-  }
+    },
 
-  /**
-   * Export only selected shapes
-   */
-  async exportSelectedShapes(options: ExportOptions, selectedIds: string[]): Promise<Blob> {
-    if (!this.stage) {
-      throw new Error('Stage not available for export');
-    }
-
+    async exportSelectedShapes(options: ExportOptions, shapes: Shape[], selectedIds: string[]): Promise<Blob> {
     if (selectedIds.length === 0) {
       throw new Error('No shapes selected for export');
     }
 
-    const { format, quality, includeBackground, width, height } = options;
-
     try {
-      // Create a temporary stage with only selected shapes
-      const tempStage = this.stage.clone();
-      const tempLayer = tempStage.getLayers()[0];
+        const tempStage = stage.clone();
+        const layers = tempStage.getLayers();
       
       // Remove all shapes except selected ones
-      const allShapes = tempLayer.getChildren();
-      allShapes.forEach((shape: Konva.Node) => {
-        if (!selectedIds.includes(shape.id())) {
-          shape.destroy();
-        }
-      });
-
-      // Calculate bounds of selected shapes
-      const bounds = tempStage.getClientRect();
-      const padding = 20;
-      const exportWidth = width || bounds.width + padding * 2;
-      const exportHeight = height || bounds.height + padding * 2;
-
-      if (format === 'PNG') {
-        const dataURL = tempStage.toDataURL({
-          mimeType: 'image/png',
-          quality,
-          pixelRatio: quality,
-          width: exportWidth,
-          height: exportHeight,
-          x: bounds.x - padding,
-          y: bounds.y - padding,
-          ...(includeBackground ? {} : { backgroundColor: 'transparent' }),
+        layers.forEach(layer => {
+          const children = layer.getChildren();
+          children.forEach((child: Konva.Node) => {
+            const shapeId = child.id();
+            if (!selectedIds.includes(shapeId)) {
+              child.destroy();
+            }
+          });
         });
 
+        const rect = tempStage.getClientRect();
+        tempStage.width(rect.width);
+        tempStage.height(rect.height);
+
+        let blob: Blob;
+        if (options.format === 'SVG') {
+          blob = await exportAsSVG(tempStage, options);
+        } else {
+          blob = await exportAsPNG(tempStage, options);
+        }
+
         tempStage.destroy();
-        return this.dataURLToBlob(dataURL);
-      } else if (format === 'SVG') {
-        // Use custom SVG export for selected shapes
-        const svgBlob = await this.exportSelectedShapesAsSVG(tempStage, options, bounds, padding);
-        tempStage.destroy();
-        return svgBlob;
+        return blob;
+      } catch (error) {
+        throw new Error(`Failed to export selected shapes: ${error instanceof Error ? error.message : String(error)}`);
       }
+    },
 
-      tempStage.destroy();
-      throw new Error(`Unsupported export format: ${format}`);
-    } catch (error) {
-      console.error('Selected shapes export failed:', error);
-      throw new Error(`Failed to export selected shapes: ${error instanceof Error ? error.message : 'Unknown error'}`);
-    }
-  }
-
-  /**
-   * Download a blob as a file
-   */
   downloadBlob(blob: Blob, filename: string): void {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
@@ -270,37 +82,503 @@ export class CanvasExportService implements ExportService {
     link.click();
     document.body.removeChild(link);
     URL.revokeObjectURL(url);
-  }
+    },
 
-  /**
-   * Convert data URL to blob
-   */
-  private dataURLToBlob(dataURL: string): Blob {
-    const arr = dataURL.split(',');
-    const mime = arr[0].match(/:(.*?);/)?.[1] || 'image/png';
-    const bstr = atob(arr[1]);
-    let n = bstr.length;
-    const u8arr = new Uint8Array(n);
-    while (n--) {
-      u8arr[n] = bstr.charCodeAt(n);
-    }
-    return new Blob([u8arr], { type: mime });
-  }
+    generateFilename(options: ExportOptions): string {
+      const timestamp = new Date().toISOString().replace(/:/g, '-').replace(/\..+/, '');
+      const prefix = options.selectedOnly ? 'selected-shapes' : 'canvas';
+      const extension = options.format.toLowerCase();
+      return `${prefix}-${timestamp}.${extension}`;
+    },
+  };
+}
 
-  /**
-   * Generate filename based on options and timestamp
-   */
-  generateFilename(options: ExportOptions): string {
-    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
-    const format = options.format.toLowerCase();
-    const prefix = options.selectedOnly ? 'selected-shapes' : 'canvas';
-    return `${prefix}-${timestamp}.${format}`;
-  }
+async function exportAsPNG(stage: Konva.Stage, options: ExportOptions): Promise<Blob> {
+  const dataURL = stage.toDataURL({
+    mimeType: 'image/png',
+    quality: options.quality || 1.0,
+    pixelRatio: options.quality || 1.0,
+    width: options.width,
+    height: options.height,
+    backgroundColor: options.includeBackground === false ? 'transparent' : undefined,
+  });
+
+  const response = await fetch(dataURL);
+  return await response.blob();
+}
+
+async function exportAsSVG(stage: Konva.Stage, options: ExportOptions): Promise<Blob> {
+  const layers = stage.getLayers();
+  let svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="' + stage.width() + '" height="' + stage.height() + '">';
+  
+  layers.forEach(layer => {
+    const layerSVG = layer.toSVG();
+    svgContent += layerSVG;
+  });
+  
+  svgContent += '</svg>';
+  
+  return new Blob([svgContent], { type: 'image/svg+xml' });
+}
+
+// ============================================================================
+// BOM PDF Export Service
+// AC: #11 - PDF Export
+// ============================================================================
+
+export type BOMExportView = 'customer' | 'contractor' | 'comparison';
+
+export interface BOMExportOptions {
+  projectName?: string;
+  contractorName?: string;
+  contractorInfo?: string;
+  includeNotes?: boolean;
 }
 
 /**
- * Create export service instance
+ * Export BOM as PDF
+ * AC: #11 - PDF Export
  */
-export const createExportService = (stage: Konva.Stage): CanvasExportService => {
-  return new CanvasExportService(stage);
-};
+export async function exportEstimateAsPDF(
+  bom: BillOfMaterials,
+  view: BOMExportView,
+  options: BOMExportOptions = {}
+): Promise<void> {
+  const doc = new jsPDF();
+  const pageWidth = doc.internal.pageSize.getWidth();
+  const pageHeight = doc.internal.pageSize.getHeight();
+  const margin = 20;
+  let yPosition = margin;
+
+  // Helper function to add a new page if needed
+  const checkPageBreak = (requiredSpace: number) => {
+    if (yPosition + requiredSpace > pageHeight - margin) {
+      doc.addPage();
+      yPosition = margin;
+    }
+  };
+
+  // Header
+  doc.setFontSize(20);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Project Estimate', margin, yPosition);
+  yPosition += 10;
+
+  // Project details
+  doc.setFontSize(12);
+  doc.setFont('helvetica', 'normal');
+  if (options.projectName || bom.projectName) {
+    doc.text(`Project: ${options.projectName || bom.projectName || 'Unnamed Project'}`, margin, yPosition);
+    yPosition += 7;
+  }
+  
+  const generatedDate = new Date(bom.createdAt).toLocaleDateString();
+  doc.text(`Generated: ${generatedDate}`, margin, yPosition);
+  yPosition += 7;
+
+  if (options.contractorName || options.contractorInfo) {
+    if (options.contractorName) {
+      doc.text(`Contractor: ${options.contractorName}`, margin, yPosition);
+      yPosition += 7;
+    }
+    if (options.contractorInfo) {
+      doc.setFontSize(10);
+      doc.text(options.contractorInfo, margin, yPosition);
+      yPosition += 7;
+      doc.setFontSize(12);
+    }
+  }
+
+  yPosition += 5;
+
+  // Generate content based on view type
+  if (view === 'customer') {
+    generateCustomerViewPDF(doc, bom, margin, yPosition, checkPageBreak);
+  } else if (view === 'contractor') {
+    generateContractorViewPDF(doc, bom, margin, yPosition, checkPageBreak);
+  } else if (view === 'comparison') {
+    generateComparisonViewPDF(doc, bom, margin, yPosition, checkPageBreak);
+  }
+
+  // Footer on each page
+  const totalPages = doc.getNumberOfPages();
+  for (let i = 1; i <= totalPages; i++) {
+    doc.setPage(i);
+    doc.setFontSize(8);
+    doc.setTextColor(128, 128, 128);
+    doc.text(
+      `Page ${i} of ${totalPages}`,
+      pageWidth - margin - 20,
+      pageHeight - 10,
+      { align: 'right' }
+    );
+    doc.setTextColor(0, 0, 0);
+  }
+
+  // Download PDF
+  const filename = `${options.projectName || bom.projectName || 'Estimate'}-${view}-${Date.now()}.pdf`;
+  doc.save(filename);
+}
+
+/**
+ * Generate Customer View PDF
+ */
+function generateCustomerViewPDF(
+  doc: jsPDF,
+  bom: BillOfMaterials,
+  margin: number,
+  startY: number,
+  checkPageBreak: (space: number) => void
+): void {
+  let yPosition = startY;
+
+  if (!bom.margin) {
+    doc.setFontSize(12);
+    doc.text('Margin calculation not available.', margin, yPosition);
+    return;
+  }
+
+  const formatted = formatMargin(bom.margin);
+  const laborWithMargin = bom.margin.laborCost + bom.margin.marginDollars;
+
+  // Materials Section
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Materials', margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  // Table header
+  doc.setFont('helvetica', 'bold');
+  doc.text('Item', margin, yPosition);
+  doc.text('Quantity', margin + 80, yPosition);
+  doc.text('Total', margin + 130, yPosition, { align: 'right' });
+  yPosition += 7;
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, yPosition - 2, margin + 170, yPosition - 2);
+  yPosition += 3;
+
+  // Materials list
+  doc.setFont('helvetica', 'normal');
+  bom.totalMaterials.forEach((material) => {
+    checkPageBreak(10);
+    
+    const hasPrice = typeof material.priceUSD === 'number' && material.priceUSD > 0 && material.priceUSD !== undefined;
+    const lineTotal = hasPrice && material.priceUSD !== undefined ? material.quantity * material.priceUSD : 0;
+    
+    doc.text(material.name, margin, yPosition);
+    doc.text(`${material.quantity.toFixed(0)} ${material.unit}`, margin + 80, yPosition);
+    doc.text(
+      hasPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(lineTotal)
+        : 'TBD',
+      margin + 130,
+      yPosition,
+      { align: 'right' }
+    );
+    yPosition += 7;
+  });
+
+  checkPageBreak(15);
+  yPosition += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Materials Subtotal:', margin + 80, yPosition);
+  doc.text(formatted.materialCost, margin + 130, yPosition, { align: 'right' });
+  yPosition += 10;
+
+  // Labor Section
+  checkPageBreak(20);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Labor', margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Labor & Installation', margin, yPosition);
+  doc.setFont('helvetica', 'bold');
+  doc.text(
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(laborWithMargin),
+    margin + 130,
+    yPosition,
+    { align: 'right' }
+  );
+  yPosition += 10;
+
+  // Total
+  checkPageBreak(15);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(margin, yPosition, margin + 170, yPosition);
+  yPosition += 10;
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Project Cost:', margin, yPosition);
+  doc.text(formatted.total, margin + 130, yPosition, { align: 'right' });
+}
+
+/**
+ * Generate Contractor View PDF
+ */
+function generateContractorViewPDF(
+  doc: jsPDF,
+  bom: BillOfMaterials,
+  margin: number,
+  startY: number,
+  checkPageBreak: (space: number) => void
+): void {
+  let yPosition = startY;
+
+  if (!bom.margin) {
+    doc.setFontSize(12);
+    doc.text('Margin calculation not available.', margin, yPosition);
+    return;
+  }
+
+  const formatted = formatMargin(bom.margin);
+
+  // Materials Section
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Materials Breakdown', margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  
+  // Table header
+  doc.setFont('helvetica', 'bold');
+  doc.text('Item', margin, yPosition);
+  doc.text('Qty', margin + 70, yPosition);
+  doc.text('Unit Price', margin + 90, yPosition, { align: 'right' });
+  doc.text('Total', margin + 130, yPosition, { align: 'right' });
+  yPosition += 7;
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, yPosition - 2, margin + 170, yPosition - 2);
+  yPosition += 3;
+
+  // Materials list
+  doc.setFont('helvetica', 'normal');
+  bom.totalMaterials.forEach((material) => {
+    checkPageBreak(10);
+    
+    const hasPrice = typeof material.priceUSD === 'number' && material.priceUSD > 0 && material.priceUSD !== undefined;
+    const lineTotal = hasPrice && material.priceUSD !== undefined ? material.quantity * material.priceUSD : 0;
+    
+    doc.text(material.name, margin, yPosition);
+    doc.text(`${material.quantity.toFixed(0)} ${material.unit}`, margin + 70, yPosition);
+    doc.text(
+      hasPrice && material.priceUSD !== undefined
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(material.priceUSD)
+        : 'TBD',
+      margin + 90,
+      yPosition,
+      { align: 'right' }
+    );
+    doc.text(
+      hasPrice
+        ? new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(lineTotal)
+        : 'TBD',
+      margin + 130,
+      yPosition,
+      { align: 'right' }
+    );
+    yPosition += 7;
+  });
+
+  checkPageBreak(30);
+  yPosition += 5;
+  doc.setFont('helvetica', 'bold');
+  doc.text('Materials Subtotal:', margin + 90, yPosition);
+  doc.text(formatted.materialCost, margin + 130, yPosition, { align: 'right' });
+  yPosition += 10;
+
+  // Labor Section
+  checkPageBreak(15);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Labor', margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text('Labor Costs', margin, yPosition);
+  doc.setFont('helvetica', 'bold');
+  doc.text(formatted.laborCost, margin + 130, yPosition, { align: 'right' });
+  yPosition += 10;
+
+  // Margin Section
+  checkPageBreak(20);
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Margin & Profit', margin, yPosition);
+  yPosition += 10;
+
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Margin (${formatted.marginPercentage})`, margin, yPosition);
+  doc.setFont('helvetica', 'bold');
+  doc.text(formatted.marginDollars, margin + 130, yPosition, { align: 'right' });
+  yPosition += 7;
+
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Buffer Time (Slack): ${formatted.marginTimeSlack}`, margin, yPosition);
+  yPosition += 10;
+
+  // Total
+  checkPageBreak(15);
+  doc.setDrawColor(0, 0, 0);
+  doc.line(margin, yPosition, margin + 170, yPosition);
+  yPosition += 10;
+  
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Total Project Cost:', margin, yPosition);
+  doc.text(formatted.total, margin + 130, yPosition, { align: 'right' });
+}
+
+/**
+ * Generate Comparison View PDF
+ */
+function generateComparisonViewPDF(
+  doc: jsPDF,
+  bom: BillOfMaterials,
+  margin: number,
+  startY: number,
+  checkPageBreak: (space: number) => void
+): void {
+  let yPosition = startY;
+
+  const materialsWithActuals = bom.totalMaterials.filter(
+    m => typeof m.actualCostUSD === 'number'
+  );
+
+  if (materialsWithActuals.length === 0) {
+    doc.setFontSize(12);
+    doc.text('No actual costs entered for comparison.', margin, yPosition);
+    return;
+  }
+
+  const varianceSummary = calculateVarianceSummary(materialsWithActuals);
+
+  doc.setFontSize(14);
+  doc.setFont('helvetica', 'bold');
+  doc.text('Estimate vs. Actual Comparison', margin, yPosition);
+  yPosition += 7;
+  doc.setFontSize(10);
+  doc.setFont('helvetica', 'normal');
+  doc.text(`Comparing ${materialsWithActuals.length} of ${bom.totalMaterials.length} materials`, margin, yPosition);
+  yPosition += 10;
+
+  // Table header
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(9);
+  doc.text('Item', margin, yPosition);
+  doc.text('Est.', margin + 60, yPosition, { align: 'right' });
+  doc.text('Actual', margin + 90, yPosition, { align: 'right' });
+  doc.text('Variance', margin + 120, yPosition, { align: 'right' });
+  doc.text('Variance %', margin + 150, yPosition, { align: 'right' });
+  yPosition += 7;
+  
+  doc.setDrawColor(200, 200, 200);
+  doc.line(margin, yPosition - 2, margin + 170, yPosition - 2);
+  yPosition += 3;
+
+  // Materials list
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(8);
+  varianceSummary.materials.forEach((variance) => {
+    checkPageBreak(10);
+    
+    const itemName = variance.material.name.length > 25 
+      ? variance.material.name.substring(0, 22) + '...'
+      : variance.material.name;
+    
+    doc.text(itemName, margin, yPosition);
+    doc.text(
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(variance.estimateTotal),
+      margin + 60,
+      yPosition,
+      { align: 'right' }
+    );
+    doc.text(
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(variance.actualTotal),
+      margin + 90,
+      yPosition,
+      { align: 'right' }
+    );
+    
+    // Color variance (red for positive, green for negative)
+    if (variance.varianceDollars > 0) {
+      doc.setTextColor(220, 38, 38); // red
+    } else if (variance.varianceDollars < 0) {
+      doc.setTextColor(34, 197, 94); // green
+    }
+    
+    doc.text(
+      (variance.varianceDollars > 0 ? '+' : '') +
+      new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', maximumFractionDigits: 0 }).format(variance.varianceDollars),
+      margin + 120,
+      yPosition,
+      { align: 'right' }
+    );
+    doc.text(
+      formatVariancePercentage(variance.variancePercentage),
+      margin + 150,
+      yPosition,
+      { align: 'right' }
+    );
+    
+    doc.setTextColor(0, 0, 0); // Reset to black
+    yPosition += 7;
+  });
+
+  // Totals
+  checkPageBreak(15);
+  yPosition += 5;
+  doc.setDrawColor(0, 0, 0);
+  doc.line(margin, yPosition, margin + 170, yPosition);
+  yPosition += 7;
+  
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(10);
+  doc.text('Totals:', margin, yPosition);
+  doc.text(
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(varianceSummary.totalEstimate),
+    margin + 60,
+    yPosition,
+    { align: 'right' }
+  );
+  doc.text(
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(varianceSummary.totalActual),
+    margin + 90,
+    yPosition,
+    { align: 'right' }
+  );
+  
+  if (varianceSummary.totalVarianceDollars > 0) {
+    doc.setTextColor(220, 38, 38);
+  } else if (varianceSummary.totalVarianceDollars < 0) {
+    doc.setTextColor(34, 197, 94);
+  }
+  
+  doc.text(
+    (varianceSummary.totalVarianceDollars > 0 ? '+' : '') +
+    new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(varianceSummary.totalVarianceDollars),
+    margin + 120,
+    yPosition,
+    { align: 'right' }
+  );
+  doc.text(
+    formatVariancePercentage(varianceSummary.totalVariancePercentage),
+    margin + 150,
+    yPosition,
+    { align: 'right' }
+  );
+  
+  doc.setTextColor(0, 0, 0);
+}

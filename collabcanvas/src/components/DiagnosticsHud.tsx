@@ -82,7 +82,16 @@ export function DiagnosticsHud({ fps, visible }: DiagnosticsHudProps) {
     };
 
     updateMetrics();
-    const interval = window.setInterval(updateMetrics, 1000);
+    // Use longer interval to reduce violations (2 seconds instead of 1)
+    const interval = window.setInterval(() => {
+      // Use requestIdleCallback if available to avoid blocking main thread
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(updateMetrics, { timeout: 1000 });
+      } else {
+        // Fallback: use setTimeout to defer execution
+        setTimeout(updateMetrics, 0);
+      }
+    }, 2000);
     return () => window.clearInterval(interval);
   }, [visible]);
 

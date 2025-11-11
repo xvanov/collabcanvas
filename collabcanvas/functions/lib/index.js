@@ -10,4 +10,5 @@ const materialEstimateCommand_1 = require("./materialEstimateCommand");
 Object.defineProperty(exports, "materialEstimateCommand", { enumerable: true, get: function () { return materialEstimateCommand_1.materialEstimateCommand; } });
 const pricing_1 = require("./pricing");
 Object.defineProperty(exports, "getHomeDepotPrice", { enumerable: true, get: function () { return pricing_1.getHomeDepotPrice; } });
+// export { onProjectDeleted }; // TODO: Uncomment when ready to deploy
 //# sourceMappingURL=index.js.map

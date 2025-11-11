@@ -24,11 +24,23 @@ try {
 catch (_a) {
     admin.initializeApp();
 }
+// Configure Firestore to use emulator if running locally
+// Firebase emulator automatically sets FIRESTORE_EMULATOR_HOST, but we need to ensure it's used
+if (process.env.FIRESTORE_EMULATOR_HOST) {
+    console.log('[PRICING] Using Firestore emulator:', process.env.FIRESTORE_EMULATOR_HOST);
+}
+else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATOR) {
+    // If running in emulator but env var not set, set it manually
+    process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081';
+    console.log('[PRICING] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
+}
 // Retry configuration
 const MAX_RETRIES = 3;
 const INITIAL_RETRY_DELAY_MS = 1000; // 1 second
 // Cache TTL: 24 hours
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
+// SerpAPI timeout: 60 seconds (they can be very slow, especially for complex searches)
+const SERPAPI_TIMEOUT_MS = 60000;
 function normalizeKey(name, unit) {
     const base = name.trim().toLowerCase();
     const unitPart = unit ? `__${unit.trim().toLowerCase()}` : '';
@@ -44,23 +56,44 @@ function sleep(ms) {
 /**
  * Fetch price from SerpAPI with retry logic and exponential backoff
  */
-async function fetchFromSerpApi(query, attempt = 1) {
-    console.log(`[PRICING] fetchFromSerpApi called: query="${query}", attempt=${attempt}`);
-    const apiKey = process.env.SERP_API_KEY || '';
+async function fetchFromSerpApi(query, storeId, deliveryZip, attempt = 1) {
+    var _a;
+    console.log(`[PRICING] fetchFromSerpApi called: query="${query}", store_id="${storeId || 'none'}", delivery_zip="${deliveryZip || 'none'}", attempt=${attempt}`);
+    const apiKey = (process.env.SERP_API_KEY || '').trim();
     if (!apiKey) {
         const error = 'SERP_API_KEY not configured';
         console.error(`[PRICING] ${error}`);
         return { priceUSD: null, link: null, error };
     }
+    // Log first 10 chars of key for debugging (without exposing full key)
+    console.log(`[PRICING] Using SERP_API_KEY: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
     const params = new URLSearchParams({
         engine: 'home_depot',
         q: query,
         api_key: apiKey,
+        ps: '24',
+        nao: '0',
+        country: 'us',
+        device: 'desktop',
     });
+    // Add store_id and delivery_zip if provided (these help SerpAPI return faster, more accurate results)
+    if (storeId) {
+        params.append('store_id', storeId);
+    }
+    if (deliveryZip) {
+        params.append('delivery_zip', deliveryZip);
+    }
     const url = `https://serpapi.com/search.json?${params.toString()}`;
     console.log(`[PRICING] Making request to SerpAPI (attempt ${attempt})...`);
     try {
-        const res = await fetch(url, { method: 'GET' });
+        // Add timeout to fetch call (60 seconds - SerpAPI can be slow, especially for complex searches)
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), SERPAPI_TIMEOUT_MS);
+        const res = await fetch(url, {
+            method: 'GET',
+            signal: controller.signal
+        });
+        clearTimeout(timeoutId);
         console.log(`[PRICING] SerpAPI response status: ${res.status}`);
         if (!res.ok) {
             const errorText = await res.text();
@@ -71,16 +104,24 @@ async function fetchFromSerpApi(query, attempt = 1) {
                 const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
                 console.log(`[PRICING] Retrying in ${delay}ms...`);
                 await sleep(delay);
-                return fetchFromSerpApi(query, attempt + 1);
+                return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
             }
             return { priceUSD: null, link: null, error };
         }
         console.log(`[PRICING] Parsing SerpAPI response...`);
         const data = await res.json();
-        const results = (data === null || data === void 0 ? void 0 : data.organic_results) || [];
-        if (!Array.isArray(results) || results.length === 0) {
-            const error = 'No results found';
+        // Check for SerpAPI errors in response
+        if (data.error) {
+            const error = `Unable to find price - ${data.error}`;
             console.warn(`[PRICING] ${error} for query: ${query}`);
+            return { priceUSD: null, link: null, error };
+        }
+        // Home Depot API returns products array, not organic_results
+        const results = (data === null || data === void 0 ? void 0 : data.products) || (data === null || data === void 0 ? void 0 : data.organic_results) || [];
+        if (!Array.isArray(results) || results.length === 0) {
+            const error = 'Unable to find price - no products found';
+            console.warn(`[PRICING] ${error} for query: ${query}`);
+            console.log(`[PRICING] Response structure: products=${!!(data === null || data === void 0 ? void 0 : data.products)}, organic_results=${!!(data === null || data === void 0 ? void 0 : data.organic_results)}, total_results=${((_a = data === null || data === void 0 ? void 0 : data.search_information) === null || _a === void 0 ? void 0 : _a.total_results) || 'N/A'}`);
             return { priceUSD: null, link: null, error };
         }
         const first = results[0];
@@ -97,7 +138,7 @@ async function fetchFromSerpApi(query, attempt = 1) {
             priceUSD = Number.isFinite(parsed) ? parseFloat(parsed.toFixed(2)) : null;
         }
         if (priceUSD === null) {
-            const error = 'Price not found in result';
+            const error = 'Unable to find price - price not available in product listing';
             console.warn(`[PRICING] ${error} for query: ${query}`);
             return { priceUSD: null, link, error };
         }
@@ -106,15 +147,27 @@ async function fetchFromSerpApi(query, attempt = 1) {
     }
     catch (err) {
         const error = err instanceof Error ? err.message : 'Unknown error';
+        const isAbortError = err instanceof Error && err.name === 'AbortError';
+        if (isAbortError) {
+            console.error(`[PRICING] SerpAPI request timeout (attempt ${attempt}/${MAX_RETRIES})`);
+            // Retry on timeout
+            if (attempt < MAX_RETRIES) {
+                const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
+                console.log(`[PRICING] Retrying in ${delay}ms...`);
+                await sleep(delay);
+                return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
+            }
+            return { priceUSD: null, link: null, error: 'Unable to find price - service timed out after 60 seconds' };
+        }
         console.error(`[PRICING] SerpAPI fetch error (attempt ${attempt}/${MAX_RETRIES}):`, error);
         // Retry on network errors
         if (attempt < MAX_RETRIES) {
             const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt - 1);
             console.log(`[PRICING] Retrying in ${delay}ms...`);
             await sleep(delay);
-            return fetchFromSerpApi(query, attempt + 1);
+            return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
         }
-        return { priceUSD: null, link: null, error };
+        return { priceUSD: null, link: null, error: 'Unable to find price - service unavailable' };
     }
 }
 exports.getHomeDepotPrice = (0, https_1.onCall)({
@@ -126,6 +179,7 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
     ],
     maxInstances: 20,
     memory: '256MiB',
+    timeoutSeconds: 60, // Allow up to 60 seconds for SerpAPI calls
 }, async (req) => {
     var _a;
     console.log('[PRICING] Function invoked');
@@ -144,7 +198,7 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
                 error: 'SERP_API_KEY not configured. Check emulator logs for details.'
             };
         }
-        const { materialName, unit, storeNumber } = ((_a = req.data) === null || _a === void 0 ? void 0 : _a.request) || {};
+        const { materialName, unit, storeNumber, deliveryZip } = ((_a = req.data) === null || _a === void 0 ? void 0 : _a.request) || {};
         if (!materialName) {
             console.error('[PRICING] materialName is required');
             throw new https_1.HttpsError('invalid-argument', 'materialName is required');
@@ -152,7 +206,11 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
         console.log(`[PRICING] Processing request for: ${materialName}${unit ? ` (${unit})` : ''}`);
         const store = (storeNumber || '3620').toString();
         const key = normalizeKey(materialName, unit);
-        console.log(`[PRICING] Cache key: ${key}, Store: ${store}`);
+        console.log(`[PRICING] Cache key: ${key}, Store: ${store}, Delivery Zip: ${deliveryZip || 'none'}`);
+        // Map storeNumber to store_id (for now, use storeNumber directly - may need mapping table later)
+        // Based on user's successful calls: store_id 2414 corresponds to zip 04401
+        // For now, we'll use storeNumber as store_id if no explicit mapping exists
+        const storeId = storeNumber; // TODO: Create proper mapping from storeNumber to store_id
         const db = (0, firestore_1.getFirestore)();
         const docRef = db.collection('pricing').doc(store).collection('items').doc(key);
         console.log(`[PRICING] Checking cache in Firestore...`);
@@ -168,11 +226,22 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
                 const nowMs = Date.now();
                 const ageMs = nowMs - updatedAtMs;
                 if (ageMs < CACHE_TTL_MS) {
-                    console.log(`[PRICING] Cache hit for: ${materialName} (age: ${Math.round(ageMs / 1000 / 60)} minutes)`);
+                    const ageMinutes = Math.round(ageMs / 1000 / 60);
+                    console.log(`[PRICING] Cache hit for: ${materialName} (age: ${ageMinutes} minutes)`);
+                    // Return cached result - check if it's a successful cache or error cache
+                    const hasValidPrice = d && typeof d.priceUSD === 'number' && d.priceUSD !== null;
+                    const cachedError = (d === null || d === void 0 ? void 0 : d.lastError) || null;
+                    console.log(`[PRICING] Cache data:`, {
+                        hasValidPrice,
+                        priceUSD: d === null || d === void 0 ? void 0 : d.priceUSD,
+                        cachedError,
+                        lastFetchTime: d === null || d === void 0 ? void 0 : d.lastFetchTime
+                    });
                     return {
-                        success: true,
-                        priceUSD: d && typeof d.priceUSD === 'number' ? d.priceUSD : null,
+                        success: hasValidPrice,
+                        priceUSD: hasValidPrice ? d.priceUSD : null,
                         link: d && d.link ? d.link : null,
+                        error: cachedError || (hasValidPrice ? undefined : 'Unable to find price - cached result'),
                     };
                 }
                 else {
@@ -182,9 +251,9 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
         }
         // Fetch from SerpAPI with retry logic
         const query = unit ? `${materialName} ${unit}` : materialName;
-        console.log(`[PRICING] Fetching from SerpAPI: ${query}`);
+        console.log(`[PRICING] Fetching from SerpAPI: ${query} (store_id: ${storeId}, delivery_zip: ${deliveryZip || 'none'})`);
         const startTime = Date.now();
-        const { priceUSD, link, error } = await fetchFromSerpApi(query);
+        const { priceUSD, link, error } = await fetchFromSerpApi(query, storeId, deliveryZip);
         const fetchTime = Date.now() - startTime;
         console.log(`[PRICING] SerpAPI fetch complete. Price: ${priceUSD}, Error: ${error || 'none'}, Time: ${fetchTime}ms`);
         const success = priceUSD !== null;
@@ -204,10 +273,23 @@ exports.getHomeDepotPrice = (0, https_1.onCall)({
         return { success, priceUSD, link, error };
     }
     catch (e) {
-        console.error('getHomeDepotPrice error:', e);
-        if (e instanceof https_1.HttpsError)
+        console.error('[PRICING] getHomeDepotPrice error:', e);
+        console.error('[PRICING] Error stack:', e instanceof Error ? e.stack : 'No stack trace');
+        // Return error response instead of throwing to ensure CORS headers are sent
+        if (e instanceof https_1.HttpsError) {
+            // For HttpsError, we still need to throw it, but log first
+            console.error('[PRICING] Throwing HttpsError:', e.code, e.message);
             throw e;
-        return { success: false, priceUSD: null, link: null };
+        }
+        // For other errors, return a proper error response
+        const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
+        console.error('[PRICING] Returning error response:', errorMessage);
+        return {
+            success: false,
+            priceUSD: null,
+            link: null,
+            error: `Internal error: ${errorMessage}`
+        };
     }
 });
 //# sourceMappingURL=pricing.js.map

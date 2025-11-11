@@ -3,56 +3,20 @@
  * Main project page with four-view navigation (Scope | Time | Space | Money)
  */
 
-import { useParams, useNavigate, Routes, Route, NavLink } from 'react-router-dom';
+import { useParams, useNavigate, Routes, Route, NavLink, useLocation } from 'react-router-dom';
 import { useEffect, useState, useRef, useMemo } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { useProjectStore } from '../store/projectStore';
+import { useViewIndicatorsStore } from '../store/viewIndicatorsStore';
 import { Board } from './Board';
+import { ScopeView } from '../components/scope/ScopeView';
+import { TimeView } from '../components/time/TimeView';
+import { MoneyView } from '../components/money/MoneyView';
+import { ViewIndicator } from '../components/shared/ViewIndicator';
+import { PresenceIndicator } from '../components/shared/PresenceIndicator';
 import { getDoc, doc } from 'firebase/firestore';
 import { firestore } from '../services/firebase';
 import type { Project } from '../types/project';
-
-/**
- * Scope View - Placeholder (will be fully implemented in Story 1.3)
- */
-function ScopeView() {
-  return (
-    <div className="flex h-full items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Scope View</h2>
-        <p className="text-gray-600">Scope of work upload will be implemented in Story 1.3</p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Time View - Placeholder (will be fully implemented in Story 1.3)
- */
-function TimeView() {
-  return (
-    <div className="flex h-full items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Time View</h2>
-        <p className="text-gray-600">Critical Path Method (CPM) visualization will be implemented in Story 1.3</p>
-      </div>
-    </div>
-  );
-}
-
-/**
- * Money View - Placeholder (will be fully implemented in Story 1.3)
- */
-function MoneyView() {
-  return (
-    <div className="flex h-full items-center justify-center bg-gray-50">
-      <div className="text-center">
-        <h2 className="text-2xl font-bold text-gray-900 mb-4">Money View</h2>
-        <p className="text-gray-600">BOM and pricing view will be implemented in Story 1.3</p>
-      </div>
-    </div>
-  );
-}
 
 /**
  * Convert Firestore document to Project
@@ -81,9 +45,11 @@ function firestoreDocToProject(docId: string, data: any): Project {
 export function Project() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const { user, loading: authLoading } = useAuth();
   const projects = useProjectStore((state) => state.projects);
   const setCurrentProject = useProjectStore((state) => state.setCurrentProject);
+  const { indicators, clearIndicator } = useViewIndicatorsStore();
   
   const [loadingProject, setLoadingProject] = useState(true);
   const [projectNotFound, setProjectNotFound] = useState(false);
@@ -91,6 +57,20 @@ export function Project() {
   const hasLoadedRef = useRef(false);
   const hasEverLoadedRef = useRef(false);
   const previousProjectIdRef = useRef<string | undefined>(undefined);
+
+  // Clear indicator when user clicks on a tab
+  useEffect(() => {
+    const pathname = location.pathname;
+    if (pathname.includes('/scope')) {
+      clearIndicator('scope');
+    } else if (pathname.includes('/time')) {
+      clearIndicator('time');
+    } else if (pathname.includes('/space')) {
+      clearIndicator('space');
+    } else if (pathname.includes('/money')) {
+      clearIndicator('money');
+    }
+  }, [location.pathname, clearIndicator]);
 
   // Find the current project in local array - memoize to prevent unnecessary re-renders
   const localProject = useMemo(() => {
@@ -383,6 +363,8 @@ export function Project() {
             }
           >
             Scope
+            {indicators.scope && <ViewIndicator />}
+            <PresenceIndicator view="scope" />
           </NavLink>
           <NavLink
             to={`${basePath}/space`}
@@ -395,6 +377,8 @@ export function Project() {
             }
           >
             Space
+            {indicators.space && <ViewIndicator />}
+            <PresenceIndicator view="space" />
           </NavLink>
           <NavLink
             to={`${basePath}/time`}
@@ -407,6 +391,8 @@ export function Project() {
             }
           >
             Time
+            {indicators.time && <ViewIndicator />}
+            <PresenceIndicator view="time" />
           </NavLink>
           <NavLink
             to={`${basePath}/money`}
@@ -419,6 +405,8 @@ export function Project() {
             }
           >
             Money
+            {indicators.money && <ViewIndicator />}
+            <PresenceIndicator view="money" />
           </NavLink>
           <div className="ml-auto flex items-center px-6">
             <button

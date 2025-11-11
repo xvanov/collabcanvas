@@ -41,3 +41,7 @@ export function isAuthenticated(): boolean {
   return auth.currentUser !== null;
 }
 
+
+
+
+

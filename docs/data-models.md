@@ -279,3 +279,7 @@ interface BillOfMaterials {
 - Presence data validation (user can only write own presence)
 - Lock data validation (user can acquire if not locked or owns lock)
 
+
+
+
+

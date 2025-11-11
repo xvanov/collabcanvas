@@ -40,8 +40,8 @@ development_status:
   epic-1: contexted
   1-1-critical-bug-fixes-performance-optimization: done
   1-2-home-page-project-management-system: done
-  1-3-four-view-navigation-scope-view: ready-for-dev
-  1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: backlog
+  1-3-four-view-navigation-scope-view: done
+  1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: in-progress
   epic-1-retrospective: optional
 
   # Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support

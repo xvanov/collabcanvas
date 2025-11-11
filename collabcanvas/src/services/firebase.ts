@@ -61,7 +61,7 @@ if (useEmulators) {
   
   try {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+    connectFirestoreEmulator(firestore, '127.0.0.1', 8081);
     connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
     connectFunctionsEmulator(functions, '127.0.0.1', 5001);
     connectStorageEmulator(storage, '127.0.0.1', 9199);

@@ -1,0 +1,468 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>4</storyId>
+    <title>Money View with BOM, Pricing, Margin Calculation & AI Chat Integration</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-07T23:01:44Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>As a contractor</asA>
+    <iWant>I want to generate accurate BOMs with real prices, calculate margins, and view estimates in customer/contractor formats</iWant>
+    <soThat>so that I can create professional estimates with proper profit margins for client presentation and internal tracking</soThat>
+    <tasks>
+- [ ] Task 1: Implement Context-Aware AI Chat (AC: #1)
+  - [ ] Create `components/shared/AIChat.tsx` component with view context tracking
+  - [ ] Track current view context ('scope' | 'time' | 'space' | 'money') in AI chat component
+  - [ ] Pass view context to AI service when processing commands
+  - [ ] Display view context indicator in chat UI
+  - [ ] Add unit tests for view context tracking
+  - [ ] Add E2E tests for context-aware chat behavior
+
+- [ ] Task 2: Implement Pre-flight Validation System (AC: #2, #3)
+  - [ ] Create `services/preflightService.ts` for validation logic
+  - [ ] Implement validation checks: scale reference exists, layers exist, annotations exist, scope uploaded (recommended)
+  - [ ] Create AI prompt system that guides user through pre-flight checks
+  - [ ] Implement blocking behavior: AI refuses to generate if required info missing
+  - [ ] Add clarifying questions for missing recommended items (scope)
+  - [ ] Display pre-flight checklist in chat UI
+  - [ ] Add unit tests for pre-flight validation logic
+  - [ ] Add E2E tests for pre-flight validation flow
+
+- [ ] Task 3: Implement Parallel BOM and CPM Generation (AC: #4)
+  - [ ] Extend `services/aiService.ts` to support parallel generation
+  - [ ] Implement `generateBOMAndCPM(projectId)` that generates both simultaneously
+  - [ ] Use Promise.all() for parallel execution
+  - [ ] Update AI chat to trigger parallel generation
+  - [ ] Display progress indicators for both BOM and CPM generation
+  - [ ] Handle partial failures gracefully (one succeeds, one fails)
+  - [ ] Add unit tests for parallel generation logic
+  - [ ] Add integration tests for parallel generation with AI service
+
+- [ ] Task 4: Implement Automatic Price Fetching (AC: #5)
+  - [ ] Extend `services/pricingService.ts` with `fetchPricesForBOM(bom)` function
+  - [ ] Call Cloud Function `getHomeDepotPrice` for each material in BOM
+  - [ ] Implement parallel price fetching using Promise.all()
+  - [ ] Store fetched prices in BOM document
+  - [ ] Display loading state during price fetching
+  - [ ] Track price fetch success rate
+  - [ ] Add unit tests for price fetching logic
+  - [ ] Add integration tests for Cloud Function calls
+  - [ ] Add E2E tests for automatic price fetching flow
+
+- [ ] Task 5: Implement Price Failure Handling (AC: #6, #21, #22)
+  - [ ] Update `services/pricingService.ts` to handle fetch failures gracefully
+  - [ ] Display "Price unavailable" indicator for failed fetches
+  - [ ] Add manual price entry UI in BOM table
+  - [ ] Implement retry mechanism for failed price fetches
+  - [ ] Handle API unavailability with clear error message
+  - [ ] Allow manual entry for all materials when API unavailable
+  - [ ] Add unit tests for error handling logic
+  - [ ] Add E2E tests for price failure scenarios
+
+- [ ] Task 6: Implement BOM Completion Blocking (AC: #7)
+  - [ ] Create `services/bomService.ts` validation function `isBOMComplete(bom)`
+  - [ ] Check all materials have prices (fetched or manual)
+  - [ ] Block BOM completion UI until all prices entered
+  - [ ] Display clear message indicating which materials need prices
+  - [ ] Add visual indicators for incomplete price entries
+  - [ ] Add unit tests for completion validation logic
+  - [ ] Add E2E tests for blocking behavior
+
+- [ ] Task 7: Implement Margin Calculation (AC: #8, #9)
+  - [ ] Create `services/marginService.ts` for margin calculations
+  - [ ] Implement `calculateMargin(materialCosts, laborCosts, marginPercentage)` function
+  - [ ] Calculate margin in dollars: (materials + labor) × margin percentage
+  - [ ] Calculate margin in time/slack: buffer time based on margin percentage
+  - [ ] Integrate margin calculation into BOM service
+  - [ ] Store margin values in BOM document
+  - [ ] Add unit tests for margin calculation logic
+  - [ ] Add integration tests for margin calculation with BOM
+
+- [ ] Task 8: Implement Customer View Display (AC: #8)
+  - [ ] Create `components/money/CustomerView.tsx` component
+  - [ ] Display material totals
+  - [ ] Display labor totals with margin incorporated (margin included in labor line item)
+  - [ ] Hide margin as separate line item
+  - [ ] Format for professional client presentation
+  - [ ] Add unit tests for Customer View rendering
+  - [ ] Add E2E tests for Customer View display
+
+- [ ] Task 9: Implement Contractor View Display (AC: #9)
+  - [ ] Create `components/money/ContractorView.tsx` component
+  - [ ] Display labor costs separate
+  - [ ] Display materials costs separate
+  - [ ] Display margin in dollars (profit amount)
+  - [ ] Display margin in time/slack (buffer time)
+  - [ ] Format for detailed contractor use
+  - [ ] Add unit tests for Contractor View rendering
+  - [ ] Add E2E tests for Contractor View display
+
+- [ ] Task 10: Implement View Toggle (AC: #8, #9)
+  - [ ] Create view toggle component in Money view
+  - [ ] Allow switching between Customer View and Contractor View
+  - [ ] Persist view preference in user settings or local storage
+  - [ ] Add unit tests for view toggle functionality
+  - [ ] Add E2E tests for view switching
+
+- [ ] Task 11: Implement BOM Modification (AC: #10)
+  - [ ] Create `components/money/BOMTable.tsx` with inline editing
+  - [ ] Allow editing material quantities, prices, descriptions
+  - [ ] Update BOM document in Firestore on changes
+  - [ ] Refresh both Customer and Contractor views immediately
+  - [ ] Add real-time sync for BOM modifications
+  - [ ] Add unit tests for BOM modification logic
+  - [ ] Add integration tests for Firestore updates
+  - [ ] Add E2E tests for BOM editing flow
+
+- [ ] Task 12: Implement PDF Export (AC: #11)
+  - [ ] Install PDF library (jsPDF or react-pdf)
+  - [ ] Create `services/exportService.ts` with `exportEstimate(projectId, view)` function
+  - [ ] Generate PDF with project details (name, date, contractor info)
+  - [ ] Include complete BOM with prices
+  - [ ] Support Customer View and Contractor View export
+  - [ ] Add professional formatting suitable for client presentation
+  - [ ] Add unit tests for PDF generation logic
+  - [ ] Add E2E tests for PDF export flow
+
+- [ ] Task 13: Implement Actual Cost Input (AC: #12, #13, #14, #15)
+  - [ ] Add "Actual Cost" editable field per BOM line item in Money view
+  - [ ] Create `services/bomService.ts` function `updateActualCost(projectId, materialIndex, actualCost)`
+  - [ ] Store actual costs in Firestore BOM document
+  - [ ] Allow incremental entry (not all at once)
+  - [ ] Persist actual costs across sessions
+  - [ ] Allow editing existing actual costs
+  - [ ] Add unit tests for actual cost operations
+  - [ ] Add integration tests for Firestore updates
+  - [ ] Add E2E tests for actual cost input flow
+
+- [ ] Task 14: Implement Estimate vs. Actual Comparison (AC: #16)
+  - [ ] Create `components/money/ComparisonView.tsx` component
+  - [ ] Display side-by-side table: Estimate | Actual columns
+  - [ ] Show comparison only when actual costs exist
+  - [ ] Add toggle to switch between BOM view and Comparison view
+  - [ ] Add unit tests for comparison view rendering
+  - [ ] Add E2E tests for comparison view display
+
+- [ ] Task 15: Implement Variance Calculation (AC: #17, #18)
+  - [ ] Create `services/varianceService.ts` with `calculateVariance(estimate, actual)` function
+  - [ ] Calculate per-item variance: ((actual - estimate) / estimate) × 100%
+  - [ ] Calculate total variance: sum of all line item variances
+  - [ ] Display variance percentage per line item
+  - [ ] Display total variance
+  - [ ] Handle edge cases (zero estimates, negative values)
+  - [ ] Add unit tests for variance calculation logic
+  - [ ] Add E2E tests for variance display
+
+- [ ] Task 16: Implement Variance Highlighting (AC: #19)
+  - [ ] Add color coding to comparison view: green for under-estimate (positive variance), red for over-estimate (negative variance)
+  - [ ] Visual indicators for variance severity (e.g., darker colors for larger variances)
+  - [ ] Add unit tests for highlighting logic
+  - [ ] Add E2E tests for variance highlighting display
+
+- [ ] Task 17: Implement Error Handling (AC: #20, #23, #24)
+  - [ ] Extend centralized error handler for AI generation failures
+  - [ ] Display user-friendly error messages with retry options
+  - [ ] Handle actual cost save failures with retry logic
+  - [ ] Handle variance calculation errors with data validation
+  - [ ] Add unit tests for error handling logic
+  - [ ] Add E2E tests for error scenarios
+
+- [ ] Task 18: Update Firestore Security Rules (AC: All)
+  - [ ] Add security rules for `/projects/{projectId}/bom` document
+  - [ ] Allow read: authenticated users who own project or are collaborators
+  - [ ] Allow write: authenticated users who own project or are editors
+  - [ ] Test security rules with Firebase emulator
+  - [ ] Add integration tests for security rules
+
+- [ ] Task 19: Update Money View Component (AC: All)
+  - [ ] Create `components/money/MoneyView.tsx` container component
+  - [ ] Integrate BOM table, view toggle, comparison view, PDF export
+  - [ ] Integrate AI chat with context-awareness
+  - [ ] Add loading states for BOM generation and price fetching
+  - [ ] Add error states for failures
+  - [ ] Ensure Money view accessible via `/projects/:projectId/money` route
+  - [ ] Add E2E tests for complete Money view workflow
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+1. **AI Chat Availability**
+   - **Given** I am in any view (Scope, Time, Space, Money)
+   - **When** I open AI chat
+   - **Then** AI chat is available and context-aware (knows which view it's open in)
+
+2. **Pre-flight Validation**
+   - **Given** I have completed annotations in Space view and scope in Scope view
+   - **When** I open AI chat and say "Generate BOM and Critical Path for this project"
+   - **Then** AI guides me through pre-flight checks with clarifying questions
+
+3. **Validation Blocking**
+   - **Given** AI detects missing required information (scale, layers, annotations)
+   - **When** I request BOM/Critical Path generation
+   - **Then** AI refuses to generate and asks me to complete the missing items
+
+4. **Parallel Generation**
+   - **Given** All required information is complete
+   - **When** AI generates BOM and Critical Path
+   - **Then** Both BOM and Critical Path are generated simultaneously in parallel
+
+5. **Automatic Price Fetching**
+   - **Given** BOM is generated
+   - **When** System processes the BOM
+   - **Then** System automatically fetches Home Depot prices for each material (90%+ success rate)
+
+6. **Price Failure Handling**
+   - **Given** Price fetch fails for a material
+   - **When** I view the BOM
+   - **Then** System shows "Price unavailable" with manual entry option
+
+7. **BOM Completion Blocking**
+   - **Given** I have not entered prices for all materials (fetched or manual)
+   - **When** I try to complete the BOM
+   - **Then** BOM completion is blocked until all prices are entered
+
+8. **Customer View Display**
+   - **Given** All prices are complete
+   - **When** I view the estimate
+   - **Then** I can view Customer View showing material + labor totals + included margin (margin incorporated into labor)
+
+9. **Contractor View Display**
+   - **Given** All prices are complete
+   - **When** I view the estimate
+   - **Then** I can view Contractor View showing labor, materials, and margin separate (margin in dollars and time/slack)
+
+10. **BOM Modification**
+    - **Given** I have a generated BOM
+    - **When** I modify the BOM
+    - **Then** Changes reflect immediately in both Customer and Contractor views
+
+11. **PDF Export**
+    - **Given** I have a complete estimate
+    - **When** I export the estimate
+    - **Then** I can choose to export Customer View or Contractor View as PDF
+
+12. **Actual Cost Input (Voluntary)**
+    - **Given** I want to track actual costs (voluntary)
+    - **When** I am in Money view
+    - **Then** I can input actual cost per material line item
+
+13. **Incremental Cost Entry**
+    - **Given** I am tracking actual costs
+    - **When** I input actual costs
+    - **Then** I can enter costs incrementally as materials are purchased (not all at once)
+
+14. **Cost Persistence**
+    - **Given** I have entered actual costs
+    - **When** I save actual costs
+    - **Then** They persist across sessions and can be edited later
+
+15. **Cost Editing**
+    - **Given** I have saved actual costs
+    - **When** I edit an actual cost
+    - **Then** The change is saved and variance calculations update automatically
+
+16. **Estimate vs. Actual Comparison**
+    - **Given** I have entered actual costs for one or more line items
+    - **When** I view Money view
+    - **Then** I can view a side-by-side comparison (estimate vs. actual)
+
+17. **Variance Calculation Per Item**
+    - **Given** I am viewing the comparison
+    - **When** I view variance
+    - **Then** Variance percentage is calculated and displayed per line item (positive for over-estimate, negative for under-estimate)
+
+18. **Total Variance Calculation**
+    - **Given** I am viewing the comparison
+    - **When** I view variance
+    - **Then** Total variance is calculated and displayed (sum of all line item variances)
+
+19. **Variance Highlighting**
+    - **Given** Variance exists
+    - **When** I view the comparison
+    - **Then** Over-estimates and under-estimates are visually highlighted (e.g., green for under-estimate, red for over-estimate)
+
+20. **AI BOM Generation Error Handling**
+    - **Given** AI BOM generation fails (API error, timeout, etc.)
+    - **When** I view the error
+    - **Then** I see a clear error message with retry option and can try again
+
+21. **Multiple Price Fetch Failures**
+    - **Given** Price fetch fails for multiple materials
+    - **When** I view the BOM
+    - **Then** System shows "Price unavailable" for each failed item with manual entry option for all
+
+22. **Price API Unavailability**
+    - **Given** Price fetch API is unavailable (service down)
+    - **When** I view the BOM
+    - **Then** System shows clear error message and allows manual entry for all materials
+
+23. **Actual Cost Save Failure**
+    - **Given** Actual cost input fails to save
+    - **When** I see the error
+    - **Then** I see an error message and can retry without losing entered data
+
+24. **Variance Calculation Error**
+    - **Given** Variance calculation fails (e.g., invalid data)
+    - **When** I view the comparison
+    - **Then** System shows error message and allows me to correct the data
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" section="FR-3: AI-Powered BOM Generation" snippet="Users must be able to generate material lists using natural language chat. AI analyzes annotations and scope of work, generates material list with quantities calculated from annotations (lengths, areas), materials grouped by category. BOM can be regenerated with different prompts and edited manually after generation."/>
+      <doc path="docs/PRD.md" section="FR-4: Real-Time Price Integration" snippet="System must automatically fetch prices when BOM is generated. Price fetch success rate: 90%+ for common materials. Unit prices displayed per material, total prices calculated (quantity × unit price). Price source links provided for verification. Failed price fetches show 'Price unavailable' indicator with manual entry option."/>
+      <doc path="docs/PRD.md" section="FR-5: Estimate Display and Export" snippet="BOM table shows: material name, quantity, unit, unit price, total price. Materials grouped by category (Walls, Floors, etc.). Two estimate views: Customer View (material + labor totals + included margin, margin incorporated into labor line item) and Contractor View (labor, materials costs, and margin separate, margin shown in dollars and time/slack). Export as PDF format with professional formatting."/>
+      <doc path="docs/PRD.md" section="FR-6: Estimate-to-Actual Tracking" snippet="Input actual costs per material line item in Money view (voluntary - user chooses to track or not). Compare estimate vs. actual side-by-side. Calculate variance percentage. Status auto-calculation: When marking 'Completed Profitable' or 'Completed Unprofitable', system auto-calculates profit/loss based on actual costs vs. estimate."/>
+      <doc path="docs/epics.md" section="Epic 1: MVP - Money View - Estimate Section" snippet="Expand existing AI BOM generation to Money view. Display BOM with exact Home Depot prices (90%+ success rate). Price fetch failure handling: Show 'Price unavailable' with manual entry option. BOM generation blocking: Block BOM generation until all prices are completed (either fetched or manually entered). Margin calculation: Material costs + Labor costs × margin percentage. Two estimate views: Customer View (margin in labor) and Contractor View (margin separate). Export estimate as PDF. Actual cost input: Input actual costs in Money view (voluntary). Basic estimate-to-actual tracking (compare estimate vs. actual, variance calculation)."/>
+      <doc path="docs/epics.md" section="Epic 1: Pre-Flight Completeness Enforcement" snippet="No 'Generate' button - AI chat handles generation through conversation. User talks to AI in chat and tells it to generate BOM and CPM for the project. AI guides user through pre-flight checks with clarifying questions. System validates all required information before BOM AND Critical Path generation. Pre-flight checklist: Critical items (scale reference, layers, annotations), Recommended items (scope of work uploaded). AI blocking behavior: AI refuses to generate BOM if it doesn't have all required information. Parallel generation: Generate both BOM and Critical Path simultaneously in MVP."/>
+      <doc path="docs/epics.md" section="Epic 1: AI Chat - Context-Aware Throughout App" snippet="AI chat available in all views: Scope, Time, Space, Money. Context-aware: AI knows which view it's open in. AI can perform actions in the current view. If user tries to make edit affecting another view, AI suggests navigating to that view first."/>
+      <doc path="docs/architecture.md" section="Money View (BOM)" snippet="Component: components/money/MoneyView.tsx, components/money/BOMTable.tsx. Service: services/bomService.ts. Firestore: /projects/{projectId}/bom document. Cloud Function: getHomeDepotPrice for pricing. State: moneyStore.ts (Zustand store for Money view state)."/>
+      <doc path="docs/architecture.md" section="Service Layer Pattern" snippet="Services: bomService.ts (BOM data operations), pricingService.ts (Price fetching), marginService.ts (Margin calculation), varianceService.ts (Variance calculation), exportService.ts (PDF export), preflightService.ts (Pre-flight validation checks). All services follow camelCase naming convention."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Workflow 1: New Project Estimation (Primary Flow)" snippet="User opens AI chat (any view) → aiService.processCommand() → Pre-flight validation checks: Scale reference exists? (required), Layers exist? (required), Annotations exist? (required), Scope uploaded? (recommended, warning if missing). If validation passes → aiService.generateBOMAndCPM() → Parallel generation: BOM generation and CPM generation simultaneously. Price fetching → pricingService.fetchHomeDepotPrice() for each material → Prices stored in BOM. BOM completion check → All materials must have prices (fetched or manual) → Block completion until satisfied. Margin calculation → bomService.calculateMargin() → Material costs + Labor costs (from CPM) × margin percentage."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Dependencies and Integrations" snippet="External API Integrations: SerpAPI for Home Depot price fetching (via Cloud Function getHomeDepotPrice), OpenAI API for AI command processing and BOM/CPM generation (via Cloud Function aiCommand). Core Dependencies: React ^19.2.0, TypeScript ~5.9.3, Firebase ^12.4.0, Zustand ^5.0.8, React Router for four-view navigation."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Performance Requirements" snippet="Price Fetch Performance (NFR-1.5): Target < 5 seconds per material (with caching). Implementation: Price caching (24-hour TTL), parallel price fetches, Cloud Function caching. BOM Generation Performance (NFR-1.4): Target < 30 seconds for typical project BOM generation. Implementation: Parallel BOM and CPM generation, optimized AI API calls."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Reliability/Availability" snippet="Price Integration Reliability (NFR-4.1): Target 90%+ success rate for price fetching (with graceful degradation). Implementation: Retry logic with exponential backoff, manual entry fallback, error handling."/>
+      <doc path="docs/stories/1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration.md" section="Dev Notes - Architecture Patterns and Constraints" snippet="Service Layer Pattern: bomService.ts (BOM CRUD operations, completion validation, actual cost updates), pricingService.ts (Price fetching via Cloud Functions, error handling, retry logic), marginService.ts (Margin calculation dollars and time/slack), varianceService.ts (Variance calculation per item and total), exportService.ts (PDF generation), aiService.ts (Context-aware AI command processing, parallel BOM/CPM generation), preflightService.ts (Pre-flight validation checks). State Management Pattern: Zustand store moneyStore.ts for Money view state (BOM, prices, margin, view toggle, actual costs). Real-time sync: Firestore listeners for live BOM updates."/>
+      <doc path="docs/stories/1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration.md" section="Dev Notes - Learnings from Previous Story" snippet="From Story 1.3: Four-View Navigation Pattern establishes React Router nested routes (/projects/:projectId/scope, /projects/:projectId/time, /projects/:projectId/space, /projects/:projectId/money). View-Specific Stores: Story 1.3 creates scopeStore.ts - follow same pattern for moneyStore.ts. Service Layer Pattern: Story 1.3 creates scopeService.ts for Firebase operations - follow same pattern for bomService.ts, pricingService.ts. Real-time Sync: Story 1.3 establishes Firestore listeners for live scope updates - apply to BOM data for real-time BOM modifications."/>
+    </docs>
+    <code>
+      <file path="collabcanvas/src/services/pricingService.ts" kind="service" symbol="updateBOMWithPrices" lines="17-80" reason="Existing price fetching service that calls getHomeDepotPrice Cloud Function. Implements parallel price fetching with timeout handling. Needs extension for fetchPricesForBOM function and improved error handling."/>
+      <file path="collabcanvas/functions/src/pricing.ts" kind="cloud-function" symbol="getHomeDepotPrice" lines="211-319" reason="Cloud Function for Home Depot price fetching via SerpAPI. Implements caching with Firestore (24-hour TTL), retry logic with exponential backoff, error handling. Request: {materialName: string, unit?: string, storeNumber?: string, deliveryZip?: string}. Response: {success: boolean, priceUSD: number | null, link: string | null, error?: string}."/>
+      <file path="collabcanvas/src/components/UnifiedAIChat.tsx" kind="component" symbol="UnifiedAIChat" lines="1-624" reason="Existing AI chat component. Needs extension for view context tracking ('scope' | 'time' | 'space' | 'money'), context-aware command processing, pre-flight validation UI integration."/>
+      <file path="collabcanvas/src/services/aiService.ts" kind="service" symbol="AIService" lines="10-72" reason="AI service for command processing. Needs extension for context-aware processing (currentView parameter), parallel BOM/CPM generation (generateBOMAndCPM function), pre-flight validation integration."/>
+      <file path="collabcanvas/src/store/canvasStore.ts" kind="store" symbol="useCanvasStore" lines="153-1865" reason="Zustand store for canvas state. Contains processAICommand function. Needs extension for view context tracking. Follow pattern for moneyStore.ts creation."/>
+      <file path="collabcanvas/src/components/money/MoneyView.tsx" kind="component" symbol="MoneyView" lines="1-15" reason="Placeholder Money view component. Needs full implementation: BOM table, view toggle, comparison view, PDF export, AI chat integration, loading/error states."/>
+      <file path="collabcanvas/src/hooks/useViewIndicatorSetter.ts" kind="hook" symbol="setMoneyViewIndicator" lines="17-30" reason="Hook for setting view indicators. Includes setMoneyViewIndicator function for showing indicator when BOM is generated. Use this pattern for Money view indicator."/>
+      <file path="collabcanvas/src/services/aiDialogueService.ts" kind="service" symbol="processDialogueRequest" lines="34-92" reason="AI dialogue service for material estimation. May need integration with context-aware AI chat and pre-flight validation."/>
+      <file path="collabcanvas/functions/src/materialEstimateCommand.ts" kind="cloud-function" symbol="materialEstimateCommand" lines="16-104" reason="Cloud Function for material estimation commands. May need integration with parallel BOM/CPM generation workflow."/>
+      <file path="collabcanvas/functions/src/aiCommand.ts" kind="cloud-function" symbol="parseCommandWithOpenAI" lines="48-189" reason="Cloud Function for AI command parsing. May need extension for context-aware command processing and pre-flight validation checks."/>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="react" version="^19.2.0"/>
+        <package name="react-dom" version="^19.2.0"/>
+        <package name="react-router-dom" version="^7.9.5"/>
+        <package name="zustand" version="^5.0.8"/>
+        <package name="firebase" version="^12.4.0"/>
+        <package name="konva" version="^10.0.2"/>
+        <package name="react-konva" version="^19.0.10"/>
+        <package name="xlsx" version="^0.18.5"/>
+      </ecosystem>
+      <ecosystem name="dev">
+        <package name="typescript" version="~5.9.3"/>
+        <package name="vite" version="^7.1.7"/>
+        <package name="vitest" version="^3.2.4"/>
+        <package name="@playwright/test" version="^1.50.0"/>
+        <package name="@testing-library/react" version="^16.3.0"/>
+        <package name="tailwindcss" version="^3.4.18"/>
+      </ecosystem>
+      <ecosystem name="external-apis">
+        <package name="SerpAPI" note="Home Depot price fetching via Cloud Function"/>
+        <package name="OpenAI API" note="AI command processing and BOM/CPM generation via Cloud Function"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Service Layer Pattern: All business logic in service layer (bomService.ts, pricingService.ts, marginService.ts, varianceService.ts, exportService.ts, preflightService.ts). Components call services, services handle Firebase operations and business logic.</constraint>
+    <constraint>State Management Pattern: Use Zustand stores for view-specific state. Create moneyStore.ts following pattern from scopeStore.ts. Store BOM, prices, margin, view toggle state, actual costs. Real-time sync via Firestore listeners.</constraint>
+    <constraint>Data Model: BOM document stored at /projects/{projectId}/bom in Firestore. Document structure: {calculations: Array&lt;MaterialCalculation&gt;, totalCost: number, margin: number, marginPercentage: number, lastUpdated: Timestamp}. MaterialCalculation: {material: string, quantity: number, unit: string, unitPrice: number, totalPrice: number, actualCost?: number, priceSource?: string, category: string}.</constraint>
+    <constraint>Cloud Function Integration: getHomeDepotPrice fetches price from Home Depot via SerpAPI. Request: {materialName: string, unit?: string, storeNumber?: string, deliveryZip?: string}. Response: {success: boolean, priceUSD: number | null, link: string | null, error?: string}. Implements caching with 24-hour TTL, retry logic with exponential backoff.</constraint>
+    <constraint>AI Chat Context-Awareness: Track current view context in AIChat component. Pass view context to AI service: {commandText: string, userId: string, projectId: string, currentView: 'scope' | 'time' | 'space' | 'money'}. AI can perform actions in current view. AI suggests navigation if action affects another view.</constraint>
+    <constraint>Pre-flight Validation Pattern: Required checks: Scale reference exists, layers exist, annotations exist. Recommended checks: Scope uploaded (warning, don't block). AI guides user through checks with clarifying questions. AI blocks generation if required info missing. Display pre-flight checklist in chat UI.</constraint>
+    <constraint>Parallel Generation Pattern: Use Promise.all() for simultaneous BOM and CPM generation. Display progress indicators for both operations. Handle partial failures gracefully. Update both Money and Time views when generation completes.</constraint>
+    <constraint>Price Fetching Pattern: Parallel price fetching using Promise.all() for all materials. Retry logic with exponential backoff for failed fetches. Cache prices with 24-hour TTL. Manual entry fallback for failed fetches. Track success rate (target: 90%+).</constraint>
+    <constraint>Margin Calculation Pattern: Material costs: Sum of all BOM line item totals. Labor costs: From CPM task durations × basic labor rates (MVP). Margin: (Materials + Labor) × margin percentage. Margin in dollars: Profit amount. Margin in time/slack: Buffer time added to ensure realistic estimate.</constraint>
+    <constraint>Two-View Pattern: Customer View: Material + labor totals + included margin (margin incorporated into labor line item). Contractor View: Labor, materials costs, and margin separate (margin in dollars and time/slack). Toggle between views in Money view UI. Both views update immediately on BOM modification.</constraint>
+    <constraint>Actual Cost Tracking Pattern: Voluntary: User chooses to track or not. Incremental entry: Enter costs as materials purchased (not all at once). Store in BOM document: actualCost field per MaterialCalculation. Persist across sessions. Editable: Can edit existing actual costs.</constraint>
+    <constraint>Variance Calculation Pattern: Per-item variance: ((actual - estimate) / estimate) × 100%. Total variance: Sum of all line item variances. Positive variance: Under-estimate (green highlight). Negative variance: Over-estimate (red highlight). Display in side-by-side comparison view.</constraint>
+    <constraint>PDF Export Pattern: Use jsPDF or react-pdf library. Generate PDF with project details (name, date, contractor info). Include complete BOM with prices. Support Customer View and Contractor View export. Professional formatting for client presentation.</constraint>
+    <constraint>Error Handling Pattern: Centralized error handler for all API calls. Retry logic with exponential backoff for price fetching. User-friendly error messages. Retry options for failed operations. Data validation before variance calculations.</constraint>
+    <constraint>Routing Pattern: Money view accessible via /projects/:projectId/money route (established in Story 1.3). Follow React Router nested routes pattern from Story 1.3.</constraint>
+    <constraint>Firestore Security Rules: Add security rules for /projects/{projectId}/bom document. Allow read: authenticated users who own project or are collaborators. Allow write: authenticated users who own project or are editors.</constraint>
+    <constraint>Testing Standards: Unit tests for service layer functions (bomService, pricingService, marginService, varianceService), calculation logic. Integration tests for Firebase operations, Cloud Function calls, Firestore security rules, real-time listeners. E2E tests for complete Money view workflow (AI chat → BOM generation → price fetching → view toggle → PDF export → actual cost input → variance calculation).</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="getHomeDepotPrice" kind="Cloud Function" signature="onCall&lt;{ request: PriceRequest }&gt;: Promise&lt;PriceResponse&gt;" path="collabcanvas/functions/src/pricing.ts">
+      <request>
+        <field name="materialName" type="string" required="true" description="Material name to search for"/>
+        <field name="unit" type="string" required="false" description="Unit of measurement (e.g., 'sq ft', 'linear ft')"/>
+        <field name="storeNumber" type="string" required="false" description="Home Depot store number (default: '3620')"/>
+        <field name="deliveryZip" type="string" required="false" description="Delivery zip code for pricing (default: '04401')"/>
+      </request>
+      <response>
+        <field name="success" type="boolean" description="Whether price fetch was successful"/>
+        <field name="priceUSD" type="number | null" description="Price in USD, null if not found"/>
+        <field name="link" type="string | null" description="Home Depot product link, null if not found"/>
+        <field name="error" type="string" required="false" description="Error message if fetch failed"/>
+      </response>
+    </interface>
+    <interface name="BOM Document" kind="Firestore Document" signature="/projects/{projectId}/bom" path="docs/architecture.md">
+      <fields>
+        <field name="calculations" type="Array&lt;MaterialCalculation&gt;" description="Array of material calculations"/>
+        <field name="totalCost" type="number" description="Total cost of all materials"/>
+        <field name="margin" type="number" description="Margin amount in dollars"/>
+        <field name="marginPercentage" type="number" description="Margin percentage"/>
+        <field name="lastUpdated" type="Timestamp" description="Last update timestamp"/>
+      </fields>
+      <nested name="MaterialCalculation">
+        <field name="material" type="string" description="Material name"/>
+        <field name="quantity" type="number" description="Quantity needed"/>
+        <field name="unit" type="string" description="Unit of measurement"/>
+        <field name="unitPrice" type="number" description="Price per unit"/>
+        <field name="totalPrice" type="number" description="Total price (quantity × unitPrice)"/>
+        <field name="actualCost" type="number" required="false" description="Actual cost entered by user"/>
+        <field name="priceSource" type="string" required="false" description="Source of price (e.g., 'home_depot', 'manual')"/>
+        <field name="category" type="string" description="Material category (e.g., 'Walls', 'Floors')"/>
+      </nested>
+    </interface>
+    <interface name="AI Service Context" kind="TypeScript Interface" signature="DialogueContext" path="collabcanvas/src/services/aiDialogueService.ts">
+      <fields>
+        <field name="commandText" type="string" description="User command text"/>
+        <field name="userId" type="string" description="User ID"/>
+        <field name="projectId" type="string" description="Project ID"/>
+        <field name="currentView" type="'scope' | 'time' | 'space' | 'money'" description="Current view context (to be added)"/>
+      </fields>
+    </interface>
+  </interfaces>
+  <tests>
+    <standards>Testing framework: Vitest for unit tests, Playwright for E2E tests. Test organization: Unit tests in src/**/*.test.ts, E2E tests in tests/e2e/. Test patterns: Given-When-Then format, priority tags ([P0], [P1], [P2], [P3]), data-testid selectors (not CSS classes), one assertion per test (atomic design), no hard waits (explicit waits only). Unit tests: Service layer functions (bomService, pricingService, marginService, varianceService), calculation logic, pure functions with no dependencies. Integration tests: Firebase operations, Cloud Function calls, Firestore security rules, real-time listeners. E2E tests: Complete user workflows, cross-browser testing, visual regression testing.</standards>
+    <locations>
+      <location path="collabcanvas/src/**/*.test.ts" description="Unit test files"/>
+      <location path="collabcanvas/tests/e2e/**/*.spec.ts" description="E2E test files"/>
+      <location path="collabcanvas/tests/support/" description="Test fixtures, factories, helpers, page objects"/>
+      <location path="collabcanvas/tests/support/fixtures/" description="Test data fixtures"/>
+      <location path="collabcanvas/tests/support/helpers/" description="Test helper utilities"/>
+    </locations>
+    <ideas>
+      <test ac="1">Unit: Test view context tracking in AIChat component. Verify currentView state updates correctly when switching views. E2E: Open AI chat in different views, verify context indicator displays correctly.</test>
+      <test ac="2">Unit: Test preflightService validation logic. Verify required checks (scale, layers, annotations) block generation. Verify recommended checks (scope) show warnings but don't block. E2E: Try to generate BOM without required info, verify AI guides through checks.</test>
+      <test ac="3">Unit: Test preflightService blocking behavior. Verify AI refuses to generate when required info missing. E2E: Request BOM generation with missing scale, verify AI refuses and asks to complete.</test>
+      <test ac="4">Unit: Test parallel BOM/CPM generation in aiService. Verify Promise.all() executes both simultaneously. Verify partial failure handling (one succeeds, one fails). E2E: Generate BOM and CPM, verify both complete, verify progress indicators show for both.</test>
+      <test ac="5">Unit: Test pricingService.fetchPricesForBOM function. Verify parallel price fetching with Promise.all(). Verify price storage in BOM document. Integration: Test getHomeDepotPrice Cloud Function calls. E2E: Generate BOM, verify prices fetched automatically, verify 90%+ success rate.</test>
+      <test ac="6">Unit: Test pricingService error handling. Verify 'Price unavailable' indicator for failed fetches. Verify manual entry option available. E2E: Simulate price fetch failure, verify error handling, verify manual entry works.</test>
+      <test ac="7">Unit: Test bomService.isBOMComplete validation. Verify all materials must have prices (fetched or manual). Verify blocking behavior when prices incomplete. E2E: Try to complete BOM with missing prices, verify blocking, enter prices, verify completion allowed.</test>
+      <test ac="8">Unit: Test marginService.calculateMargin function. Verify margin calculation: (materials + labor) × margin percentage. Verify margin in dollars and time/slack. Integration: Test margin calculation with BOM and CPM data. E2E: Generate BOM and CPM, verify Customer View shows margin incorporated into labor.</test>
+      <test ac="9">Unit: Test CustomerView and ContractorView components. Verify Customer View hides margin as separate line item. Verify Contractor View shows margin separate (dollars and time/slack). E2E: Toggle between views, verify correct display format for each.</test>
+      <test ac="10">Unit: Test BOM modification logic. Verify inline editing updates BOM document. Verify real-time sync via Firestore listeners. Integration: Test Firestore updates. E2E: Modify BOM, verify changes reflect immediately in both views.</test>
+      <test ac="11">Unit: Test exportService PDF generation. Verify PDF includes project details, BOM with prices. Verify Customer View and Contractor View export. E2E: Export estimate as PDF, verify professional formatting, verify correct view exported.</test>
+      <test ac="12">Unit: Test actual cost input operations. Verify updateActualCost function stores in Firestore. Verify incremental entry support. Integration: Test Firestore updates for actual costs. E2E: Enter actual costs incrementally, verify persistence, verify editing works.</test>
+      <test ac="16">Unit: Test ComparisonView component. Verify side-by-side table display (Estimate | Actual). Verify comparison only shows when actual costs exist. E2E: Enter actual costs, view comparison, verify side-by-side display.</test>
+      <test ac="17">Unit: Test varianceService.calculateVariance function. Verify per-item variance: ((actual - estimate) / estimate) × 100%. Verify edge cases (zero estimates, negative values). E2E: View variance calculation, verify per-item variance displayed correctly.</test>
+      <test ac="18">Unit: Test total variance calculation. Verify sum of all line item variances. E2E: View variance, verify total variance displayed.</test>
+      <test ac="19">Unit: Test variance highlighting logic. Verify green for under-estimate (positive variance), red for over-estimate (negative variance). Verify visual indicators for variance severity. E2E: View comparison with variance, verify color coding.</test>
+      <test ac="20">Unit: Test error handling for AI generation failures. Verify user-friendly error messages. Verify retry options. E2E: Simulate AI generation failure, verify error handling, verify retry works.</test>
+      <test ac="21">E2E: Simulate multiple price fetch failures, verify 'Price unavailable' for each failed item, verify manual entry option for all.</test>
+      <test ac="22">E2E: Simulate price API unavailability, verify clear error message, verify manual entry allowed for all materials.</test>
+      <test ac="23">Unit: Test actual cost save failure handling. Verify error message display. Verify retry logic without losing data. E2E: Simulate save failure, verify error handling, verify retry works.</test>
+      <test ac="24">Unit: Test variance calculation error handling. Verify data validation before calculation. Verify error message display. E2E: Simulate invalid data, verify error handling, verify data correction works.</test>
+      <test integration="firestore-security">Integration: Test Firestore security rules for /projects/{projectId}/bom document. Verify read access: authenticated users who own project or are collaborators. Verify write access: authenticated users who own project or are editors.</test>
+      <test e2e="complete-workflow">E2E: Complete Money view workflow - AI chat → pre-flight validation → BOM/CPM generation → price fetching → view toggle → PDF export → actual cost input → variance calculation. Verify entire flow works end-to-end.</test>
+    </ideas>
+  </tests>
+</story-context>
+

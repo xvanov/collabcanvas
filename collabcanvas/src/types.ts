@@ -55,6 +55,7 @@ export interface Presence {
   };
   lastSeen: number;
   isActive: boolean;
+  currentView?: 'scope' | 'time' | 'space' | 'money';
 }
 
 /**

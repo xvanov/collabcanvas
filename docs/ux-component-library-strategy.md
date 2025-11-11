@@ -369,3 +369,7 @@
 ---
 
 _This component library strategy balances shadcn/ui's proven components with custom components needed for CollabCanvas's unique canvas annotation, critical path visualization, and BOM management features._
+
+
+
+

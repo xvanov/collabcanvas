@@ -68,6 +68,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
+  const lowFpsWarningCount = useRef(0); // Track consecutive low FPS warnings
 
   // Store state
   const { shapes, updateShapePosition } = useShapes();
@@ -157,9 +158,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
         onFpsUpdate(fps);
         perfMetrics.recordFps(fps);
         
-        // Performance warning when FPS drops below 60
-        if (fps < 60) {
-          console.warn(`[PERFORMANCE] FPS dropped to ${fps}. Target: 60 FPS. Consider reducing number of shapes or enabling viewport culling.`);
+        // Performance warning when FPS drops below 50 (more lenient threshold)
+        // Only warn every 5 seconds to reduce console spam
+        if (fps < 50) {
+          lowFpsWarningCount.current++;
+          if (lowFpsWarningCount.current % 5 === 0) {
+            console.warn(`[PERFORMANCE] FPS dropped to ${fps}. Target: 60 FPS. Consider reducing number of shapes or enabling viewport culling.`);
+          }
+        } else {
+          lowFpsWarningCount.current = 0; // Reset counter when FPS is good
         }
         
         frameCount.current = 0;
@@ -328,10 +335,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
 
     // Imperatively update current user's cursor position to avoid React re-render
+    // Only update if position actually changed to prevent unnecessary redraws
     if (currentCursorRef.current) {
-      currentCursorRef.current.position({ x: stageX, y: stageY });
-      // Firefox optimization: draw only the cursor node, not the entire layer
-      currentCursorRef.current.draw();
+      const currentPos = currentCursorRef.current.position();
+      if (Math.abs(currentPos.x - stageX) > 0.1 || Math.abs(currentPos.y - stageY) > 0.1) {
+        currentCursorRef.current.position({ x: stageX, y: stageY });
+        // Firefox optimization: draw only the cursor node, not the entire layer
+        currentCursorRef.current.draw();
+      }
     }
 
     // Update cursor position in RTDB (throttled in usePresence) - only if user is authenticated
@@ -340,16 +351,24 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
 
     // Update mouse position for snap indicators - ONLY if snap is enabled
+    // Use functional update to avoid unnecessary re-renders when position hasn't changed significantly
     if (gridState.isSnapEnabled) {
-      setMousePosition({
-        x: stageX,
-        y: stageY,
+      setMousePosition(prev => {
+        if (!prev || Math.abs(prev.x - stageX) > 2 || Math.abs(prev.y - stageY) > 2) {
+          return { x: stageX, y: stageY };
+        }
+        return prev;
       });
     }
 
-    // Update drawing preview point
+    // Update drawing preview point - only if changed significantly
     if (activeDrawingTool) {
-      setDrawingPreviewPoint({ x: stageX, y: stageY });
+      setDrawingPreviewPoint(prev => {
+        if (!prev || Math.abs(prev.x - stageX) > 2 || Math.abs(prev.y - stageY) > 2) {
+          return { x: stageX, y: stageY };
+        }
+        return prev;
+      });
     }
 
     // Handle drag selection
@@ -920,6 +939,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             })}
             {currentUser && (
               <Circle
+                key={`current-cursor-${currentUser.uid}`}
                 ref={currentCursorRef}
                 x={0}
                 y={0}

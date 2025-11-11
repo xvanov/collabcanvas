@@ -4,7 +4,27 @@
       "$userId": {
         ".read": "auth != null",
         ".write": "auth != null && auth.uid == $userId",
-        ".validate": "newData.hasChildren(['userId', 'name', 'color', 'cursor', 'lastSeen', 'isActive']) && newData.child('userId').val() == auth.uid && newData.child('name').isString() && newData.child('color').isString() && newData.child('cursor').hasChildren(['x', 'y']) && newData.child('cursor').child('x').isNumber() && newData.child('cursor').child('y').isNumber() && newData.child('isActive').isBoolean()"
+        "currentView": {
+          ".validate": "newData.val() == null || newData.val() == 'scope' || newData.val() == 'time' || newData.val() == 'space' || newData.val() == 'money'"
+        },
+        "lastSeen": {
+          ".validate": "newData.isNumber() || newData.isString() || (newData.hasChildren(['seconds', 'nanoseconds']))"
+        },
+        "userId": {
+          ".validate": "newData.val() == auth.uid"
+        },
+        "name": {
+          ".validate": "newData.isString()"
+        },
+        "color": {
+          ".validate": "newData.isString()"
+        },
+        "cursor": {
+          ".validate": "newData.hasChildren(['x', 'y']) && newData.child('x').isNumber() && newData.child('y').isNumber()"
+        },
+        "isActive": {
+          ".validate": "newData.isBoolean()"
+        }
       }
     },
     "locks": {

@@ -24,6 +24,16 @@ try {
   admin.initializeApp();
 }
 
+// Configure Firestore to use emulator if running locally
+// Firebase emulator automatically sets FIRESTORE_EMULATOR_HOST, but we need to ensure it's used
+if (process.env.FIRESTORE_EMULATOR_HOST) {
+  console.log('[PRICING] Using Firestore emulator:', process.env.FIRESTORE_EMULATOR_HOST);
+} else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATOR) {
+  // If running in emulator but env var not set, set it manually
+  process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081';
+  console.log('[PRICING] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
+}
+
 interface PriceRequest {
   materialName: string;
   unit?: string;
@@ -53,8 +63,8 @@ const INITIAL_RETRY_DELAY_MS = 1000; // 1 second
 // Cache TTL: 24 hours
 const CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
-// SerpAPI timeout: 15 seconds (they can be very slow)
-const SERPAPI_TIMEOUT_MS = 15000;
+// SerpAPI timeout: 60 seconds (they can be very slow, especially for complex searches)
+const SERPAPI_TIMEOUT_MS = 60000;
 
 function normalizeKey(name: string, unit?: string) {
   const base = name.trim().toLowerCase();
@@ -81,12 +91,15 @@ async function fetchFromSerpApi(
 ): Promise<{ priceUSD: number | null; link: string | null; error?: string }> {
   console.log(`[PRICING] fetchFromSerpApi called: query="${query}", store_id="${storeId || 'none'}", delivery_zip="${deliveryZip || 'none'}", attempt=${attempt}`);
   
-  const apiKey = process.env.SERP_API_KEY || '';
+  const apiKey = (process.env.SERP_API_KEY || '').trim();
   if (!apiKey) {
     const error = 'SERP_API_KEY not configured';
     console.error(`[PRICING] ${error}`);
     return { priceUSD: null, link: null, error };
   }
+  
+  // Log first 10 chars of key for debugging (without exposing full key)
+  console.log(`[PRICING] Using SERP_API_KEY: ${apiKey.substring(0, 10)}... (length: ${apiKey.length})`);
 
   const params = new URLSearchParams({
     engine: 'home_depot',
@@ -110,7 +123,7 @@ async function fetchFromSerpApi(
   console.log(`[PRICING] Making request to SerpAPI (attempt ${attempt})...`);
   
   try {
-    // Add timeout to fetch call (15 seconds - SerpAPI can be slow)
+    // Add timeout to fetch call (60 seconds - SerpAPI can be slow, especially for complex searches)
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), SERPAPI_TIMEOUT_MS);
     
@@ -148,11 +161,13 @@ async function fetchFromSerpApi(
       return { priceUSD: null, link: null, error };
     }
     
-    const results = data?.organic_results || [];
+    // Home Depot API returns products array, not organic_results
+    const results = data?.products || data?.organic_results || [];
     
     if (!Array.isArray(results) || results.length === 0) {
       const error = 'Unable to find price - no products found';
       console.warn(`[PRICING] ${error} for query: ${query}`);
+      console.log(`[PRICING] Response structure: products=${!!data?.products}, organic_results=${!!data?.organic_results}, total_results=${data?.search_information?.total_results || 'N/A'}`);
       return { priceUSD: null, link: null, error };
     }
     
@@ -191,7 +206,7 @@ async function fetchFromSerpApi(
         await sleep(delay);
         return fetchFromSerpApi(query, storeId, deliveryZip, attempt + 1);
       }
-      return { priceUSD: null, link: null, error: 'Unable to find price - service timed out after 15 seconds' };
+      return { priceUSD: null, link: null, error: 'Unable to find price - service timed out after 60 seconds' };
     }
     
     console.error(`[PRICING] SerpAPI fetch error (attempt ${attempt}/${MAX_RETRIES}):`, error);
@@ -217,6 +232,7 @@ export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
   ],
   maxInstances: 20,
   memory: '256MiB',
+  timeoutSeconds: 60, // Allow up to 60 seconds for SerpAPI calls
 }, async (req) => {
   console.log('[PRICING] Function invoked');
   console.log('[PRICING] Request data:', JSON.stringify(req.data));
@@ -273,12 +289,26 @@ export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
         const ageMs = nowMs - updatedAtMs;
         
         if (ageMs < CACHE_TTL_MS) {
-          console.log(`[PRICING] Cache hit for: ${materialName} (age: ${Math.round(ageMs / 1000 / 60)} minutes)`);
-      return {
-        success: true,
-        priceUSD: d && typeof d.priceUSD === 'number' ? d.priceUSD : null,
-        link: d && d.link ? d.link : null,
-      };
+          const ageMinutes = Math.round(ageMs / 1000 / 60);
+          console.log(`[PRICING] Cache hit for: ${materialName} (age: ${ageMinutes} minutes)`);
+          
+          // Return cached result - check if it's a successful cache or error cache
+          const hasValidPrice = d && typeof d.priceUSD === 'number' && d.priceUSD !== null;
+          const cachedError = d?.lastError || null;
+          
+          console.log(`[PRICING] Cache data:`, { 
+            hasValidPrice, 
+            priceUSD: d?.priceUSD, 
+            cachedError,
+            lastFetchTime: d?.lastFetchTime 
+          });
+          
+          return {
+            success: hasValidPrice,
+            priceUSD: hasValidPrice ? d.priceUSD : null,
+            link: d && d.link ? d.link : null,
+            error: cachedError || (hasValidPrice ? undefined : 'Unable to find price - cached result'),
+          };
         } else {
           console.log(`[PRICING] Cache expired for: ${materialName} (age: ${Math.round(ageMs / 1000 / 60 / 60)} hours)`);
         }
@@ -312,9 +342,25 @@ export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
 
     return { success, priceUSD, link, error } as PriceResponse;
   } catch (e) {
-    console.error('getHomeDepotPrice error:', e);
-    if (e instanceof HttpsError) throw e;
-    return { success: false, priceUSD: null, link: null } as PriceResponse;
+    console.error('[PRICING] getHomeDepotPrice error:', e);
+    console.error('[PRICING] Error stack:', e instanceof Error ? e.stack : 'No stack trace');
+    
+    // Return error response instead of throwing to ensure CORS headers are sent
+    if (e instanceof HttpsError) {
+      // For HttpsError, we still need to throw it, but log first
+      console.error('[PRICING] Throwing HttpsError:', e.code, e.message);
+      throw e;
+    }
+    
+    // For other errors, return a proper error response
+    const errorMessage = e instanceof Error ? e.message : 'Unknown error occurred';
+    console.error('[PRICING] Returning error response:', errorMessage);
+    return { 
+      success: false, 
+      priceUSD: null, 
+      link: null,
+      error: `Internal error: ${errorMessage}` 
+    } as PriceResponse;
   }
 });
 

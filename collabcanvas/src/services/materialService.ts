@@ -161,6 +161,18 @@ export function compareMaterialCalculations(
 }
 
 /**
+ * Convert Home Depot API link to public-facing link
+ * Converts apionline.homedepot.com to www.homedepot.com for copy-pastable URLs
+ */
+function convertToPublicHomeDepotLink(apiLink: string | null | undefined): string {
+  if (!apiLink) return '';
+  
+  // Convert apionline.homedepot.com to www.homedepot.com
+  // Example: https://apionline.homedepot.com/p/... -> https://www.homedepot.com/p/...
+  return apiLink.replace(/apionline\.homedepot\.com/g, 'www.homedepot.com');
+}
+
+/**
  * Generate CSV export data for BOM
  */
 export function generateBOMExport(
@@ -173,7 +185,8 @@ export function generateBOMExport(
   // Add all materials
   bom.totalMaterials.forEach(material => {
     const price = typeof material.priceUSD === 'number' ? material.priceUSD.toFixed(2) : '';
-    const link = material.homeDepotLink || '';
+    // Convert API link to public-facing link for copy-pastable URLs
+    const link = convertToPublicHomeDepotLink(material.homeDepotLink);
     const total = typeof material.priceUSD === 'number' ? (material.quantity * material.priceUSD).toFixed(2) : '';
 
     rows.push([
