@@ -44,6 +44,8 @@ vi.mock('../../services/materialAIService', () => ({
 describe('UnifiedAIChat - View Context Tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Mock scrollIntoView
+    Element.prototype.scrollIntoView = vi.fn();
   });
 
   describe('View Context Detection', () => {
@@ -127,7 +129,8 @@ describe('UnifiedAIChat - View Context Tracking', () => {
     });
 
     it('should update view context indicator when route changes', () => {
-      const { rerender } = render(
+      // Test with scope view first
+      const { unmount } = render(
         <MemoryRouter initialEntries={['/projects/test-project/scope']}>
           <UnifiedAIChat isVisible={true} onClose={vi.fn()} />
         </MemoryRouter>
@@ -135,9 +138,11 @@ describe('UnifiedAIChat - View Context Tracking', () => {
 
       let viewIndicator = screen.getByTitle(/current view context/i);
       expect(viewIndicator).toHaveTextContent('scope');
+      
+      unmount();
 
-      // Change route to money view
-      rerender(
+      // Render with money view
+      render(
         <MemoryRouter initialEntries={['/projects/test-project/money']}>
           <UnifiedAIChat isVisible={true} onClose={vi.fn()} />
         </MemoryRouter>

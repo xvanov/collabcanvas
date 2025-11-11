@@ -6,7 +6,7 @@
 import React from 'react';
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
-import { BrowserRouter, MemoryRouter } from 'react-router-dom';
+import { MemoryRouter } from 'react-router-dom';
 import { Project } from './Project';
 import { useAuth } from '../hooks/useAuth';
 import { useProjectStore } from '../store/projectStore';
@@ -23,9 +23,23 @@ vi.mock('firebase/firestore', () => ({
 }));
 vi.mock('../services/firebase', () => ({
   firestore: {},
+  functions: {},
 }));
-vi.mock('./Board', () => ({
-  Board: () => <div data-testid="board">Board Component</div>,
+vi.mock('../store/viewIndicatorsStore', () => ({
+  useViewIndicatorsStore: vi.fn(() => ({
+    indicators: {},
+    clearIndicator: vi.fn(),
+  })),
+}));
+
+vi.mock('../store/scopeStore', () => ({
+  useScopeStore: {
+    getState: vi.fn(() => ({
+      loadScope: vi.fn().mockResolvedValue(undefined),
+      subscribe: vi.fn(),
+      unsubscribe: vi.fn(),
+    })),
+  },
 }));
 
 const mockUseAuth = vi.mocked(useAuth);
@@ -111,11 +125,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should display four navigation tabs: Scope, Time, Space, Money', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/scope']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/scope']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -128,11 +140,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should highlight active tab based on current route', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/scope']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/scope']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -143,11 +153,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should render Scope view when navigating to /scope route', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/scope']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/scope']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -157,11 +165,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should render Time view when navigating to /time route', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/time']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/time']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -171,11 +177,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should render Space view (Board) when navigating to /space route', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/space']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/space']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -185,11 +189,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should render Money view when navigating to /money route', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/money']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/money']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -200,11 +202,9 @@ describe('Project Component - Four-View Navigation', () => {
   it('should support deep linking to specific views', async () => {
     // Test deep linking to scope view
     const { rerender } = render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/scope']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/scope']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -213,11 +213,9 @@ describe('Project Component - Four-View Navigation', () => {
 
     // Test deep linking to money view
     rerender(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1/money']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1/money']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {
@@ -227,11 +225,9 @@ describe('Project Component - Four-View Navigation', () => {
 
   it('should redirect to space view when navigating to project root', async () => {
     render(
-      <BrowserRouter>
-        <MemoryRouter initialEntries={['/projects/project-1']}>
-          <Project />
-        </MemoryRouter>
-      </BrowserRouter>
+      <MemoryRouter initialEntries={['/projects/project-1']}>
+        <Project />
+      </MemoryRouter>
     );
 
     await waitFor(() => {

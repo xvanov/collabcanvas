@@ -53,13 +53,12 @@ describe('updateActualCost', () => {
   };
 
   let getBOMSpy: ReturnType<typeof vi.spyOn>;
-  let saveBOMSpy: ReturnType<typeof vi.spyOn>;
 
   beforeEach(() => {
     vi.clearAllMocks();
     // Mock getBOM to return the mock BOM by default
     getBOMSpy = vi.spyOn(bomService, 'getBOM').mockResolvedValue(mockBOM);
-    saveBOMSpy = vi.spyOn(bomService, 'saveBOM').mockResolvedValue(undefined);
+    vi.spyOn(bomService, 'saveBOM').mockResolvedValue(undefined);
     
     // Mock getDoc to return a proper DocumentSnapshot
     vi.mocked(getDoc).mockResolvedValue({

@@ -6,11 +6,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchPricesForBOM } from './pricingService';
 import type { BillOfMaterials } from '../../types/material';
-import { httpsCallable } from 'firebase/functions';
 
-// Mock Firebase Functions
+// Mock Firebase Functions - need to return a function that can be configured
+const mockCallableFn = vi.fn();
 vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn(),
+  httpsCallable: vi.fn(() => mockCallableFn),
+  getFunctions: vi.fn(() => ({})),
 }));
 
 vi.mock('../firebase', () => ({
@@ -18,12 +19,10 @@ vi.mock('../firebase', () => ({
 }));
 
 describe('PricingService - Automatic Price Fetching', () => {
-  let mockGetHomeDepotPrice: ReturnType<typeof vi.fn>;
-
   beforeEach(() => {
     vi.clearAllMocks();
-    mockGetHomeDepotPrice = vi.fn();
-    vi.mocked(httpsCallable).mockReturnValue(mockGetHomeDepotPrice);
+    // Reset the mock function for each test
+    mockCallableFn.mockReset();
   });
 
   describe('fetchPricesForBOM', () => {
@@ -41,16 +40,17 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      // Mock successful price fetches
-      mockGetHomeDepotPrice.mockResolvedValue({
-        data: { success: true, priceUSD: 10.50, link: 'https://example.com/drywall' },
-      });
-      mockGetHomeDepotPrice.mockResolvedValueOnce({
-        data: { success: true, priceUSD: 25.99, link: 'https://example.com/paint' },
-      });
-      mockGetHomeDepotPrice.mockResolvedValueOnce({
-        data: { success: true, priceUSD: 8.75, link: 'https://example.com/lumber' },
-      });
+      // Mock successful price fetches - use mockCallableFn directly
+      mockCallableFn
+        .mockResolvedValueOnce({
+          data: { success: true, priceUSD: 10.50, link: 'https://example.com/drywall' },
+        })
+        .mockResolvedValueOnce({
+          data: { success: true, priceUSD: 25.99, link: 'https://example.com/paint' },
+        })
+        .mockResolvedValueOnce({
+          data: { success: true, priceUSD: 8.75, link: 'https://example.com/lumber' },
+        });
 
       const result = await fetchPricesForBOM(bom);
 
@@ -75,10 +75,10 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockGetHomeDepotPrice.mockResolvedValueOnce({
+      mockCallableFn.mockResolvedValueOnce({
         data: { success: true, priceUSD: 10.50, link: 'https://example.com/drywall' },
       });
-      mockGetHomeDepotPrice.mockResolvedValueOnce({
+      mockCallableFn.mockResolvedValueOnce({
         data: { success: false, priceUSD: null, link: null, error: 'Material not found' },
       });
 
@@ -106,7 +106,7 @@ describe('PricingService - Automatic Price Fetching', () => {
       };
 
       // Mock timeout error
-      mockGetHomeDepotPrice.mockRejectedValue(new Error('Request timeout after 30000ms'));
+      mockCallableFn.mockRejectedValue(new Error('Request timeout after 30000ms'));
 
       const result = await fetchPricesForBOM(bom);
 
@@ -130,7 +130,7 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockGetHomeDepotPrice.mockResolvedValue({
+      mockCallableFn.mockResolvedValue({
         data: { success: true, priceUSD: 10.50 },
       });
 
@@ -158,7 +158,7 @@ describe('PricingService - Automatic Price Fetching', () => {
       };
 
       const startTimes: number[] = [];
-      mockGetHomeDepotPrice.mockImplementation(async () => {
+      mockCallableFn.mockImplementation(async () => {
         startTimes.push(Date.now());
         await new Promise(resolve => setTimeout(resolve, 50));
         return { data: { success: true, priceUSD: 10.50 } };
@@ -186,7 +186,7 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockGetHomeDepotPrice
+      mockCallableFn
         .mockResolvedValueOnce({ data: { success: true, priceUSD: 10.50 } })
         .mockResolvedValueOnce({ data: { success: true, priceUSD: 25.99 } })
         .mockResolvedValueOnce({ data: { success: false, priceUSD: null, error: 'Not found' } })
@@ -212,7 +212,7 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockGetHomeDepotPrice.mockRejectedValue(new Error('ECONNREFUSED - Service unavailable'));
+      mockCallableFn.mockRejectedValue(new Error('ECONNREFUSED - Service unavailable'));
 
       const result = await fetchPricesForBOM(bom);
 
@@ -233,13 +233,13 @@ describe('PricingService - Automatic Price Fetching', () => {
       };
 
       // First call fails, retry succeeds
-      mockGetHomeDepotPrice
+      mockCallableFn
         .mockRejectedValueOnce(new Error('Temporary error'))
         .mockResolvedValueOnce({ data: { success: true, priceUSD: 10.50 } });
 
       const result = await fetchPricesForBOM(bom, undefined, true); // retryFailed = true
 
-      expect(mockGetHomeDepotPrice).toHaveBeenCalledTimes(2); // Initial + retry
+      expect(mockCallableFn).toHaveBeenCalledTimes(2); // Initial + retry
       expect(result.bom.totalMaterials[0].priceUSD).toBe(10.50);
       expect(result.stats.successful).toBe(1);
     });
@@ -258,7 +258,7 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockGetHomeDepotPrice.mockResolvedValue({
+      mockCallableFn.mockResolvedValue({
         data: { success: false, priceUSD: null, error: 'Material not found' },
       });
 

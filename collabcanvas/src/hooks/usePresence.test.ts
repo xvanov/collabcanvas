@@ -67,9 +67,8 @@ describe('usePresence Hook', () => {
 
 
   it('should clean up presence on unmount', async () => {
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter>{children}</MemoryRouter>
-    );
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(MemoryRouter, null, children);
     const { unmount } = renderHook(() => usePresence(), { wrapper });
 
     // Wait for setup
@@ -87,9 +86,8 @@ describe('usePresence Hook', () => {
       user: null,
     });
 
-    const wrapper = ({ children }: { children: React.ReactNode }) => (
-      <MemoryRouter>{children}</MemoryRouter>
-    );
+    const wrapper = ({ children }: { children: React.ReactNode }) =>
+      React.createElement(MemoryRouter, null, children);
     renderHook(() => usePresence(), { wrapper });
 
     expect(setPresence).not.toHaveBeenCalled();
