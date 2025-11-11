@@ -3,7 +3,7 @@
  * Helper functions to check user permissions for projects
  */
 
-import type { Project, CollaboratorRole } from '../types/project';
+import type { Project } from '../types/project';
 
 /**
  * Get user's role for a project

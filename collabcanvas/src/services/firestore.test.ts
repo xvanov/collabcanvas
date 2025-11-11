@@ -540,8 +540,6 @@ describe('Plan Deletion Operations', () => {
     // Test that deleteBackgroundImageFromFirestore uses deleteField() instead of undefined
     // This ensures the field is actually removed from Firestore, not just set to null
     const mockDeleteField = vi.fn(() => ({ __deleteField: true }));
-    const mockUpdateDoc = vi.fn(() => Promise.resolve());
-    const mockServerTimestamp = vi.fn(() => Date.now());
     
     // Verify deleteField is used (this is a conceptual test - actual implementation uses Firebase SDK)
     expect(typeof mockDeleteField).toBe('function');

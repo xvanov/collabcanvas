@@ -176,7 +176,7 @@ export async function updateProjectStatus(
         profitLoss = undefined;
       } else {
         // Determine status based on profit/loss
-        if (profitLoss > 0) {
+        if (profitLoss !== undefined && profitLoss > 0) {
           finalStatus = 'completed-profitable';
         } else {
           finalStatus = 'completed-unprofitable';

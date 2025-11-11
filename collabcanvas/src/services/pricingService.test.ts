@@ -4,8 +4,8 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { fetchPricesForBOM, type PriceFetchStats } from '../pricingService';
-import type { BillOfMaterials, MaterialSpec } from '../../types/material';
+import { fetchPricesForBOM } from '../pricingService';
+import type { BillOfMaterials } from '../../types/material';
 import { httpsCallable } from 'firebase/functions';
 
 // Mock Firebase Functions
@@ -269,4 +269,5 @@ describe('PricingService - Automatic Price Fetching', () => {
       expect(result.stats.failed).toBe(3);
       expect(result.stats.successRate).toBe(0);
     });
-
+  });
+});

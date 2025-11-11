@@ -7,7 +7,7 @@ import { httpsCallable } from 'firebase/functions';
 import { functions } from './firebase';
 import type { BillOfMaterials, MaterialSpec } from '../types/material';
 import { fetchPricesForBOM, type PriceFetchStats } from './pricingService';
-import { calculateMargin, type MarginCalculationOptions } from './marginService';
+import { calculateMargin } from './marginService';
 import { getCPM } from './cpmService';
 
 export interface BOMGenerationOptions {
@@ -230,7 +230,8 @@ export async function updateActualCost(
     // Use provided BOM or fetch from Firestore
     let currentBOM = bom;
     if (!currentBOM) {
-      currentBOM = await getBOM(projectId);
+      const fetchedBOM = await getBOM(projectId);
+      currentBOM = fetchedBOM || undefined;
     }
     
     if (!currentBOM) {
@@ -277,7 +278,7 @@ export async function updateActualCost(
 function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): Partial<T> {
   const cleaned: Partial<T> = {};
   for (const [key, value] of Object.entries(obj)) {
-    if (value !== undefined) {
+    if (value !== undefined && value !== null) {
       if (Array.isArray(value)) {
         cleaned[key as keyof T] = value.map(item => 
           typeof item === 'object' && item !== null 
@@ -287,7 +288,7 @@ function removeUndefinedValues<T extends Record<string, unknown>>(obj: T): Parti
       } else if (typeof value === 'object' && value !== null && !(value instanceof Date)) {
         cleaned[key as keyof T] = removeUndefinedValues(value as Record<string, unknown>) as T[keyof T];
       } else {
-        cleaned[key as keyof T] = value;
+        cleaned[key as keyof T] = value as T[keyof T];
       }
     }
   }
@@ -305,7 +306,7 @@ export async function saveBOM(projectId: string, bom: BillOfMaterials, userId: s
     const bomRef = doc(firestore, 'projects', projectId, 'bom', 'data');
     
     // Remove undefined values before saving (Firestore doesn't allow undefined)
-    const cleanedBOM = removeUndefinedValues(bom);
+    const cleanedBOM = removeUndefinedValues(bom as unknown as Record<string, unknown>);
     
     await setDoc(bomRef, {
       ...cleanedBOM,

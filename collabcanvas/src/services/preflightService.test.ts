@@ -11,8 +11,6 @@ import {
   type PreflightValidationResult,
   type ProjectContext,
 } from '../preflightService';
-import type { Layer } from '../../types';
-import type { Scope } from '../../types/scope';
 
 describe('Pre-flight Validation Service', () => {
   describe('validatePreflight', () => {

@@ -26,16 +26,6 @@ const statusColors: Record<Project['status'], string> = {
   'completed-unknown': 'bg-gray-100 text-gray-800',
 };
 
-const statusLabels: Record<Project['status'], string> = {
-  'estimating': 'Estimating',
-  'bid-ready': 'Bid Ready',
-  'bid-lost': 'Bid Lost',
-  'executing': 'Executing',
-  'completed-profitable': 'Completed',
-  'completed-unprofitable': 'Completed',
-  'completed-unknown': 'Completed',
-};
-
 // User-selectable statuses (excludes auto-determined completed variants)
 const selectableStatuses: Array<{ value: string; label: string }> = [
   { value: 'estimating', label: 'Estimating' },

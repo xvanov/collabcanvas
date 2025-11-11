@@ -122,7 +122,7 @@ export async function fetchPricesForBOM(
 
   // Execute all price fetches in parallel with progressive updates
   // Process results as they complete (not waiting for all)
-  let updatedMaterials = [...bom.totalMaterials];
+  const updatedMaterials = [...bom.totalMaterials];
   let completedCount = 0;
   let successfulCount = 0;
   let results: PriceFetchResult[] = [];
@@ -254,7 +254,7 @@ export async function fetchPricesForBOM(
           }
           
           return failedResult; // Keep original failure
-        } catch (error) {
+        } catch {
           return failedResult; // Keep original failure
         }
       });

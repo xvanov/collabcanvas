@@ -32,7 +32,7 @@ describe('MaterialEstimationPanel - Pricing Display', () => {
     };
 
     const setBill = vi.fn();
-    mockUseCanvasStore.mockImplementation(((selector: any) => selector({ billOfMaterials: bom, setBillOfMaterials: setBill })) as unknown as typeof useCanvasStore);
+    mockUseCanvasStore.mockImplementation(((selector: (state: { billOfMaterials: BillOfMaterials; setBillOfMaterials: typeof setBill }) => unknown) => selector({ billOfMaterials: bom, setBillOfMaterials: setBill })) as unknown as typeof useCanvasStore);
 
     render(<MaterialEstimationPanel isVisible={true} onClose={vi.fn()} />);
 
@@ -60,7 +60,7 @@ describe('MaterialEstimationPanel - Pricing Display', () => {
     };
 
     const setBill = vi.fn();
-    mockUseCanvasStore.mockImplementation(((selector: any) => selector({ billOfMaterials: bom, setBillOfMaterials: setBill })) as unknown as typeof useCanvasStore);
+    mockUseCanvasStore.mockImplementation(((selector: (state: { billOfMaterials: BillOfMaterials; setBillOfMaterials: typeof setBill }) => unknown) => selector({ billOfMaterials: bom, setBillOfMaterials: setBill })) as unknown as typeof useCanvasStore);
 
     render(<MaterialEstimationPanel isVisible={true} onClose={vi.fn()} />);
 

@@ -68,7 +68,7 @@ export async function uploadScope(
       try {
         await createLayer(layerId, layerName, userId, index);
         console.log(`[SCOPE] Created layer: ${layerName} (${layerId})`);
-      } catch (error) {
+      } catch {
         // Layer might already exist, which is fine
         console.log(`[SCOPE] Layer ${layerName} may already exist, skipping creation`);
       }

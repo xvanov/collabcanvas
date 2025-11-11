@@ -105,7 +105,7 @@ describe('Project Component - Four-View Navigation', () => {
         createdBy: 'user-123',
         updatedBy: 'user-123',
       }),
-    } as any);
+    } as unknown as ReturnType<typeof getDoc>);
   });
 
   it('should display four navigation tabs: Scope, Time, Space, Money', async () => {
@@ -225,7 +225,7 @@ describe('Project Component - Four-View Navigation', () => {
   });
 
   it('should redirect to space view when navigating to project root', async () => {
-    const { container } = render(
+    render(
       <BrowserRouter>
         <MemoryRouter initialEntries={['/projects/project-1']}>
           <Project />

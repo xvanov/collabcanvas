@@ -10,7 +10,6 @@ import {
   calculateMarginTimeSlack,
   calculateMargin,
   formatMargin,
-  type MarginCalculationOptions,
 } from './marginService';
 import type { BillOfMaterials, MaterialSpec } from '../types/material';
 import type { CPM, CPMTask } from '../types/cpm';

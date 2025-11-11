@@ -5,6 +5,7 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { uploadScope, getScope, updateScope, subscribeToScope } from '../services/scopeService';
 import { doc, setDoc, getDoc, updateDoc, onSnapshot } from 'firebase/firestore';
+import type { DocumentReference, DocumentSnapshot } from 'firebase/firestore';
 import { firestore } from '../services/firebase';
 
 // Mock Firebase
@@ -41,8 +42,8 @@ describe('Scope Service', () => {
       ];
       const userId = 'user-123';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockSetDoc.mockResolvedValue(undefined);
 
       await uploadScope(projectId, items, userId);
@@ -63,8 +64,8 @@ describe('Scope Service', () => {
       const items = [{ scope: 'demo', description: 'Demolition work' }];
       const userId = 'user-123';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockSetDoc.mockRejectedValue(new Error('Upload failed'));
 
       await expect(uploadScope(projectId, items, userId)).rejects.toThrow('Upload failed');
@@ -82,12 +83,12 @@ describe('Scope Service', () => {
         uploadedBy: 'user-123',
       };
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockGetDoc.mockResolvedValue({
         exists: () => true,
         data: () => mockData,
-      } as any);
+      } as unknown as DocumentSnapshot);
 
       const result = await getScope(projectId);
 
@@ -99,11 +100,11 @@ describe('Scope Service', () => {
     it('should return null if scope does not exist', async () => {
       const projectId = 'project-1';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockGetDoc.mockResolvedValue({
         exists: () => false,
-      } as any);
+      } as unknown as DocumentSnapshot);
 
       const result = await getScope(projectId);
 
@@ -113,8 +114,8 @@ describe('Scope Service', () => {
     it('should handle get errors', async () => {
       const projectId = 'project-1';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockGetDoc.mockRejectedValue(new Error('Get failed'));
 
       await expect(getScope(projectId)).rejects.toThrow('Get failed');
@@ -129,8 +130,8 @@ describe('Scope Service', () => {
       ];
       const userId = 'user-123';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockUpdateDoc.mockResolvedValue(undefined);
 
       await updateScope(projectId, items, userId);
@@ -150,8 +151,8 @@ describe('Scope Service', () => {
       const items = [{ scope: 'demo', description: 'Demolition work' }];
       const userId = 'user-123';
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockUpdateDoc.mockRejectedValue(new Error('Update failed'));
 
       await expect(updateScope(projectId, items, userId)).rejects.toThrow('Update failed');
@@ -163,8 +164,8 @@ describe('Scope Service', () => {
       const projectId = 'project-1';
       const callback = vi.fn();
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       mockOnSnapshot.mockReturnValue(() => {});
 
       const unsubscribe = subscribeToScope(projectId, callback);
@@ -183,12 +184,12 @@ describe('Scope Service', () => {
         uploadedBy: 'user-123',
       };
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       
-      let snapshotCallback: ((snapshot: any) => void) | null = null;
-      mockOnSnapshot.mockImplementation((ref, onNext, onError) => {
-        snapshotCallback = onNext;
+      let snapshotCallback: ((snapshot: DocumentSnapshot) => void) | null = null;
+      mockOnSnapshot.mockImplementation((ref, onNext) => {
+        snapshotCallback = onNext as (snapshot: DocumentSnapshot) => void;
         return () => {};
       });
 
@@ -209,12 +210,12 @@ describe('Scope Service', () => {
       const projectId = 'project-1';
       const callback = vi.fn();
 
-      const mockRef = { id: 'data' };
-      mockDoc.mockReturnValue(mockRef as any);
+      const mockRef = { id: 'data' } as unknown as DocumentReference;
+      mockDoc.mockReturnValue(mockRef);
       
-      let snapshotCallback: ((snapshot: any) => void) | null = null;
-      mockOnSnapshot.mockImplementation((ref, onNext, onError) => {
-        snapshotCallback = onNext;
+      let snapshotCallback: ((snapshot: DocumentSnapshot) => void) | null = null;
+      mockOnSnapshot.mockImplementation((ref, onNext) => {
+        snapshotCallback = onNext as (snapshot: DocumentSnapshot) => void;
         return () => {};
       });
 

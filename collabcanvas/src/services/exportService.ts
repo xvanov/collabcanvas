@@ -26,7 +26,7 @@ export function createExportService(stage: Konva.Stage): CanvasExportService {
     async exportCanvas(options: ExportOptions): Promise<Blob> {
       try {
         if (options.format === 'SVG') {
-          return await exportAsSVG(stage, options);
+          return await exportAsSVG(stage);
           } else {
           return await exportAsPNG(stage, options);
         }
@@ -35,7 +35,7 @@ export function createExportService(stage: Konva.Stage): CanvasExportService {
       }
     },
 
-    async exportSelectedShapes(options: ExportOptions, shapes: Shape[], selectedIds: string[]): Promise<Blob> {
+    async exportSelectedShapes(options: ExportOptions, _shapes: Shape[], selectedIds: string[]): Promise<Blob> {
     if (selectedIds.length === 0) {
       throw new Error('No shapes selected for export');
     }
@@ -61,7 +61,7 @@ export function createExportService(stage: Konva.Stage): CanvasExportService {
 
         let blob: Blob;
         if (options.format === 'SVG') {
-          blob = await exportAsSVG(tempStage, options);
+          blob = await exportAsSVG(tempStage);
         } else {
           blob = await exportAsPNG(tempStage, options);
         }
@@ -94,25 +94,30 @@ export function createExportService(stage: Konva.Stage): CanvasExportService {
 }
 
 async function exportAsPNG(stage: Konva.Stage, options: ExportOptions): Promise<Blob> {
-  const dataURL = stage.toDataURL({
+  const dataURLOptions: Parameters<Konva.Stage['toDataURL']>[0] = {
     mimeType: 'image/png',
     quality: options.quality || 1.0,
     pixelRatio: options.quality || 1.0,
     width: options.width,
     height: options.height,
-    backgroundColor: options.includeBackground === false ? 'transparent' : undefined,
-  });
-
+  };
+  
+  // Note: For transparent backgrounds, the stage container background should be set to transparent
+  // Konva's toDataURL doesn't support backgroundColor option directly
+  // If includeBackground is false, the export will use whatever background the stage container has
+  
+  const dataURL = stage.toDataURL(dataURLOptions);
   const response = await fetch(dataURL);
   return await response.blob();
 }
 
-async function exportAsSVG(stage: Konva.Stage, options: ExportOptions): Promise<Blob> {
+async function exportAsSVG(stage: Konva.Stage): Promise<Blob> {
   const layers = stage.getLayers();
   let svgContent = '<svg xmlns="http://www.w3.org/2000/svg" width="' + stage.width() + '" height="' + stage.height() + '">';
   
   layers.forEach(layer => {
-    const layerSVG = layer.toSVG();
+    // Use toDataURL for SVG export as toSVG() may not be available on all Konva versions
+    const layerSVG = (layer as unknown as { toSVG?: () => string }).toSVG?.() || '';
     svgContent += layerSVG;
   });
   

@@ -5,7 +5,7 @@
 
 import { create } from 'zustand';
 import type { Project } from '../types/project';
-import { getUserProjects, createProject, updateProjectStatus, deleteProject, shareProject, subscribeToUserProjects } from '../services/projectService';
+import { getUserProjects, createProject, updateProjectStatus, deleteProject, shareProject } from '../services/projectService';
 
 interface ProjectState {
   // Project list
@@ -37,7 +37,7 @@ interface ProjectState {
   setUnsubscribe: (unsubscribe: (() => void) | null) => void;
 }
 
-export const useProjectStore = create<ProjectState>((set, get) => ({
+export const useProjectStore = create<ProjectState>((set) => ({
   // Initial state
   projects: [],
   loading: false,

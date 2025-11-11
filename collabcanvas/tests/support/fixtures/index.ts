@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/rules-of-hooks */
 import { test as base } from '@playwright/test';
 import { UserFactory } from './factories/user-factory';
 
@@ -14,9 +15,9 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  userFactory: async ({}, use) => {
+  userFactory: async (_fixtures, useFixture) => {
     const factory = new UserFactory();
-    await use(factory);
+    await useFixture(factory);
     // Auto-cleanup: Delete all users created during test
     await factory.cleanup();
   },

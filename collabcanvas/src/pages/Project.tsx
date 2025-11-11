@@ -21,21 +21,28 @@ import type { Project } from '../types/project';
 /**
  * Convert Firestore document to Project
  */
-function firestoreDocToProject(docId: string, data: any): Project {
+function firestoreDocToProject(docId: string, data: Record<string, unknown>): Project {
+  const createdAtValue = data.createdAt;
+  const updatedAtValue = data.updatedAt;
+  
   return {
     id: docId,
-    name: data.name || '',
-    description: data.description || '',
-    status: data.status || 'estimating',
-    ownerId: data.ownerId || '',
-    collaborators: data.collaborators || [],
-    createdAt: data.createdAt?.toMillis?.() || data.createdAt || Date.now(),
-    updatedAt: data.updatedAt?.toMillis?.() || data.updatedAt || Date.now(),
-    createdBy: data.createdBy || '',
-    updatedBy: data.updatedBy || '',
-    profitLoss: data.profitLoss,
-    actualCosts: data.actualCosts,
-    estimateTotal: data.estimateTotal,
+    name: (typeof data.name === 'string' ? data.name : '') || '',
+    description: (typeof data.description === 'string' ? data.description : '') || '',
+    status: (typeof data.status === 'string' ? data.status : 'estimating') as Project['status'],
+    ownerId: (typeof data.ownerId === 'string' ? data.ownerId : '') || '',
+    collaborators: (Array.isArray(data.collaborators) ? data.collaborators : []) as Project['collaborators'],
+    createdAt: (createdAtValue && typeof createdAtValue === 'object' && 'toMillis' in createdAtValue && typeof createdAtValue.toMillis === 'function')
+      ? createdAtValue.toMillis()
+      : (typeof createdAtValue === 'number' ? createdAtValue : Date.now()),
+    updatedAt: (updatedAtValue && typeof updatedAtValue === 'object' && 'toMillis' in updatedAtValue && typeof updatedAtValue.toMillis === 'function')
+      ? updatedAtValue.toMillis()
+      : (typeof updatedAtValue === 'number' ? updatedAtValue : Date.now()),
+    createdBy: (typeof data.createdBy === 'string' ? data.createdBy : '') || '',
+    updatedBy: (typeof data.updatedBy === 'string' ? data.updatedBy : '') || '',
+    profitLoss: typeof data.profitLoss === 'number' ? data.profitLoss : undefined,
+    actualCosts: typeof data.actualCosts === 'number' ? data.actualCosts : undefined,
+    estimateTotal: typeof data.estimateTotal === 'number' ? data.estimateTotal : undefined,
   };
 }
 

@@ -156,7 +156,7 @@ describe('UnifiedAIChat - View Context Tracking', () => {
       }));
 
       // Update mock to return processAICommand
-      (useCanvasStore as any).mockImplementation((selector: any) => {
+      (useCanvasStore as unknown as { mockImplementation: (fn: (selector: (state: unknown) => unknown) => unknown) => void }).mockImplementation((selector: (state: unknown) => unknown) => {
         const mockState = {
           processAICommand: mockProcessAICommand,
           aiCommandHistory: [],

@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import { parseCSV, type ParseResult } from '../utils/csvParser';
+import { parseCSV } from '../utils/csvParser';
 
 describe('CSV Parser', () => {
   describe('Valid CSV parsing', () => {

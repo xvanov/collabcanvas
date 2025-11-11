@@ -57,7 +57,6 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   
   const materialAI = materialAIRef.current;
   const aiService = aiServiceRef.current;
-  const [generationProgress, setGenerationProgress] = useState<{ bom?: 'generating' | 'complete' | 'error'; cpm?: 'generating' | 'complete' | 'error' }>({});
 
   // Track current view context
   const getCurrentView = useCallback((): 'scope' | 'time' | 'space' | 'money' | null => {
@@ -137,7 +136,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
       // PRIORITY 1: Check if this is a BOM/CPM generation request
       const isBOMCPMRequest = detectBOMCPMGeneration(messageText);
       if (isBOMCPMRequest) {
-        await handleBOMCPMGeneration(messageText);
+        await handleBOMCPMGeneration();
         return;
       }
 
@@ -200,7 +199,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   /**
    * Handle BOM/CPM generation request with pre-flight validation
    */
-  const handleBOMCPMGeneration = async (messageText: string) => {
+  const handleBOMCPMGeneration = async () => {
     if (!projectId || !user) {
       const errorMsg: ChatMessage = {
         id: `msg-error-${Date.now()}`,
@@ -255,7 +254,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
     }
 
     // Validation passed - proceed with parallel generation
-    setGenerationProgress({ bom: 'generating', cpm: 'generating' });
+    // Progress tracking is handled via updateProgressMessage callback
 
     // Prepare annotations data
     const annotations = Array.from(shapes.values());
@@ -291,7 +290,6 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
           annotations,
         },
         (progress) => {
-          setGenerationProgress(progress);
           // Update progress message
           updateProgressMessage(progress);
         }
@@ -362,7 +360,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
       };
       setChatMessages(prev => [...prev, errorMessage]);
     } finally {
-      setGenerationProgress({});
+      // Progress tracking completed
     }
   };
 

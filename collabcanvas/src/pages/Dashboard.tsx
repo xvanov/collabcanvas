@@ -9,7 +9,7 @@ import { useAuth } from '../hooks/useAuth';
 import { useProjectStore } from '../store/projectStore';
 import { ProjectCard } from '../components/project/ProjectCard';
 import { subscribeToUserProjects } from '../services/projectService';
-import type { Project, ProjectStatus } from '../types/project';
+import type { ProjectStatus } from '../types/project';
 import { formatErrorForDisplay, retryWithBackoff } from '../utils/errorHandler';
 
 export function Dashboard() {
@@ -46,7 +46,6 @@ export function Dashboard() {
     // Initial load with retry logic
     retryWithBackoff(() => loadUserProjects(user.uid)).catch((err) => {
       console.error('Failed to load projects:', err);
-      const errorInfo = formatErrorForDisplay(err);
       // Error is already set in store by loadUserProjects
     });
 

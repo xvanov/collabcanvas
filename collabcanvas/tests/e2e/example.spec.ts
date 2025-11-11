@@ -18,7 +18,7 @@ test.describe('Example Test Suite', () => {
     await expect(page).toHaveTitle(/CollabCanvas/i);
   });
 
-  test('should demonstrate user factory usage', async ({ page, userFactory }) => {
+  test('should demonstrate user factory usage', async ({ userFactory }) => {
     // Given: A test user is created
     const user = userFactory.createUser({ email: 'test@example.com' });
 
