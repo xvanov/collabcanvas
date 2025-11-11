@@ -52,7 +52,7 @@ describe('canvasStore', () => {
       expect(storedShape?.color).toBe('#3B82F6');
     });
 
-    it('should updateShapePosition only updates x,y coordinates, not size or color', () => {
+    it('should updateShapePosition only updates x,y coordinates, not size or color', async () => {
       const { createShape, updateShapePosition } = useCanvasStore.getState();
       
       const originalShape: Shape = {
@@ -74,6 +74,16 @@ describe('canvasStore', () => {
 
       // Update position
       updateShapePosition('test-shape-2', 200, 250, 'user-2', Date.now());
+
+      // Wait for batch updater to flush (uses requestAnimationFrame)
+      // Use requestAnimationFrame to ensure the batch update completes
+      await new Promise<void>(resolve => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            resolve();
+          });
+        });
+      });
 
       const updatedShape = useCanvasStore.getState().shapes.get('test-shape-2');
       expect(updatedShape).toBeDefined();

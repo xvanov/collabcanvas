@@ -51,7 +51,7 @@ export function calculateLaborCost(
   laborRatePerHour: number = 50,
   hoursPerDay: number = 8
 ): number {
-  if (!cpm || !cpm.tasks || cpm.tasks.length === 0) {
+  if (!cpm || cpm.totalDuration === undefined || cpm.totalDuration <= 0) {
     return 0;
   }
 

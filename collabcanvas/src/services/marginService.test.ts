@@ -44,7 +44,7 @@ describe('marginService', () => {
       ]);
 
       const cost = calculateMaterialCost(bom);
-      expect(cost).toBe(350); // (10 * 5) + (100 * 2.5) = 50 + 250 = 300
+      expect(cost).toBe(300); // (10 * 5) + (100 * 2.5) = 50 + 250 = 300
     });
 
     it('should ignore materials without prices', () => {
@@ -87,7 +87,7 @@ describe('marginService', () => {
       expect(calculateLaborCost(undefined)).toBe(0);
     });
 
-    it('should return 0 if CPM has no tasks', () => {
+    it('should return 0 if CPM has zero duration', () => {
       const cpm = createMockCPM(0, []);
       const cost = calculateLaborCost(cpm);
       expect(cost).toBe(0);
