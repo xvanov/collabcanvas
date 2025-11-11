@@ -7,12 +7,19 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { fetchPricesForBOM } from './pricingService';
 import type { BillOfMaterials } from '../../types/material';
 
-// Mock Firebase Functions - need to return a function that can be configured
-const mockCallableFn = vi.fn();
-vi.mock('firebase/functions', () => ({
-  httpsCallable: vi.fn(() => mockCallableFn),
-  getFunctions: vi.fn(() => ({})),
-}));
+// Mock Firebase Functions - create mock function inside factory
+let mockCallableFn: ReturnType<typeof vi.fn>;
+
+vi.mock('firebase/functions', () => {
+  const mockFn = vi.fn();
+  // Store reference in a way accessible to tests
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  (globalThis as any).__mockCallableFn = mockFn;
+  return {
+    httpsCallable: vi.fn(() => mockFn),
+    getFunctions: vi.fn(() => ({})),
+  };
+});
 
 vi.mock('../firebase', () => ({
   functions: {},
@@ -21,8 +28,12 @@ vi.mock('../firebase', () => ({
 describe('PricingService - Automatic Price Fetching', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-    // Reset the mock function for each test
-    mockCallableFn.mockReset();
+    // Get the mock function from the global reference
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    mockCallableFn = (globalThis as any).__mockCallableFn;
+    if (mockCallableFn) {
+      mockCallableFn.mockReset();
+    }
   });
 
   describe('fetchPricesForBOM', () => {
@@ -75,12 +86,13 @@ describe('PricingService - Automatic Price Fetching', () => {
         updatedAt: Date.now(),
       };
 
-      mockCallableFn.mockResolvedValueOnce({
-        data: { success: true, priceUSD: 10.50, link: 'https://example.com/drywall' },
-      });
-      mockCallableFn.mockResolvedValueOnce({
-        data: { success: false, priceUSD: null, link: null, error: 'Material not found' },
-      });
+      mockCallableFn
+        .mockResolvedValueOnce({
+          data: { success: true, priceUSD: 10.50, link: 'https://example.com/drywall' },
+        })
+        .mockResolvedValueOnce({
+          data: { success: false, priceUSD: null, link: null, error: 'Material not found' },
+        });
 
       const result = await fetchPricesForBOM(bom);
 

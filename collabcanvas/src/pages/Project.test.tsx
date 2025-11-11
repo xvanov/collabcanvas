@@ -106,6 +106,13 @@ describe('Project Component - Four-View Navigation', () => {
       return mockState;
     });
 
+    // Mock getState() method used by Project component
+    Object.defineProperty(useProjectStore, 'getState', {
+      value: vi.fn(() => mockState),
+      writable: true,
+      configurable: true,
+    });
+
     mockGetDoc.mockResolvedValue({
       exists: () => true,
       id: 'project-1',
@@ -231,8 +238,8 @@ describe('Project Component - Four-View Navigation', () => {
     );
 
     await waitFor(() => {
-      // Should redirect to /space view
-      expect(window.location.pathname).toContain('/space');
+      // Should redirect to /space view - verify by checking for Board component
+      expect(screen.getByTestId('board')).toBeInTheDocument();
     });
   });
 });
