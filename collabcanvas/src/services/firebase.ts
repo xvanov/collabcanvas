@@ -44,7 +44,7 @@ export const app: FirebaseApp = initializeApp(firebaseConfig);
 export const auth: Auth = getAuth(app);
 export const firestore: Firestore = getFirestore(app);
 export const rtdb: Database = getDatabase(app);
-export const functions: Functions = getFunctions(app);
+export const functions: Functions = getFunctions(app, 'us-central1');
 export const storage: FirebaseStorage = getStorage(app);
 
 // Export network control functions for offline handling
@@ -61,7 +61,7 @@ if (useEmulators) {
   
   try {
     connectAuthEmulator(auth, 'http://127.0.0.1:9099', { disableWarnings: true });
-    connectFirestoreEmulator(firestore, '127.0.0.1', 8080);
+    connectFirestoreEmulator(firestore, '127.0.0.1', 8081);
     connectDatabaseEmulator(rtdb, '127.0.0.1', 9000);
     connectFunctionsEmulator(functions, '127.0.0.1', 5001);
     connectStorageEmulator(storage, '127.0.0.1', 9199);

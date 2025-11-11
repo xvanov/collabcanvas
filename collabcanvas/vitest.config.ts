@@ -11,6 +11,7 @@ export default defineConfig({
       'dist/**',
       'src/test/performance/**',
       'test/perf/**',
+      'tests/e2e/**', // Exclude Playwright E2E tests
       'functions/**',
       // Conditionally exclude AI service tests based on environment variable
       ...(process.env.SKIP_AI_TESTS === 'true' ? ['src/services/aiService*.test.ts'] : [])

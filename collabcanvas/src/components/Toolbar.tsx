@@ -125,7 +125,8 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
       
       let blob: Blob;
       if (options.selectedOnly && selectedShapeIds.length > 0) {
-        blob = await exportService.exportSelectedShapes(options, selectedShapeIds);
+        const selectedShapes = Array.from(shapes.values()).filter(shape => selectedShapeIds.includes(shape.id));
+        blob = await exportService.exportSelectedShapes(options, selectedShapes, selectedShapeIds);
       } else {
         blob = await exportService.exportCanvas(options);
       }

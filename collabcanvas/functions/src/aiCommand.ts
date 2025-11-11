@@ -65,6 +65,36 @@ async function parseCommandWithOpenAI(commandText: string) {
       parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#3B82F6' },
       confidence: 0.95
     },
+    'add a circle': {
+      type: 'CREATE',
+      action: 'create_circle',
+      parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#3B82F6' },
+      confidence: 0.95
+    },
+    'add circle': {
+      type: 'CREATE',
+      action: 'create_circle',
+      parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#3B82F6' },
+      confidence: 0.95
+    },
+    'add a red circle': {
+      type: 'CREATE',
+      action: 'create_circle',
+      parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#EF4444' },
+      confidence: 0.95
+    },
+    'create a red circle': {
+      type: 'CREATE',
+      action: 'create_circle',
+      parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#EF4444' },
+      confidence: 0.95
+    },
+    'add red circle': {
+      type: 'CREATE',
+      action: 'create_circle',
+      parameters: { shapeType: 'circle', x: 100, y: 100, radius: 50, color: '#EF4444' },
+      confidence: 0.95
+    },
     'create a rectangle': {
       type: 'CREATE',
       action: 'create_rectangle',
@@ -72,6 +102,18 @@ async function parseCommandWithOpenAI(commandText: string) {
       confidence: 0.95
     },
     'create rectangle': {
+      type: 'CREATE',
+      action: 'create_rectangle',
+      parameters: { shapeType: 'rect', x: 100, y: 100, w: 100, h: 100, color: '#3B82F6' },
+      confidence: 0.95
+    },
+    'add a rectangle': {
+      type: 'CREATE',
+      action: 'create_rectangle',
+      parameters: { shapeType: 'rect', x: 100, y: 100, w: 100, h: 100, color: '#3B82F6' },
+      confidence: 0.95
+    },
+    'add rectangle': {
       type: 'CREATE',
       action: 'create_rectangle',
       parameters: { shapeType: 'rect', x: 100, y: 100, w: 100, h: 100, color: '#3B82F6' },
@@ -104,6 +146,7 @@ Command: "${commandText}"
 
 Examples:
 - "create a circle" → {"type":"CREATE","action":"create_circle","parameters":{"shapeType":"circle","x":100,"y":100,"radius":50,"color":"#3B82F6"},"confidence":0.9}
+- "add a red circle" → {"type":"CREATE","action":"create_circle","parameters":{"shapeType":"circle","x":100,"y":100,"radius":50,"color":"#EF4444"},"confidence":0.9}
 - "add text saying Hello" → {"type":"CREATE","action":"create_text","parameters":{"shapeType":"text","x":100,"y":100,"text":"Hello","fontSize":16,"color":"#3B82F6"},"confidence":0.9}
 - "create a red rectangle" → {"type":"CREATE","action":"create_rectangle","parameters":{"shapeType":"rect","x":100,"y":100,"w":100,"h":100,"color":"#EF4444"},"confidence":0.9}
 

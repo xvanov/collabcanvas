@@ -92,7 +92,10 @@ class PerfMetricsInternal implements PerfMetricsPublicApi {
     }
     this.fpsSamples.push(value);
     this.markEvent('fpsSample');
-    console.log(`PerfMetrics: Recorded FPS ${value}, total samples: ${this.fpsSamples.length}`);
+    // Only log every 10th sample to reduce console spam
+    if (this.fpsSamples.length % 10 === 0) {
+      console.log(`PerfMetrics: Recorded FPS ${value}, total samples: ${this.fpsSamples.length}`);
+    }
   }
 
   trackShapeUpdate(shapeId: string, updatedAt: TimestampLike | null, isRemote: boolean): void {

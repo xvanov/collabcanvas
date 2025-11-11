@@ -9,6 +9,7 @@ import { useLayers } from '../hooks/useLayers';
 import { useLocks } from '../hooks/useLocks';
 import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
+import { FloatingAIChat } from '../components/shared/FloatingAIChat';
 import type { Shape, ShapeType } from '../types';
 import { perfMetrics } from '../utils/harness';
 import Konva from 'konva';
@@ -233,6 +234,7 @@ export function Board() {
         <ShapePropertiesPanel className="w-80" />
       </div>
       <DiagnosticsHud fps={fps} visible={showDiagnostics} />
+      <FloatingAIChat />
     </div>
   );
 }

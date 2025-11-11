@@ -1,15 +1,16 @@
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
-import { Board } from './pages/Board';
+import { Dashboard } from './pages/Dashboard';
+import { Project } from './pages/Project';
 
 /**
- * Main App component
- * Handles authentication guard - only authenticated users can access the board
+ * Protected Route Component
+ * Redirects to login if user is not authenticated
  */
-function App() {
+function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
 
-  // Show loading state while checking authentication
   if (loading) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-gray-50">
@@ -21,13 +22,42 @@ function App() {
     );
   }
 
-  // Show Login page if not authenticated
   if (!user) {
-    return <Login />;
+    return <Navigate to="/login" replace />;
   }
 
-  // Show Board if authenticated
-  return <Board />;
+  return <>{children}</>;
+}
+
+/**
+ * Main App component
+ * Handles routing and authentication guards
+ */
+function App() {
+  return (
+    <BrowserRouter>
+      <Routes>
+        <Route path="/login" element={<Login />} />
+        <Route
+          path="/"
+          element={
+            <ProtectedRoute>
+              <Dashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/projects/:projectId/*"
+          element={
+            <ProtectedRoute>
+              <Project />
+            </ProtectedRoute>
+          }
+        />
+        <Route path="*" element={<Navigate to="/" replace />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
 
 export default App;

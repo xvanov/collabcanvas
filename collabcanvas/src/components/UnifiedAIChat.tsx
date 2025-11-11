@@ -3,10 +3,18 @@
  * Combines Canvas AI Assistant and Material Estimation into one interface
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { useLocation, useParams } from 'react-router-dom';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopeStore } from '../store/scopeStore';
+import { useAuth } from '../hooks/useAuth';
 import { processDialogueRequest } from '../services/aiDialogueService';
 import { MaterialAIService } from '../services/materialAIService';
+import { validatePreflight, generatePreflightPrompt, generateClarifyingQuestions, type PreflightCheck } from '../services/preflightService';
+import { AIService } from '../services/aiService';
+import { saveBOM } from '../services/bomService';
+import { saveCPM } from '../services/cpmService';
+import { formatErrorForDisplay } from '../utils/errorHandler';
 
 interface UnifiedAIChatProps {
   isVisible: boolean;
@@ -29,30 +37,76 @@ type ChatMessage = {
 };
 
 export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose }) => {
+  const location = useLocation();
+  const { projectId } = useParams<{ projectId: string }>();
+  const { user } = useAuth();
   const [input, setInput] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const materialAI = useRef(new MaterialAIService()).current;
+  // Use refs to ensure single instance per component mount
+  const materialAIRef = useRef<MaterialAIService | null>(null);
+  const aiServiceRef = useRef<AIService | null>(null);
+  
+  if (!materialAIRef.current) {
+    materialAIRef.current = new MaterialAIService();
+  }
+  if (!aiServiceRef.current) {
+    aiServiceRef.current = new AIService();
+  }
+  
+  const materialAI = materialAIRef.current;
+  const aiService = aiServiceRef.current;
+
+  // Track current view context
+  const getCurrentView = useCallback((): 'scope' | 'time' | 'space' | 'money' | null => {
+    const pathname = location.pathname;
+    if (pathname.includes('/scope')) return 'scope';
+    if (pathname.includes('/time')) return 'time';
+    if (pathname.includes('/space')) return 'space';
+    if (pathname.includes('/money')) return 'money';
+    return null;
+  }, [location.pathname]);
+
+  const currentView = getCurrentView();
 
   // Canvas AI state
   const processAICommand = useCanvasStore(state => state.processAICommand);
   const aiCommandHistory = useCanvasStore(state => state.aiCommandHistory);
+  const layers = useCanvasStore(state => state.layers);
+  const shapes = useCanvasStore(state => state.shapes);
+  const scaleLine = useCanvasStore(state => state.canvasScale?.scaleLine);
+  const backgroundImage = useCanvasStore(state => state.canvasScale?.backgroundImage);
+
+  // Scope state for pre-flight validation
+  const scope = useScopeStore(state => state.scope);
 
   // Material Estimation state
   const dialogue = useCanvasStore(state => state.materialDialogue);
   const startDialogue = useCanvasStore(state => state.startMaterialDialogue);
   const updateDialogue = useCanvasStore(state => state.updateMaterialDialogue);
   const addCalculation = useCanvasStore(state => state.addMaterialCalculation);
-  const layers = useCanvasStore(state => state.layers);
-  const shapes = useCanvasStore(state => state.shapes);
-  const scaleLine = useCanvasStore(state => state.canvasScale?.scaleLine);
-  const backgroundImage = useCanvasStore(state => state.canvasScale?.backgroundImage);
 
   // Auto-scroll to bottom
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages, aiCommandHistory, dialogue]);
+
+  // Load scope for pre-flight validation
+  useEffect(() => {
+    if (!projectId) return;
+    
+    const { loadScope, subscribe } = useScopeStore.getState();
+    loadScope(projectId).catch(console.error);
+    subscribe(projectId);
+    
+    return () => {
+      const { unsubscribe } = useScopeStore.getState();
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [projectId]);
 
   // Calculate scale factor
   const scaleFactor = scaleLine
@@ -79,7 +133,14 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
     setChatMessages(prev => [...prev, userMessage]);
 
     try {
-      // PRIORITY 1: Check if this is a vision query FIRST
+      // PRIORITY 1: Check if this is a BOM/CPM generation request
+      const isBOMCPMRequest = detectBOMCPMGeneration(messageText);
+      if (isBOMCPMRequest) {
+        await handleBOMCPMGeneration();
+        return;
+      }
+
+      // PRIORITY 2: Check if this is a vision query
       const isVisionQuery = needsVisionAnalysis(messageText);
       
       if (isVisionQuery && backgroundImage?.url) {
@@ -88,7 +149,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
         return;
       }
       
-      // PRIORITY 2: Material estimation or canvas command
+      // PRIORITY 3: Material estimation or canvas command
       const hasActiveDialogue = dialogue && dialogue.stage !== 'complete';
       const hasCompletedDialogue = dialogue && dialogue.stage === 'complete';
       const isMaterialQuery = detectMaterialQuery(messageText);
@@ -113,6 +174,229 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
     } finally {
       setIsProcessing(false);
     }
+  };
+
+  /**
+   * Detect if query is requesting BOM/CPM generation
+   */
+  const detectBOMCPMGeneration = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+    const bomKeywords = [
+      'generate bom',
+      'create bom',
+      'generate bill of materials',
+      'generate critical path',
+      'generate bom and critical path',
+      'generate bom and cpm',
+      'create bill of materials',
+      'generate materials list',
+      'generate estimate',
+    ];
+    
+    return bomKeywords.some(kw => lowerQuery.includes(kw));
+  };
+
+  /**
+   * Handle BOM/CPM generation request with pre-flight validation
+   */
+  const handleBOMCPMGeneration = async () => {
+    if (!projectId || !user) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: 'error',
+        content: 'Error: Project ID or user not available',
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMsg]);
+      return;
+    }
+
+    // Run pre-flight validation
+    const validationResult = validatePreflight({
+      scaleLine: scaleLine || undefined,
+      layers,
+      shapes,
+      scope,
+    });
+
+    // Display pre-flight checklist
+    const checklistMessage: ChatMessage = {
+      id: `msg-checklist-${Date.now()}`,
+      type: 'system',
+      content: generatePreflightChecklistUI(validationResult.checks),
+      timestamp: Date.now(),
+    };
+    setChatMessages(prev => [...prev, checklistMessage]);
+
+    // If validation fails, block generation and show guidance
+    if (!validationResult.canGenerate) {
+      const blockingMessage: ChatMessage = {
+        id: `msg-blocking-${Date.now()}`,
+        type: 'error',
+        content: generatePreflightPrompt(validationResult),
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, blockingMessage]);
+
+      // Add clarifying questions
+      const questions = generateClarifyingQuestions(validationResult);
+      if (questions.length > 0) {
+        const questionsMessage: ChatMessage = {
+          id: `msg-questions-${Date.now()}`,
+          type: 'assistant',
+          content: '**Clarifying Questions:**\n\n' + questions.map((q, i) => `${i + 1}. ${q}`).join('\n'),
+          timestamp: Date.now(),
+        };
+        setChatMessages(prev => [...prev, questionsMessage]);
+      }
+
+      return; // Block generation
+    }
+
+    // Validation passed - proceed with parallel generation
+    // Progress tracking is handled via updateProgressMessage callback
+
+    // Prepare annotations data
+    const annotations = Array.from(shapes.values());
+
+    try {
+      const result = await aiService.generateBOMAndCPM(
+        {
+          projectId,
+          userId: user.uid,
+          annotations,
+          scope: scope || undefined,
+          scaleFactor,
+          autoFetchPrices: true, // Automatically fetch prices after BOM generation (AC: #5)
+          onPriceProgress: (stats) => {
+            // Update progress message with price fetching stats
+            const priceMessage: ChatMessage = {
+              id: `msg-price-progress-${Date.now()}`,
+              type: 'system',
+              content: `💰 Price fetching: ${stats.successful}/${stats.total} materials priced (${stats.successRate.toFixed(1)}% success rate)`,
+              timestamp: Date.now(),
+            };
+            setChatMessages(prev => {
+              // Remove previous price progress messages
+              const filtered = prev.filter(msg => !msg.id.includes('price-progress'));
+              return [...filtered, priceMessage];
+            });
+          },
+        },
+        {
+          projectId,
+          userId: user.uid,
+          scope: scope || undefined,
+          annotations,
+        },
+        (progress) => {
+          // Update progress message
+          updateProgressMessage(progress);
+        }
+      );
+
+      // Handle results
+      if (result.bothSucceeded) {
+        // Save both to Firestore
+        if (result.bom.bom) {
+          await saveBOM(projectId, result.bom.bom, user.uid);
+        }
+        if (result.cpm.cpm) {
+          await saveCPM(projectId, result.cpm.cpm, user.uid);
+        }
+
+        const successMessage: ChatMessage = {
+          id: `msg-success-${Date.now()}`,
+          type: 'success',
+          content: '✅ BOM and Critical Path generated successfully!\n\n- BOM is available in Money view\n- Critical Path is available in Time view',
+          timestamp: Date.now(),
+        };
+        setChatMessages(prev => [...prev, successMessage]);
+      } else if (result.partialSuccess) {
+        // Handle partial success
+        let message = '⚠️ Partial generation completed:\n\n';
+        if (result.bom.success && result.bom.bom) {
+          await saveBOM(projectId, result.bom.bom, user.uid);
+          message += '✅ BOM generated successfully\n';
+        } else {
+          message += `❌ BOM generation failed: ${result.bom.error || 'Unknown error'}\n`;
+        }
+        if (result.cpm.success && result.cpm.cpm) {
+          await saveCPM(projectId, result.cpm.cpm, user.uid);
+          message += '✅ Critical Path generated successfully\n';
+        } else {
+          message += `❌ Critical Path generation failed: ${result.cpm.error || 'Unknown error'}\n`;
+        }
+        message += '\nYou can retry the failed generation separately.';
+
+        const partialMessage: ChatMessage = {
+          id: `msg-partial-${Date.now()}`,
+          type: 'error',
+          content: message,
+          timestamp: Date.now(),
+        };
+        setChatMessages(prev => [...prev, partialMessage]);
+      } else {
+        // Both failed
+        // AC: #20 - AI BOM generation error handling with retry options
+        const errorInfoBOM = formatErrorForDisplay(result.bom.error);
+        const errorInfoCPM = formatErrorForDisplay(result.cpm.error);
+        const errorMessage: ChatMessage = {
+          id: `msg-error-${Date.now()}`,
+          type: 'error',
+          content: `❌ Generation failed:\n\n**BOM Generation:**\n${errorInfoBOM.title}: ${errorInfoBOM.message}${errorInfoBOM.canRetry ? ' (Retryable)' : ''}\n\n**Critical Path Generation:**\n${errorInfoCPM.title}: ${errorInfoCPM.message}${errorInfoCPM.canRetry ? ' (Retryable)' : ''}\n\n${(errorInfoBOM.canRetry || errorInfoCPM.canRetry) ? '💡 **Tip:** You can try again - some errors are temporary and may resolve on retry.' : 'Please check your project setup and try again.'}`,
+          timestamp: Date.now(),
+        };
+        setChatMessages(prev => [...prev, errorMessage]);
+      }
+    } catch (error) {
+      // AC: #20 - AI BOM generation error handling
+      const errorInfo = formatErrorForDisplay(error);
+      const errorMessage: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: 'error',
+        content: `❌ Error during generation:\n\n**${errorInfo.title}**\n${errorInfo.message}${errorInfo.canRetry ? '\n\n💡 **Tip:** This error may be temporary. You can try again.' : ''}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    } finally {
+      // Progress tracking completed
+    }
+  };
+
+  /**
+   * Update progress message in chat
+   */
+  const updateProgressMessage = (progress: { bom?: 'generating' | 'complete' | 'error'; cpm?: 'generating' | 'complete' | 'error' }) => {
+    // Remove existing progress messages
+    setChatMessages(prev => prev.filter(msg => !msg.id.includes('progress-')));
+    
+    let progressText = '**Generation Progress:**\n\n';
+    progressText += `BOM: ${progress.bom === 'generating' ? '⏳ Generating...' : progress.bom === 'complete' ? '✅ Complete' : progress.bom === 'error' ? '❌ Error' : '⏸️ Pending'}\n`;
+    progressText += `Critical Path: ${progress.cpm === 'generating' ? '⏳ Generating...' : progress.cpm === 'complete' ? '✅ Complete' : progress.cpm === 'error' ? '❌ Error' : '⏸️ Pending'}`;
+
+    const progressMessage: ChatMessage = {
+      id: `msg-progress-${Date.now()}`,
+      type: 'system',
+      content: progressText,
+      timestamp: Date.now(),
+    };
+    setChatMessages(prev => [...prev, progressMessage]);
+  };
+
+  /**
+   * Generate pre-flight checklist UI
+   */
+  const generatePreflightChecklistUI = (checks: PreflightCheck[]): string => {
+    let message = '**Pre-flight Checklist:**\n\n';
+    
+    checks.forEach(check => {
+      const icon = check.status === 'pass' ? '✅' : check.status === 'fail' ? '❌' : '⚠️';
+      const category = check.category === 'required' ? '[Required]' : '[Recommended]';
+      message += `${icon} ${category} ${check.label}: ${check.message}\n`;
+    });
+    
+    return message;
   };
 
   /**
@@ -430,7 +714,8 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
    * Handle canvas commands (create, move, delete shapes)
    */
   const handleCanvasCommand = async (messageText: string) => {
-    const result = await processAICommand(messageText);
+    // Pass current view context to AI service
+    const result = await processAICommand(messageText, currentView || undefined);
 
     const aiMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
@@ -534,7 +819,14 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
       <div className="flex items-center justify-between p-4 border-b border-gray-200 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-t-lg">
         <div>
           <h2 className="text-lg font-semibold">AI Assistant</h2>
-          <p className="text-xs text-purple-100">Shapes, materials, and more</p>
+          <div className="flex items-center gap-2">
+            <p className="text-xs text-purple-100">Shapes, materials, and more</p>
+            {currentView && (
+              <span className="text-xs px-2 py-0.5 bg-white/20 rounded-full capitalize" title="Current view context">
+                {currentView}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-2">
           {chatMessages.length > 0 && (

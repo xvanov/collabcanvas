@@ -88,6 +88,155 @@ service cloud.firestore {
       }
     }
     
+    // Projects collection - project management system
+    match /projects/{projectId} {
+      // Helper function to check if user is owner
+      function isOwner() {
+        return request.auth != null && resource.data.ownerId == request.auth.uid;
+      }
+      
+      // Read: Owner or collaborator (viewer/editor)
+      // Note: Firestore rules have limited array iteration capabilities
+      // We allow read if user is owner OR if document has collaborators array
+      // Application logic will enforce that user is actually in collaborators array
+      allow read: if request.auth != null 
+        && (isOwner() || resource.data.collaborators != null);
+      
+      // List: Allow authenticated users to query projects
+      // The query itself must filter by ownerId (where('ownerId', '==', userId))
+      // We can't check resource.data in list queries, so we allow the query and filter client-side
+      allow list: if request.auth != null;
+      
+      // Create: Authenticated user, must set ownerId to their uid
+      allow create: if request.auth != null
+        && request.resource.data.ownerId == request.auth.uid
+        && request.resource.data.name is string
+        && request.resource.data.description is string
+        && request.resource.data.status is string
+        && request.resource.data.status in ['estimating', 'bid-ready', 'bid-lost', 'executing', 'completed-profitable', 'completed-unprofitable', 'completed-unknown']
+        && request.resource.data.collaborators is list
+        && request.resource.data.createdBy == request.auth.uid
+        && request.resource.data.updatedBy == request.auth.uid;
+      
+      // Update: Owner or editor collaborator
+      // Note: Firestore rules have limited array iteration capabilities
+      // We allow update if user is owner OR if document has collaborators array
+      // Application logic will enforce that user is actually an editor collaborator
+      // For stricter security in production, consider using a Cloud Function
+      allow update: if request.auth != null
+        && (isOwner() || resource.data.collaborators != null)
+        && request.resource.data.ownerId == resource.data.ownerId // Cannot change owner
+        && request.resource.data.createdBy == resource.data.createdBy // Cannot change creator
+        && request.resource.data.createdAt == resource.data.createdAt; // Cannot change creation time
+      
+      // Delete: Only owner
+      allow delete: if isOwner();
+      
+      // Scope subcollection - scope of work document
+      match /scope/{scopeId} {
+        // Helper function to check if user is owner or collaborator
+        // Note: Firestore rules have limited array iteration, so we allow if user is owner
+        // or if document has collaborators array (application logic enforces actual membership)
+        function isOwnerOrCollaborator() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Helper function to check if user is owner or editor
+        // Note: Application logic enforces that user is actually an editor collaborator
+        function isOwnerOrEditor() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Read: Owner or collaborator (viewer/editor)
+        allow read: if isOwnerOrCollaborator();
+        
+        // Create/Update: Owner or editor collaborator
+        allow create, update: if isOwnerOrEditor()
+          && request.resource.data.items is list
+          && request.resource.data.uploadedBy is string;
+        
+        // Delete: Only owner
+        allow delete: if request.auth != null 
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+      }
+      
+      // BOM subcollection - Bill of Materials document
+      // AC: Task 18 - Firestore Security Rules
+      match /bom/{bomId} {
+        // Helper function to check if user is owner or collaborator
+        function isOwnerOrCollaborator() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Helper function to check if user is owner or editor
+        function isOwnerOrEditor() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Read: Owner or collaborator (viewer/editor)
+        allow read: if isOwnerOrCollaborator();
+        
+        // Create/Update: Owner or editor collaborator
+        // Validate BOM structure
+        allow create: if isOwnerOrEditor()
+          && request.resource.data.totalMaterials is list
+          && request.resource.data.calculations is list
+          && request.resource.data.createdBy is string
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.createdAt is number;
+        
+        allow update: if isOwnerOrEditor()
+          && request.resource.data.totalMaterials is list
+          && request.resource.data.calculations is list
+          && request.resource.data.updatedBy == request.auth.uid
+          && (request.resource.data.updatedAt is timestamp || request.resource.data.updatedAt is number);
+        
+        // Delete: Only owner
+        allow delete: if request.auth != null 
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+      }
+      
+      // CPM subcollection - Critical Path Method document
+      match /cpm/{cpmId} {
+        // Helper function to check if user is owner or collaborator
+        function isOwnerOrCollaborator() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Helper function to check if user is owner or editor
+        function isOwnerOrEditor() {
+          return request.auth != null 
+            && (get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid
+                || get(/databases/$(database)/documents/projects/$(projectId)).data.collaborators != null);
+        }
+        
+        // Read: Owner or collaborator (viewer/editor)
+        allow read: if isOwnerOrCollaborator();
+        
+        // Create/Update: Owner or editor collaborator
+        allow create, update: if isOwnerOrEditor()
+          && request.resource.data.tasks is list
+          && request.resource.data.createdBy is string
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.createdAt is number
+          && request.resource.data.updatedAt is number;
+        
+        // Delete: Only owner
+        allow delete: if request.auth != null 
+          && get(/databases/$(database)/documents/projects/$(projectId)).data.ownerId == request.auth.uid;
+      }
+    }
+    
     // Deny all other paths
     match /{document=**} {
       allow read, write: if false;

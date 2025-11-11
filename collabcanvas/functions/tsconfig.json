@@ -6,7 +6,11 @@
     "outDir": "lib",
     "sourceMap": true,
     "strict": true,
-    "target": "es2017"
+    "target": "es2017",
+    "skipLibCheck": true,
+    "moduleResolution": "node",
+    "lib": ["ES2020", "DOM"],
+    "types": ["node"]
   },
   "compileOnSave": true,
   "include": [

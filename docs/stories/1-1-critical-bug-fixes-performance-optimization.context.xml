@@ -1,0 +1,146 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>1</storyId>
+    <title>Critical Bug Fixes & Performance Optimization</title>
+    <status>ready-for-dev</status>
+    <generatedAt>2025-11-07T01:53:32Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-1-critical-bug-fixes-performance-optimization.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>contractor</asA>
+    <iWant>all critical bugs fixed and consistent performance across browsers</iWant>
+    <soThat>I can reliably use the tool for production work without frustration</soThat>
+    <tasks>
+      <task id="1" ac="1">Fix Plan Deletion Persistence</task>
+      <task id="2" ac="2">Fix Scale Deletion Persistence</task>
+      <task id="3" ac="3">Fix Home Depot Price Integration</task>
+      <task id="4" ac="4">Fix AI Shape Creation Commands</task>
+      <task id="5" ac="5,6">Fix Firefox Performance Degradation</task>
+      <task id="6" ac="7">Implement Object Culling</task>
+      <task id="7" ac="8">Implement Viewport Optimization</task>
+      <task id="8" ac="9">Implement Batch Updates</task>
+      <task id="9" ac="10">Cross-Browser Performance Testing</task>
+      <task id="10">Performance Monitoring and Logging</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">Plan Deletion Persistence: Given I am using CollabCanvas, When I delete a plan, Then The deletion persists after page reload and does not reappear</ac>
+    <ac id="2">Scale Deletion Persistence: Given I am using CollabCanvas, When I delete a scale reference, Then The deletion persists after page reload and does not reappear</ac>
+    <ac id="3">Home Depot Price Integration: Given I am using CollabCanvas, When I generate a BOM with common materials, Then Home Depot prices are fetched successfully for 90%+ of materials</ac>
+    <ac id="4">AI Shape Creation: Given I am using CollabCanvas, When I use AI chat to create shapes (e.g., "add a red circle"), Then Shapes are created successfully without errors</ac>
+    <ac id="5">Firefox Performance: Given I am using CollabCanvas, When I annotate with 100+ objects on Firefox, Then Canvas maintains 60 FPS performance matching Chrome performance</ac>
+    <ac id="6">Cross-Browser Performance: Given I am using CollabCanvas, When I annotate with 100+ objects on any browser (Chrome, Firefox, Safari, Edge), Then Canvas maintains consistent 60 FPS performance</ac>
+    <ac id="7">Object Culling: Given I am using CollabCanvas, When I have many objects on the canvas (100+), Then Only visible objects are rendered (object culling implemented)</ac>
+    <ac id="8">Viewport Optimization: Given I am using CollabCanvas, When I pan or zoom the canvas, Then Only objects within the viewport are updated (viewport optimization implemented)</ac>
+    <ac id="9">Batch Updates: Given I am using CollabCanvas, When Multiple shape updates occur simultaneously, Then Updates are batched together to reduce render calls (batching optimization implemented)</ac>
+    <ac id="10">Performance Measurement: Given I am using CollabCanvas, When I measure performance with browser dev tools, Then Canvas rendering maintains 60 FPS during pan, zoom, and drawing operations across all browsers</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/epics.md" section="Story 1.1: Critical Bug Fixes & Performance Optimization" snippet="Story covers critical production-blocking bugs: plan deletion persistence, scale deletion persistence, Home Depot price integration (90%+ success), AI shape creation fixes, Firefox performance degradation (60 FPS with 100+ objects), and performance optimizations (object culling, viewport optimization, batch updates)."/>
+      <doc path="docs/PRD.md" section="Critical Bug Fixes" snippet="Critical bugs that must be fixed before MVP launch: plan deletion bug (reliable deletion that doesn't reappear on reload), scale deletion bug, Home Depot price integration (90%+ success rate), AI shape creation commands (fix 'add a red circle' errors), Firefox performance degradation (60 FPS with 100+ objects across all browsers)."/>
+      <doc path="docs/PRD.md" section="NFR-1.1: Canvas Rendering Performance" snippet="Requirement: Maintain 60 FPS canvas rendering with 100+ objects across all browsers. Current issue: Firefox performance degrades as objects increase - critical fix needed. Domain-driven: Construction projects can have many annotations - performance must scale."/>
+      <doc path="docs/architecture.md" section="Performance Considerations" snippet="Canvas rendering optimizations: Object culling (only render shapes within viewport), Viewport optimization (only update visible area, batch viewport calculations), Batch updates (group multiple shape updates, single render cycle per batch). Existing optimizations include Konva layers separation, shape memoization, imperative updates via refs, RAF-based updates, map-based storage, throttled writes."/>
+      <doc path="docs/architecture.md" section="ADR-4: Canvas Rendering Optimizations" snippet="Decision: Implement object culling, viewport optimization, batch updates. Rationale: Critical for 60 FPS performance with 100+ objects. Status: Accepted."/>
+      <doc path="docs/architecture.md" section="Firestore Collections" snippet="Plans stored in Firebase Storage and referenced in Firestore. Scale references stored in Firestore board documents. Deletion must remove data from both Storage and Firestore. Use Firebase Admin SDK in Cloud Functions for reliable deletion if needed."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Non-Functional Requirements" snippet="NFR-1.1: Canvas Rendering Performance - Target: Maintain 60 FPS canvas rendering with 100+ objects across all browsers. Implementation: Object culling, viewport optimization, batch updates. Critical Fix: Firefox performance degradation must be resolved to match Chrome performance."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Acceptance Criteria (Authoritative)" snippet="Story 1.1 ACs: Plan deletion persistence, Scale deletion persistence, Home Depot price integration (90%+ success), AI shape creation, Firefox performance (60 FPS), Cross-browser performance (60 FPS), Object culling, Viewport optimization, Batch updates."/>
+      <doc path="docs/tech-spec-epic-1.md" section="Dependencies and Integrations" snippet="External API Integrations: SerpAPI for Home Depot price fetching (via Cloud Function getHomeDepotPrice), OpenAI API for AI command processing (via Cloud Function aiCommand). All external APIs route through Firebase Cloud Functions for security and caching."/>
+    </docs>
+    <code>
+      <file path="collabcanvas/src/services/firestore.ts" kind="service" symbol="deleteScaleLineFromFirestore" lines="522-536" reason="Scale deletion logic - sets scaleLine to undefined in board state. Need to verify this properly removes data from Firestore and persists across reloads."/>
+      <file path="collabcanvas/src/services/firestore.ts" kind="service" symbol="deleteBackgroundImageFromFirestore" lines="541-555" reason="Plan deletion logic - removes background image reference from Firestore. Need to verify this works in conjunction with Storage deletion."/>
+      <file path="collabcanvas/src/services/storage.ts" kind="service" symbol="deleteConstructionPlanImage" lines="72-90" reason="Plan deletion from Firebase Storage - extracts storage path from URL and deletes object. Need to verify this is called when plan is deleted and persists."/>
+      <file path="collabcanvas/functions/src/pricing.ts" kind="cloud-function" symbol="getHomeDepotPrice" lines="79-124" reason="Home Depot price fetching via SerpAPI. Implements caching with Firestore. Need to add retry logic with exponential backoff and verify 90%+ success rate."/>
+      <file path="collabcanvas/functions/src/aiCommand.ts" kind="cloud-function" symbol="aiCommand" lines="148-187" reason="AI command parsing and execution. Uses OpenAI to parse commands. Common commands cached. Need to fix parsing for 'add a red circle' and similar commands."/>
+      <file path="collabcanvas/src/services/aiCommandExecutor.ts" kind="service" symbol="executeCreateCommand" lines="58-153" reason="Client-side shape creation from AI commands. Handles circle, rect, text, line shapes. Need to verify command execution works correctly for all shape types."/>
+      <file path="collabcanvas/src/components/Canvas.tsx" kind="component" symbol="Canvas" lines="1-935" reason="Main canvas component with Konva integration. Currently uses imperative updates via refs. Need to implement object culling, viewport optimization, and batch updates for 60 FPS performance."/>
+      <file path="collabcanvas/src/hooks/useShapes.ts" kind="hook" symbol="deleteShapes" lines="475-530" reason="Shape deletion with optimistic updates and offline handling. Uses locallyDeletedShapes to prevent reappearance. Need to verify deletion persists across reloads."/>
+      <file path="collabcanvas/src/utils/viewport.ts" kind="utility" symbol="viewport utilities" reason="Viewport calculation utilities for object culling. File may need to be created if it doesn't exist. Used to calculate visible bounds and filter shapes."/>
+      <file path="collabcanvas/src/utils/throttle.ts" kind="utility" symbol="throttle utilities" reason="Batch update utilities for throttling/debouncing. File may need to be created if it doesn't exist. Used to batch multiple shape updates together."/>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="firebase" version="^12.4.0"/>
+        <package name="konva" version="^10.0.2"/>
+        <package name="react" version="^19.2.0"/>
+        <package name="react-dom" version="^19.2.0"/>
+        <package name="react-konva" version="^19.0.10"/>
+        <package name="zustand" version="^5.0.8"/>
+        <package name="typescript" version="~5.9.3"/>
+        <package name="vite" version="^7.1.7"/>
+        <package name="vitest" version="^3.2.4"/>
+        <package name="@playwright/test" version="^1.50.0"/>
+        <package name="@testing-library/react" version="^16.3.0"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Firebase Deletion Pattern: Plans stored in Firebase Storage and referenced in Firestore. Scale references stored in Firestore board documents. Deletion must remove data from both Storage and Firestore. Use Firebase Admin SDK in Cloud Functions for reliable deletion if needed.</constraint>
+    <constraint>Performance Optimization Pattern: Object culling - Calculate viewport bounds, filter shapes by visibility before rendering. Viewport optimization - Only update shapes within visible area during pan/zoom. Batch updates - Use requestAnimationFrame batching or debounce/throttle utilities. Leverage Konva's built-in optimization features.</constraint>
+    <constraint>API Integration Pattern: All external APIs route through Cloud Functions for security. SerpAPI integration via Cloud Function getHomeDepotPrice handles price fetching. Implement retry logic with exponential backoff. Cache prices with 24-hour TTL to reduce API calls. Standardized error handling: {success, data?, error?} format.</constraint>
+    <constraint>AI Command Pattern: AI commands processed via Cloud Function aiCommand. Shape creation commands parsed and executed client-side. Commands must be validated before execution.</constraint>
+    <constraint>Testing Requirements: Unit tests for service layer functions (firestore.ts, storage.ts). Integration tests for Cloud Function integration (pricing.ts, aiCommand.ts). E2E tests for deletion persistence, price fetching, AI commands, performance. Performance tests: FPS measurement with 100+ objects across browsers.</constraint>
+    <constraint>Performance Target: 60 FPS canvas rendering with 100+ objects across all browsers (Chrome, Firefox, Safari, Edge). Firefox performance must match Chrome performance.</constraint>
+    <constraint>Price Fetch Success Rate: Home Depot prices must be fetched successfully for 90%+ of materials.</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="getHomeDepotPrice" kind="Cloud Function" signature="onCall&lt;{ request: PriceRequest }&gt;: Promise&lt;PriceResponse&gt;" path="collabcanvas/functions/src/pricing.ts">
+      <request>
+        <field name="materialName" type="string" required="true"/>
+        <field name="unit" type="string" required="false"/>
+        <field name="storeNumber" type="string" required="false"/>
+      </request>
+      <response>
+        <field name="success" type="boolean"/>
+        <field name="priceUSD" type="number | null"/>
+        <field name="link" type="string | null"/>
+        <field name="error" type="string" required="false"/>
+      </response>
+    </interface>
+    <interface name="aiCommand" kind="Cloud Function" signature="onCall&lt;{ commandText: string, userId: string }&gt;: Promise&lt;AICommandResponse&gt;" path="collabcanvas/functions/src/aiCommand.ts">
+      <request>
+        <field name="commandText" type="string" required="true"/>
+        <field name="userId" type="string" required="true"/>
+      </request>
+      <response>
+        <field name="success" type="boolean"/>
+        <field name="message" type="string"/>
+        <field name="executedCommands" type="AICommand[]"/>
+        <field name="error" type="string" required="false"/>
+      </response>
+    </interface>
+    <interface name="deleteScaleLineFromFirestore" kind="function" signature="(userId: string): Promise&lt;void&gt;" path="collabcanvas/src/services/firestore.ts"/>
+    <interface name="deleteBackgroundImageFromFirestore" kind="function" signature="(userId: string): Promise&lt;void&gt;" path="collabcanvas/src/services/firestore.ts"/>
+    <interface name="deleteConstructionPlanImage" kind="function" signature="(imageUrl: string): Promise&lt;void&gt;" path="collabcanvas/src/services/storage.ts"/>
+    <interface name="executeCreateCommand" kind="method" signature="(command: AICommand): Promise&lt;AICommandResult&gt;" path="collabcanvas/src/services/aiCommandExecutor.ts"/>
+  </interfaces>
+  <tests>
+    <standards>Testing uses Vitest for unit/integration tests and Playwright for E2E tests. Unit tests target 80%+ coverage for service layer, 90%+ for calculation logic. Integration tests cover all Firebase operations and Cloud Function calls. E2E tests cover all critical user flows and acceptance criteria. Performance tests validate all NFR targets. Test files follow naming pattern: *.test.ts for unit/integration, *.integration.test.ts for integration, e2e/*.ts for E2E tests.</standards>
+    <locations>
+      <location>collabcanvas/src/**/*.test.ts</location>
+      <location>collabcanvas/src/**/*.integration.test.ts</location>
+      <location>collabcanvas/tests/e2e/**/*.ts</location>
+      <location>collabcanvas/test/perf/**/*.ts</location>
+    </locations>
+    <ideas>
+      <test ac="1">E2E: Delete plan, reload page, verify plan does not reappear. Unit: Test firestore.ts deleteBackgroundImageFromFirestore and storage.ts deleteConstructionPlanImage integration.</test>
+      <test ac="2">E2E: Delete scale reference, reload page, verify scale does not reappear. Unit: Test firestore.ts deleteScaleLineFromFirestore persistence.</test>
+      <test ac="3">Integration: Test getHomeDepotPrice Cloud Function with common materials, verify 90%+ success rate. E2E: Generate BOM, verify prices fetched for 90%+ materials.</test>
+      <test ac="4">E2E: Use AI chat 'add a red circle', verify shape created successfully. Unit: Test aiCommand.ts parsing for various shape creation commands.</test>
+      <test ac="5">Performance: Profile Firefox canvas rendering with 100+ objects, measure FPS, verify 60 FPS target met. Compare Firefox vs Chrome performance.</test>
+      <test ac="6">Performance: Test canvas performance on Chrome, Firefox, Safari, Edge with 100+ objects, verify consistent 60 FPS across all browsers.</test>
+      <test ac="7">Unit: Test viewport.ts utilities for object visibility calculation. Integration: Test Canvas.tsx only renders visible shapes with 100+ objects.</test>
+      <test ac="8">Unit: Test viewport optimization logic for pan/zoom operations. Integration: Test Canvas.tsx only updates shapes within visible viewport during pan/zoom.</test>
+      <test ac="9">Unit: Test throttle.ts batch update utilities. Integration: Test Canvas.tsx batches multiple shape updates together, reduces render calls.</test>
+      <test ac="10">Performance: Measure FPS with browser dev tools during pan, zoom, and drawing operations with 100+ objects across all browsers, verify 60 FPS maintained.</test>
+    </ideas>
+  </tests>
+</story-context>
+

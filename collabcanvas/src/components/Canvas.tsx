@@ -20,6 +20,7 @@ import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
+import { calculateViewportBounds, filterVisibleShapes } from '../utils/viewport';
 import type { SelectionBox as SelectionBoxType, UnitType } from '../types';
 
 interface CanvasProps {
@@ -67,6 +68,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
+  const lowFpsWarningCount = useRef(0); // Track consecutive low FPS warnings
 
   // Store state
   const { shapes, updateShapePosition } = useShapes();
@@ -155,6 +157,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
         const fps = Math.round((frameCount.current * 1000) / elapsed);
         onFpsUpdate(fps);
         perfMetrics.recordFps(fps);
+        
+        // Performance warning when FPS drops below 50 (more lenient threshold)
+        // Only warn every 5 seconds to reduce console spam
+        if (fps < 50) {
+          lowFpsWarningCount.current++;
+          if (lowFpsWarningCount.current % 5 === 0) {
+            console.warn(`[PERFORMANCE] FPS dropped to ${fps}. Target: 60 FPS. Consider reducing number of shapes or enabling viewport culling.`);
+          }
+        } else {
+          lowFpsWarningCount.current = 0; // Reset counter when FPS is good
+        }
         
         frameCount.current = 0;
         lastFrameTime.current = now;
@@ -322,10 +335,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
 
     // Imperatively update current user's cursor position to avoid React re-render
+    // Only update if position actually changed to prevent unnecessary redraws
     if (currentCursorRef.current) {
-      currentCursorRef.current.position({ x: stageX, y: stageY });
-      // Firefox optimization: draw only the cursor node, not the entire layer
-      currentCursorRef.current.draw();
+      const currentPos = currentCursorRef.current.position();
+      if (Math.abs(currentPos.x - stageX) > 0.1 || Math.abs(currentPos.y - stageY) > 0.1) {
+        currentCursorRef.current.position({ x: stageX, y: stageY });
+        // Firefox optimization: draw only the cursor node, not the entire layer
+        currentCursorRef.current.draw();
+      }
     }
 
     // Update cursor position in RTDB (throttled in usePresence) - only if user is authenticated
@@ -334,16 +351,24 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     }
 
     // Update mouse position for snap indicators - ONLY if snap is enabled
+    // Use functional update to avoid unnecessary re-renders when position hasn't changed significantly
     if (gridState.isSnapEnabled) {
-      setMousePosition({
-        x: stageX,
-        y: stageY,
+      setMousePosition(prev => {
+        if (!prev || Math.abs(prev.x - stageX) > 2 || Math.abs(prev.y - stageY) > 2) {
+          return { x: stageX, y: stageY };
+        }
+        return prev;
       });
     }
 
-    // Update drawing preview point
+    // Update drawing preview point - only if changed significantly
     if (activeDrawingTool) {
-      setDrawingPreviewPoint({ x: stageX, y: stageY });
+      setDrawingPreviewPoint(prev => {
+        if (!prev || Math.abs(prev.x - stageX) > 2 || Math.abs(prev.y - stageY) > 2) {
+          return { x: stageX, y: stageY };
+        }
+        return prev;
+      });
     }
 
     // Handle drag selection
@@ -758,7 +783,29 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
           {/* Shapes layer - interactive */}
           <Layer>
-            {shapes.map((shape) => {
+            {(() => {
+              // Calculate viewport bounds for object culling
+              const viewportBounds = calculateViewportBounds(
+                dimensions.width,
+                dimensions.height,
+                stagePosRef.current.x,
+                stagePosRef.current.y,
+                stageScaleRef.current
+              );
+              
+              // Filter shapes to only render visible ones (viewport culling)
+              // Use padding of 200px to include shapes near viewport edge
+              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              
+              // Log culling stats in development (only if significant reduction)
+              if (import.meta.env.DEV && shapes.length > 50) {
+                const culledCount = shapes.length - visibleShapes.length;
+                if (culledCount > 0) {
+                  console.log(`[PERFORMANCE] Viewport culling: ${visibleShapes.length}/${shapes.length} shapes visible (${culledCount} culled)`);
+                }
+              }
+              
+              return visibleShapes.map((shape) => {
               const isLocked = isShapeLockedByOtherUser(shape.id);
               const isSelected = selectedShapeIds.includes(shape.id);
               // Handle shapes without layerId (created before layer system) - assign them to default layer
@@ -814,12 +861,25 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   onMoveSelectedShapes={moveSelectedShapes}
                 />
               );
-            })}
+            })})()}
           </Layer>
 
           {/* Measurement displays layer - non-interactive */}
           <Layer listening={false}>
-            {shapes.map((shape) => {
+            {(() => {
+              // Calculate viewport bounds for measurement culling
+              const viewportBounds = calculateViewportBounds(
+                dimensions.width,
+                dimensions.height,
+                stagePosRef.current.x,
+                stagePosRef.current.y,
+                stageScaleRef.current
+              );
+              
+              // Filter shapes to only render measurements for visible shapes
+              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              
+              return visibleShapes.map((shape) => {
               if (shape.type !== 'polyline' && shape.type !== 'polygon') return null;
               
               const shapeLayerId = shape.layerId || 'default-layer';
@@ -838,7 +898,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                   opacity={opacity}
                 />
               );
-            })}
+            });
+            })()}
           </Layer>
 
           {/* Overlays layer - non-interactive */}
@@ -878,6 +939,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
             })}
             {currentUser && (
               <Circle
+                key={`current-cursor-${currentUser.uid}`}
                 ref={currentCursorRef}
                 x={0}
                 y={0}

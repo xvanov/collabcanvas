@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CollabCanvas - Color Theme Options</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', sans-serif;
+            background: #f8fafc;
+            color: #1e293b;
+            line-height: 1.6;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+            color: #0f172a;
+        }
+
+        .subtitle {
+            font-size: 1.125rem;
+            color: #64748b;
+            margin-bottom: 3rem;
+        }
+
+        .theme-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            margin-bottom: 3rem;
+        }
+
+        .theme-card {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+            transition: transform 0.2s, box-shadow 0.2s;
+        }
+
+        .theme-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+        }
+
+        .theme-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .theme-name {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .theme-personality {
+            font-size: 0.875rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .color-palette {
+            margin-bottom: 2rem;
+        }
+
+        .palette-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 1rem;
+        }
+
+        .color-row {
+            display: flex;
+            gap: 0.5rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .color-swatch {
+            flex: 1;
+            min-width: 80px;
+            height: 80px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: white;
+            text-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            position: relative;
+            cursor: pointer;
+            transition: transform 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.05);
+        }
+
+        .color-swatch.light-text {
+            color: #1e293b;
+            text-shadow: none;
+        }
+
+        .color-label {
+            position: absolute;
+            bottom: 4px;
+            left: 4px;
+            right: 4px;
+            font-size: 0.625rem;
+            text-align: center;
+            opacity: 0.9;
+        }
+
+        .component-showcase {
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .component-title {
+            font-size: 1rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: var(--secondary);
+            color: var(--secondary-foreground);
+            border: 1px solid var(--border);
+        }
+
+        .btn-secondary:hover {
+            background: var(--secondary-hover);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--primary);
+            border: 1px solid var(--primary);
+        }
+
+        .btn-outline:hover {
+            background: var(--primary);
+            color: white;
+        }
+
+        .input-group {
+            margin-bottom: 1rem;
+        }
+
+        .input-label {
+            font-size: 0.875rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+            display: block;
+        }
+
+        .input {
+            width: 100%;
+            padding: 0.5rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border);
+            font-size: 0.875rem;
+            background: var(--background);
+            color: var(--foreground);
+        }
+
+        .input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px var(--primary-alpha);
+        }
+
+        .card {
+            background: var(--card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 1rem;
+            margin-bottom: 1rem;
+        }
+
+        .card-title {
+            font-size: 0.875rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .card-text {
+            font-size: 0.875rem;
+            color: var(--muted-foreground);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.75rem;
+            font-weight: 500;
+        }
+
+        .badge-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .badge-warning {
+            background: var(--warning);
+            color: white;
+        }
+
+        .badge-error {
+            background: var(--error);
+            color: white;
+        }
+
+        .comparison-view {
+            margin-top: 4rem;
+            padding-top: 3rem;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .comparison-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 2rem;
+        }
+
+        .theme-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+            flex-wrap: wrap;
+        }
+
+        .theme-btn {
+            padding: 0.75rem 1.5rem;
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background: white;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+        }
+
+        .theme-btn.active {
+            border-color: var(--primary);
+            background: var(--primary);
+            color: white;
+        }
+
+        .comparison-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+
+        /* Theme 1: Professional Blue */
+        .theme-1 {
+            --primary: #2563eb;
+            --primary-foreground: #ffffff;
+            --primary-alpha: rgba(37, 99, 235, 0.1);
+            --secondary: #f1f5f9;
+            --secondary-foreground: #0f172a;
+            --secondary-hover: #e2e8f0;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --muted: #f8fafc;
+            --muted-foreground: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --accent: #3b82f6;
+        }
+
+        /* Theme 2: Modern Neutral */
+        .theme-2 {
+            --primary: #0f172a;
+            --primary-foreground: #ffffff;
+            --primary-alpha: rgba(15, 23, 42, 0.1);
+            --secondary: #f8fafc;
+            --secondary-foreground: #0f172a;
+            --secondary-hover: #f1f5f9;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --muted: #f8fafc;
+            --muted-foreground: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --accent: #6366f1;
+        }
+
+        /* Theme 3: Construction-Inspired */
+        .theme-3 {
+            --primary: #dc2626;
+            --primary-foreground: #ffffff;
+            --primary-alpha: rgba(220, 38, 38, 0.1);
+            --secondary: #fef2f2;
+            --secondary-foreground: #991b1b;
+            --secondary-hover: #fee2e2;
+            --background: #ffffff;
+            --foreground: #1c1917;
+            --card: #ffffff;
+            --border: #e7e5e4;
+            --muted: #fafaf9;
+            --muted-foreground: #78716c;
+            --success: #16a34a;
+            --warning: #ea580c;
+            --error: #dc2626;
+            --accent: #f97316;
+        }
+
+        /* Theme 4: Confident Accent */
+        .theme-4 {
+            --primary: #7c3aed;
+            --primary-foreground: #ffffff;
+            --primary-alpha: rgba(124, 58, 237, 0.1);
+            --secondary: #f5f3ff;
+            --secondary-foreground: #5b21b6;
+            --secondary-hover: #ede9fe;
+            --background: #ffffff;
+            --foreground: #0f172a;
+            --card: #ffffff;
+            --border: #e2e8f0;
+            --muted: #f8fafc;
+            --muted-foreground: #64748b;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --error: #ef4444;
+            --accent: #8b5cf6;
+        }
+
+        .theme-description {
+            font-size: 0.875rem;
+            color: #64748b;
+            margin-top: 1rem;
+            line-height: 1.6;
+        }
+
+        .best-for {
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .best-for-title {
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: #64748b;
+            margin-bottom: 0.5rem;
+        }
+
+        .best-for-list {
+            font-size: 0.875rem;
+            color: #475569;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🎨 CollabCanvas Color Theme Options</h1>
+        <p class="subtitle">Explore 4 complete theme directions. Each includes full color palettes and live UI component examples.</p>
+
+        <div class="theme-grid">
+            <!-- Theme 1: Professional Blue -->
+            <div class="theme-card theme-1">
+                <div class="theme-header">
+                    <div class="theme-name">Professional Blue</div>
+                    <div class="theme-personality">Trustworthy • Reliable • Professional</div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="palette-title">Primary Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #2563eb;">
+                            <span class="color-label">#2563eb</span>
+                        </div>
+                        <div class="color-swatch" style="background: #3b82f6;">
+                            <span class="color-label">#3b82f6</span>
+                        </div>
+                        <div class="color-swatch" style="background: #60a5fa;">
+                            <span class="color-label">#60a5fa</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Semantic Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10b981;">
+                            <span class="color-label">Success</span>
+                        </div>
+                        <div class="color-swatch" style="background: #f59e0b;">
+                            <span class="color-label">Warning</span>
+                        </div>
+                        <div class="color-swatch" style="background: #ef4444;">
+                            <span class="color-label">Error</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Neutrals</div>
+                    <div class="color-row">
+                        <div class="color-swatch light-text" style="background: #f8fafc;">
+                            <span class="color-label">#f8fafc</span>
+                        </div>
+                        <div class="color-swatch light-text" style="background: #e2e8f0;">
+                            <span class="color-label">#e2e8f0</span>
+                        </div>
+                        <div class="color-swatch" style="background: #64748b;">
+                            <span class="color-label">#64748b</span>
+                        </div>
+                        <div class="color-swatch" style="background: #0f172a;">
+                            <span class="color-label">#0f172a</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-showcase">
+                    <div class="component-title">Live Components</div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary">Primary Action</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-outline">Outline</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label">Project Name</label>
+                        <input type="text" class="input" placeholder="Kitchen Remodel" value="Kitchen Remodel">
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">BOM Generated</div>
+                        <div class="card-text">Material list with 24 items • Total: $3,450</div>
+                    </div>
+
+                    <div class="button-group">
+                        <span class="badge badge-success">Complete</span>
+                        <span class="badge badge-warning">In Progress</span>
+                        <span class="badge badge-error">Error</span>
+                    </div>
+                </div>
+
+                <div class="theme-description">
+                    Classic professional blue conveys trust and reliability—perfect for contractors who need confidence in their tools. The blue palette is familiar in professional software and creates a sense of stability.
+                </div>
+
+                <div class="best-for">
+                    <div class="best-for-title">Best For</div>
+                    <div class="best-for-list">Enterprise contractors • Teams requiring trust • Professional presentation to clients</div>
+                </div>
+            </div>
+
+            <!-- Theme 2: Modern Neutral -->
+            <div class="theme-card theme-2">
+                <div class="theme-header">
+                    <div class="theme-name">Modern Neutral</div>
+                    <div class="theme-personality">Clean • Minimal • Approachable</div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="palette-title">Primary Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #0f172a;">
+                            <span class="color-label">#0f172a</span>
+                        </div>
+                        <div class="color-swatch" style="background: #1e293b;">
+                            <span class="color-label">#1e293b</span>
+                        </div>
+                        <div class="color-swatch" style="background: #334155;">
+                            <span class="color-label">#334155</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Semantic Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10b981;">
+                            <span class="color-label">Success</span>
+                        </div>
+                        <div class="color-swatch" style="background: #f59e0b;">
+                            <span class="color-label">Warning</span>
+                        </div>
+                        <div class="color-swatch" style="background: #ef4444;">
+                            <span class="color-label">Error</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Neutrals</div>
+                    <div class="color-row">
+                        <div class="color-swatch light-text" style="background: #f8fafc;">
+                            <span class="color-label">#f8fafc</span>
+                        </div>
+                        <div class="color-swatch light-text" style="background: #e2e8f0;">
+                            <span class="color-label">#e2e8f0</span>
+                        </div>
+                        <div class="color-swatch" style="background: #64748b;">
+                            <span class="color-label">#64748b</span>
+                        </div>
+                        <div class="color-swatch" style="background: #0f172a;">
+                            <span class="color-label">#0f172a</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-showcase">
+                    <div class="component-title">Live Components</div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary">Primary Action</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-outline">Outline</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label">Project Name</label>
+                        <input type="text" class="input" placeholder="Kitchen Remodel" value="Kitchen Remodel">
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">BOM Generated</div>
+                        <div class="card-text">Material list with 24 items • Total: $3,450</div>
+                    </div>
+
+                    <div class="button-group">
+                        <span class="badge badge-success">Complete</span>
+                        <span class="badge badge-warning">In Progress</span>
+                        <span class="badge badge-error">Error</span>
+                    </div>
+                </div>
+
+                <div class="theme-description">
+                    Clean, minimal design that puts content first. The neutral palette reduces visual noise and lets the canvas and data take center stage. Modern and approachable without being intimidating.
+                </div>
+
+                <div class="best-for">
+                    <div class="best-for-title">Best For</div>
+                    <div class="best-for-list">Focus on content • Minimalist preference • Data-heavy workflows</div>
+                </div>
+            </div>
+
+            <!-- Theme 3: Construction-Inspired -->
+            <div class="theme-card theme-3">
+                <div class="theme-header">
+                    <div class="theme-name">Construction-Inspired</div>
+                    <div class="theme-personality">Bold • Grounded • Industry-Connected</div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="palette-title">Primary Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #dc2626;">
+                            <span class="color-label">#dc2626</span>
+                        </div>
+                        <div class="color-swatch" style="background: #f97316;">
+                            <span class="color-label">#f97316</span>
+                        </div>
+                        <div class="color-swatch" style="background: #fb923c;">
+                            <span class="color-label">#fb923c</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Semantic Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #16a34a;">
+                            <span class="color-label">Success</span>
+                        </div>
+                        <div class="color-swatch" style="background: #ea580c;">
+                            <span class="color-label">Warning</span>
+                        </div>
+                        <div class="color-swatch" style="background: #dc2626;">
+                            <span class="color-label">Error</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Neutrals</div>
+                    <div class="color-row">
+                        <div class="color-swatch light-text" style="background: #fafaf9;">
+                            <span class="color-label">#fafaf9</span>
+                        </div>
+                        <div class="color-swatch light-text" style="background: #e7e5e4;">
+                            <span class="color-label">#e7e5e4</span>
+                        </div>
+                        <div class="color-swatch" style="background: #78716c;">
+                            <span class="color-label">#78716c</span>
+                        </div>
+                        <div class="color-swatch" style="background: #1c1917;">
+                            <span class="color-label">#1c1917</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-showcase">
+                    <div class="component-title">Live Components</div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary">Primary Action</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-outline">Outline</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label">Project Name</label>
+                        <input type="text" class="input" placeholder="Kitchen Remodel" value="Kitchen Remodel">
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">BOM Generated</div>
+                        <div class="card-text">Material list with 24 items • Total: $3,450</div>
+                    </div>
+
+                    <div class="button-group">
+                        <span class="badge badge-success">Complete</span>
+                        <span class="badge badge-warning">In Progress</span>
+                        <span class="badge badge-error">Error</span>
+                    </div>
+                </div>
+
+                <div class="theme-description">
+                    Bold red and warm orange connect directly to construction industry aesthetics. The palette feels grounded and practical, resonating with contractors who work with their hands. Stands out from typical software.
+                </div>
+
+                <div class="best-for">
+                    <div class="best-for-title">Best For</div>
+                    <div class="best-for-list">Industry connection • Bold brand identity • Standing out from competitors</div>
+                </div>
+            </div>
+
+            <!-- Theme 4: Confident Accent -->
+            <div class="theme-card theme-4">
+                <div class="theme-header">
+                    <div class="theme-name">Confident Accent</div>
+                    <div class="theme-personality">Modern • Distinctive • Confident</div>
+                </div>
+
+                <div class="color-palette">
+                    <div class="palette-title">Primary Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #7c3aed;">
+                            <span class="color-label">#7c3aed</span>
+                        </div>
+                        <div class="color-swatch" style="background: #8b5cf6;">
+                            <span class="color-label">#8b5cf6</span>
+                        </div>
+                        <div class="color-swatch" style="background: #a78bfa;">
+                            <span class="color-label">#a78bfa</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Semantic Colors</div>
+                    <div class="color-row">
+                        <div class="color-swatch" style="background: #10b981;">
+                            <span class="color-label">Success</span>
+                        </div>
+                        <div class="color-swatch" style="background: #f59e0b;">
+                            <span class="color-label">Warning</span>
+                        </div>
+                        <div class="color-swatch" style="background: #ef4444;">
+                            <span class="color-label">Error</span>
+                        </div>
+                    </div>
+
+                    <div class="palette-title">Neutrals</div>
+                    <div class="color-row">
+                        <div class="color-swatch light-text" style="background: #f8fafc;">
+                            <span class="color-label">#f8fafc</span>
+                        </div>
+                        <div class="color-swatch light-text" style="background: #e2e8f0;">
+                            <span class="color-label">#e2e8f0</span>
+                        </div>
+                        <div class="color-swatch" style="background: #64748b;">
+                            <span class="color-label">#64748b</span>
+                        </div>
+                        <div class="color-swatch" style="background: #0f172a;">
+                            <span class="color-label">#0f172a</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="component-showcase">
+                    <div class="component-title">Live Components</div>
+                    
+                    <div class="button-group">
+                        <button class="btn btn-primary">Primary Action</button>
+                        <button class="btn btn-secondary">Secondary</button>
+                        <button class="btn btn-outline">Outline</button>
+                    </div>
+
+                    <div class="input-group">
+                        <label class="input-label">Project Name</label>
+                        <input type="text" class="input" placeholder="Kitchen Remodel" value="Kitchen Remodel">
+                    </div>
+
+                    <div class="card">
+                        <div class="card-title">BOM Generated</div>
+                        <div class="card-text">Material list with 24 items • Total: $3,450</div>
+                    </div>
+
+                    <div class="button-group">
+                        <span class="badge badge-success">Complete</span>
+                        <span class="badge badge-warning">In Progress</span>
+                        <span class="badge badge-error">Error</span>
+                    </div>
+                </div>
+
+                <div class="theme-description">
+                    Modern purple creates a distinctive, confident identity. The palette feels innovative and forward-thinking—perfect for an AI-first platform. Professional yet memorable, setting you apart from traditional construction software.
+                </div>
+
+                <div class="best-for">
+                    <div class="best-for-title">Best For</div>
+                    <div class="best-for-list">Modern brand • Innovation focus • Distinctive identity</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="comparison-view">
+            <h2 class="comparison-title">Side-by-Side Comparison</h2>
+            <p style="color: #64748b; margin-bottom: 2rem;">Click a theme below to see it applied to all components</p>
+            
+            <div class="theme-selector">
+                <button class="theme-btn active" onclick="applyTheme('theme-1')">Professional Blue</button>
+                <button class="theme-btn" onclick="applyTheme('theme-2')">Modern Neutral</button>
+                <button class="theme-btn" onclick="applyTheme('theme-3')">Construction-Inspired</button>
+                <button class="theme-btn" onclick="applyTheme('theme-4')">Confident Accent</button>
+            </div>
+
+            <div id="comparison-showcase" class="comparison-grid">
+                <!-- Comparison components will be dynamically styled -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        function applyTheme(themeClass) {
+            // Update active button
+            document.querySelectorAll('.theme-btn').forEach(btn => btn.classList.remove('active'));
+            event.target.classList.add('active');
+            
+            // Apply theme to comparison showcase
+            const showcase = document.getElementById('comparison-showcase');
+            showcase.className = 'comparison-grid ' + themeClass;
+            
+            // Generate comparison components
+            showcase.innerHTML = `
+                <div class="card">
+                    <div class="card-title">Button Examples</div>
+                    <div class="button-group">
+                        <button class="btn btn-primary">Generate BOM</button>
+                        <button class="btn btn-secondary">Save Draft</button>
+                        <button class="btn btn-outline">Cancel</button>
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Form Input</div>
+                    <div class="input-group">
+                        <label class="input-label">Material Quantity</label>
+                        <input type="text" class="input" placeholder="Enter quantity" value="24">
+                    </div>
+                </div>
+                <div class="card">
+                    <div class="card-title">Status Badges</div>
+                    <div class="button-group">
+                        <span class="badge badge-success">Complete</span>
+                        <span class="badge badge-warning">Pending</span>
+                        <span class="badge badge-error">Error</span>
+                    </div>
+                </div>
+            `;
+        }
+
+        // Initialize with first theme
+        applyTheme('theme-1');
+    </script>
+</body>
+</html>

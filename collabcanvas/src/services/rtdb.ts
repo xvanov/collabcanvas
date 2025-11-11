@@ -23,6 +23,7 @@ export interface PresenceData {
   };
   lastSeen: object | number; // serverTimestamp or timestamp
   isActive: boolean;
+  currentView?: 'scope' | 'time' | 'space' | 'money';
 }
 
 /**
@@ -58,6 +59,21 @@ export const setPresence = async (
   
   // Auto-cleanup on disconnect
   onDisconnect(presenceRef).remove();
+};
+
+/**
+ * Update user's current view
+ */
+export const updateCurrentView = async (
+  userId: string,
+  currentView: 'scope' | 'time' | 'space' | 'money'
+): Promise<void> => {
+  const presenceRef = ref(rtdb, `presence/${userId}`);
+  
+  await update(presenceRef, {
+    currentView,
+    'lastSeen': serverTimestamp(),
+  });
 };
 
 /**

@@ -1,0 +1,335 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>1</epicId>
+    <storyId>2</storyId>
+    <title>Home Page & Project Management System</title>
+    <status>drafted</status>
+    <generatedAt>2025-01-27</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/1-2-home-page-project-management-system.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>As a contractor</asA>
+    <iWant>I want a home page where I can manage all my projects with status tracking</iWant>
+    <soThat>so that I can organize multiple projects and track their progress through the estimation lifecycle</soThat>
+    <tasks>
+      <task id="1" ac="1,3" title="Implement Project Dashboard Component">
+        <subtask>Create `pages/Dashboard.tsx` component as home page</subtask>
+        <subtask>Implement project list display with status indicators</subtask>
+        <subtask>Add project card/item component for each project</subtask>
+        <subtask>Implement project click navigation to four-view navigation</subtask>
+        <subtask>Add loading state and empty state handling</subtask>
+        <subtask>Add unit tests for Dashboard component</subtask>
+      </task>
+      <task id="2" ac="1,2,4" title="Implement Project Store and Service">
+        <subtask>Create `store/projectStore.ts` with Zustand store</subtask>
+        <subtask>Create `services/projectService.ts` for Firebase operations</subtask>
+        <subtask>Implement `getUserProjects(userId)` to fetch user's projects</subtask>
+        <subtask>Implement `createProject(name, description)` to create new project</subtask>
+        <subtask>Implement `updateProjectStatus(projectId, status)` to update status</subtask>
+        <subtask>Add real-time project list updates using Firestore listeners</subtask>
+        <subtask>Add unit tests for projectService functions</subtask>
+        <subtask>Add integration tests for Firestore operations</subtask>
+      </task>
+      <task id="3" ac="2" title="Implement Project Creation Flow">
+        <subtask>Create "New Project" button/modal in Dashboard</subtask>
+        <subtask>Implement project creation form (name, description)</subtask>
+        <subtask>Set default status to "Estimating" on creation</subtask>
+        <subtask>Add validation for required fields</subtask>
+        <subtask>Handle creation success and error states</subtask>
+        <subtask>Add E2E tests for project creation flow</subtask>
+      </task>
+      <task id="4" ac="4,5,6" title="Implement Project Status Management">
+        <subtask>Implement status change UI (dropdown/select) on project cards</subtask>
+        <subtask>Add status change handler that updates Firestore</subtask>
+        <subtask>Implement profit/loss calculation logic for "Completed Profitable/Unprofitable"</subtask>
+        <subtask>Check if actual costs exist in BOM document</subtask>
+        <subtask>Calculate profit/loss: `(actualCosts - estimateTotal)`</subtask>
+        <subtask>Set status to "Completed - Unknown" if no cost tracking provided</subtask>
+        <subtask>Add unit tests for profit/loss calculation logic</subtask>
+        <subtask>Add E2E tests for status transitions</subtask>
+      </task>
+      <task id="5" ac="7" title="Implement Project Search and Filter">
+        <subtask>Add search input field to Dashboard</subtask>
+        <subtask>Implement search by project name/description</subtask>
+        <subtask>Add filter dropdown for status filtering</subtask>
+        <subtask>Implement filter by date (created date, updated date)</subtask>
+        <subtask>Update project list display based on search/filter criteria</subtask>
+        <subtask>Add unit tests for search/filter logic</subtask>
+      </task>
+      <task id="6" ac="8" title="Implement Project Deletion">
+        <subtask>Add delete button/action to project cards</subtask>
+        <subtask>Implement confirmation dialog before deletion</subtask>
+        <subtask>Implement `deleteProject(projectId)` in projectService</subtask>
+        <subtask>Delete project document and all subcollections from Firestore</subtask>
+        <subtask>Handle deletion success and error states</subtask>
+        <subtask>Add E2E tests for project deletion with confirmation</subtask>
+      </task>
+      <task id="7" ac="9" title="Implement Authentication Guards">
+        <subtask>Add Firebase Auth guard to Dashboard route</subtask>
+        <subtask>Redirect unauthenticated users to login page</subtask>
+        <subtask>Protect all project routes with auth guard</subtask>
+        <subtask>Add unit tests for auth guard logic</subtask>
+      </task>
+      <task id="8" ac="10" title="Implement Project Access Control">
+        <subtask>Implement Firestore security rules for project access</subtask>
+        <subtask>Check `ownerId` and `collaborators` array in security rules</subtask>
+        <subtask>Add access denied error handling in projectService</subtask>
+        <subtask>Display access denied message to user</subtask>
+        <subtask>Add integration tests for security rules</subtask>
+        <subtask>Add E2E tests for unauthorized access attempts</subtask>
+      </task>
+      <task id="9" ac="11,12" title="Implement Project Sharing">
+        <subtask>Add "Share Project" button/action to project cards</subtask>
+        <subtask>Create share modal with invite link generation</subtask>
+        <subtask>Implement `shareProject(projectId, userId, role)` in projectService</subtask>
+        <subtask>Add user to `collaborators` array with role (editor/viewer)</subtask>
+        <subtask>Implement role-based access control in security rules</subtask>
+        <subtask>Add viewer role restrictions (read-only access)</subtask>
+        <subtask>Add editor role permissions (read and write access)</subtask>
+        <subtask>Add E2E tests for project sharing flow</subtask>
+      </task>
+      <task id="10" ac="13,14,15" title="Implement Error Handling">
+        <subtask>Create centralized error handler utility</subtask>
+        <subtask>Implement network error detection and retry logic</subtask>
+        <subtask>Display user-friendly error messages for all error scenarios</subtask>
+        <subtask>Add retry button for network failures</subtask>
+        <subtask>Preserve form data on creation failure</subtask>
+        <subtask>Handle offline scenarios gracefully</subtask>
+        <subtask>Add unit tests for error handling logic</subtask>
+        <subtask>Add E2E tests for error scenarios</subtask>
+      </task>
+      <task id="11" title="Implement Firestore Data Model">
+        <subtask>Create Project document structure in Firestore</subtask>
+        <subtask>Add fields: name, description, status, ownerId, collaborators, createdAt, updatedAt</subtask>
+        <subtask>Implement Firestore indexes for efficient queries</subtask>
+        <subtask>Add Firestore security rules for project collection</subtask>
+        <subtask>Test Firestore operations with Firebase emulator</subtask>
+      </task>
+      <task id="12" title="Implement Real-time Project List Updates">
+        <subtask>Set up Firestore listener for user's projects</subtask>
+        <subtask>Update projectStore when projects change in real-time</subtask>
+        <subtask>Handle listener cleanup on component unmount</subtask>
+        <subtask>Test real-time updates with multiple users</subtask>
+        <subtask>Add integration tests for real-time sync</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>1. **Project List Display**
+   - **Given** I am logged into CollabCanvas
+   - **When** I view the home page
+   - **Then** I see a list of all my projects with status indicators (Estimating, Bid Ready, Bid Lost, Executing, Completed Profitable, Completed Unprofitable, Completed - Unknown)
+
+2. **Project Creation**
+   - **Given** I am logged into CollabCanvas
+   - **When** I click "New Project"
+   - **Then** I can create a project with name and description, and it appears in my project list with status "Estimating"
+
+3. **Project Navigation**
+   - **Given** I am logged into CollabCanvas
+   - **When** I click on a project
+   - **Then** I enter the project and see four-view navigation (Scope | Time | Space | Money)
+
+4. **Status Update**
+   - **Given** I am logged into CollabCanvas
+   - **When** I change a project's status on the home page
+   - **Then** The status updates immediately and persists
+
+5. **Profit/Loss Calculation**
+   - **Given** I am logged into CollabCanvas
+   - **When** I mark a project "Completed Profitable" or "Completed Unprofitable"
+   - **Then** The system automatically calculates profit/loss based on actual costs vs. estimate (if cost tracking provided)
+
+6. **Unknown Status**
+   - **Given** I am logged into CollabCanvas
+   - **When** I mark a project complete without cost tracking
+   - **Then** The status becomes "Completed - Unknown"
+
+7. **Search/Filter**
+   - **Given** I am logged into CollabCanvas
+   - **When** I search or filter projects
+   - **Then** The project list updates to show matching projects
+
+8. **Project Deletion**
+   - **Given** I am logged into CollabCanvas
+   - **When** I delete a project
+   - **Then** I am asked for confirmation and the project is permanently deleted
+
+9. **Access Control - Not Logged In**
+   - **Given** I am not logged in
+   - **When** I try to access any projects
+   - **Then** I cannot access any projects and am redirected to login
+
+10. **Access Control - Unauthorized Project**
+    - **Given** I am logged into CollabCanvas
+    - **When** I try to access a project I don't own or haven't been invited to
+    - **Then** I receive an access denied error and cannot view the project
+
+11. **Project Sharing - Viewer Role**
+    - **Given** I am logged into CollabCanvas
+    - **When** I share a project with another user as "Viewer"
+    - **Then** They can view but cannot modify the project
+
+12. **Project Sharing - Editor Role**
+    - **Given** I am logged into CollabCanvas
+    - **When** I share a project with another user as "Editor"
+    - **Then** They can view and modify the project
+
+13. **Error Handling - Network Error**
+    - **Given** I am logged into CollabCanvas
+    - **When** A network error occurs while loading projects
+    - **Then** I see a clear error message with retry option
+
+14. **Error Handling - Project Creation Failure**
+    - **Given** I am logged into CollabCanvas
+    - **When** Project creation fails
+    - **Then** I see a clear error message and can retry without losing entered data
+
+15. **Error Handling - Project Deletion Failure**
+    - **Given** I am logged into CollabCanvas
+    - **When** Project deletion fails
+    - **Then** I see a clear error message and the project is not deleted</acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/PRD.md" title="CollabCanvas - Product Requirements Document" section="Project Management System">
+        Multi-project support with home page dashboard, project creation/deletion, status tracking (7 status types), project sharing with Editor/Viewer roles, search and filter capabilities. Critical priority after bug fixes.
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Home Page &amp; Project Dashboard">
+        Component: `pages/Dashboard.tsx`, Store: `store/projectStore.ts`, Service: `services/projectService.ts`, Firestore: `/projects/{projectId}` collection. Features: Project CRUD, status tracking, sharing.
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Security Architecture">
+        Firebase Auth with Google OAuth, Firestore rules for project access (owner or collaborator), write access (owner or editor role), read access (owner, editor, or viewer role).
+      </doc>
+      <doc path="docs/architecture.md" title="CollabCanvas - Architecture Document" section="Error Handling">
+        Centralized error handler with user feedback pattern for consistent error handling across all epics.
+      </doc>
+      <doc path="docs/tech-spec-epic-1.md" title="Epic Technical Specification: MVP" section="Story 1.2">
+        Project document structure, status enum, collaborators array, state management pattern (Zustand store + service layer), routing pattern, security pattern, error handling pattern, profit/loss calculation pattern.
+      </doc>
+      <doc path="docs/epics.md" title="CollabCanvas - Epic Breakdown" section="Story 1.2: Home Page &amp; Project Management System">
+        Covers FR-7.1, FR-7.2, FR-7.3, FR-6.3. Complete acceptance criteria breakdown with 15 acceptance criteria covering project list, creation, navigation, status management, sharing, access control, and error handling.
+      </doc>
+    </docs>
+    <code>
+      <artifact path="collabcanvas/src/store/canvasStore.ts" kind="store" symbol="canvasStore" reason="Existing Zustand store pattern to follow for projectStore.ts implementation" lines="153-200">
+        Existing Zustand store implementation showing state management patterns, real-time sync, and store structure. Key patterns: `create&lt;State&gt;((set, get) =&gt; {...})` for store definition, state management with `set()` and `get()`, real-time sync callbacks, and action handlers.
+      </artifact>
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="firestore operations" reason="Firebase Firestore operations pattern to follow for projectService.ts" lines="114-270">
+        Firestore service layer showing Firebase operations, document CRUD patterns, and real-time listener setup. Key patterns: `createShape()` (lines 114-192) for document creation, `subscribeToShapes()` (lines 246-269) for real-time listeners, `updateShapeProperty()` (lines 215-234) for updates, `deleteShape()` (lines 235-245) for deletions. Use `doc()`, `setDoc()`, `updateDoc()`, `deleteDoc()`, `onSnapshot()` from Firebase SDK.
+      </artifact>
+      <artifact path="collabcanvas/src/services/storage.ts" kind="service" symbol="storage operations" reason="Firebase Storage operations for project file management" lines="13-91">
+        Storage service showing Firebase Storage operations for project-related file uploads and deletions. Key patterns: `uploadConstructionPlanImage()` (lines 13-67) for file uploads with validation, `deleteConstructionPlanImage()` (lines 72-91) for deletions. Use `ref()`, `uploadBytes()`, `getDownloadURL()`, `deleteObject()` from Firebase Storage SDK.
+      </artifact>
+      <artifact path="collabcanvas/src/services/pricingService.ts" kind="service" symbol="pricingService" reason="Service layer pattern with error handling and retry logic" lines="17-80">
+        Service layer implementation showing error handling patterns, retry logic, and async operation structure. Key patterns: `updateBOMWithPrices()` (lines 17-80) demonstrates error handling with try/catch, timeout handling with `withTimeout()` wrapper (lines 8-15), error state management, and retry patterns. Use `httpsCallable()` for Cloud Function calls.
+      </artifact>
+      <artifact path="collabcanvas/firestore.rules" kind="security rules" symbol="Firestore security rules" reason="Existing security rules pattern to extend for projects collection" lines="1-96">
+        Firestore security rules showing authentication requirements, schema validation, and access control patterns to extend for `/projects/{projectId}` collection. Key patterns: `request.auth != null` for authentication checks (lines 7, 12, 15, etc.), `request.resource.data` validation for create/update operations (lines 15-40), `resource.data` checks for update operations (lines 43-66), and role-based access control patterns. Extend `match /projects/{projectId}` section following similar patterns.
+      </artifact>
+      <artifact path="collabcanvas/src/components/Canvas.tsx" kind="component" symbol="Canvas component" reason="Component structure and routing patterns" lines="1-100">
+        Main component showing React component structure, routing integration, and Firebase integration patterns. Key patterns: `forwardRef` pattern (line 46), Zustand store hooks (lines 73-96), `useEffect` for side effects (lines 99+), component state management, and Firebase integration. Follow similar structure for Dashboard component.
+      </artifact>
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="react" version="^19.2.0"/>
+        <package name="react-dom" version="^19.2.0"/>
+        <package name="react-router-dom" version="^7.9.5"/>
+        <package name="zustand" version="^5.0.8"/>
+        <package name="firebase" version="^12.4.0"/>
+        <package name="konva" version="^10.0.2"/>
+        <package name="react-konva" version="^19.0.10"/>
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>**Project Data Model:**
+- Firestore collection: `/projects/{projectId}`
+- Document structure: `{name, description, status, ownerId, collaborators[], createdAt, updatedAt, createdBy, updatedBy}`
+- Status enum: `'estimating' | 'bid-ready' | 'bid-lost' | 'executing' | 'completed-profitable' | 'completed-unprofitable' | 'completed-unknown'`
+- Collaborators array: `Array&lt;{userId: string, role: 'editor' | 'viewer'}&gt;`</constraint>
+    <constraint>**State Management Pattern:**
+- Zustand store: `projectStore.ts` for project list and current project state
+- Service layer: `projectService.ts` for Firebase operations
+- Real-time sync: Firestore listeners for live project updates</constraint>
+    <constraint>**Routing Pattern:**
+- Home page route: `/` (Dashboard)
+- Project route: `/projects/:projectId` (with four-view navigation)
+- React Router for client-side navigation</constraint>
+    <constraint>**Security Pattern:**
+- Firebase Auth guards: Protect routes with authentication check
+- Firestore security rules: Enforce project-level access control
+- Access control logic: Check `ownerId` or `collaborators` array before operations</constraint>
+    <constraint>**Error Handling Pattern:**
+- Centralized error handler: `utils/errorHandler.ts` (to be created)
+- Standardized error format: `{code, message, details?}`
+- User-friendly error messages: Display clear, actionable messages
+- Retry logic: Implement retry for network failures
+- Offline handling: Graceful degradation for offline scenarios</constraint>
+    <constraint>**Profit/Loss Calculation Pattern:**
+- Trigger: When status changes to "Completed Profitable" or "Completed Unprofitable"
+- Data source: BOM document with actual costs (if provided)
+- Calculation: `profitLoss = actualCosts - estimateTotal`
+- Status logic: If profit &gt; 0 → "Completed Profitable", else → "Completed Unprofitable"
+- Fallback: If no actual costs → "Completed - Unknown"</constraint>
+    <constraint>**Testing Standards:**
+- Unit tests: Service layer functions (projectService.ts), calculation logic (profit/loss)
+- Integration tests: Firebase operations, Firestore security rules, real-time listeners
+- E2E tests: Project creation, status changes, sharing, deletion, error scenarios
+- Security tests: Access control, unauthorized access attempts</constraint>
+  </constraints>
+  <interfaces>
+    <interface name="Project Service API" kind="TypeScript interface" signature="interface ProjectService {
+  getUserProjects(userId: string): Promise&lt;Project[]&gt;;
+  createProject(name: string, description: string): Promise&lt;Project&gt;;
+  updateProjectStatus(projectId: string, status: ProjectStatus): Promise&lt;void&gt;;
+  deleteProject(projectId: string): Promise&lt;void&gt;;
+  shareProject(projectId: string, userId: string, role: 'editor' | 'viewer'): Promise&lt;void&gt;;
+}" path="docs/architecture.md"/>
+    <interface name="Project Document" kind="Firestore document" signature="interface Project {
+  name: string;
+  description: string;
+  status: 'estimating' | 'bid-ready' | 'bid-lost' | 'executing' | 'completed-profitable' | 'completed-unprofitable' | 'completed-unknown';
+  ownerId: string;
+  collaborators: Array&lt;{userId: string, role: 'editor' | 'viewer'}&gt;;
+  createdAt: Timestamp;
+  updatedAt: Timestamp;
+  createdBy: string;
+  updatedBy: string;
+}" path="docs/tech-spec-epic-1.md"/>
+    <interface name="Firestore Security Rules" kind="Firestore rules" signature="match /projects/{projectId} {
+  allow read: if request.auth != null &amp;&amp; (resource.data.ownerId == request.auth.uid || request.auth.uid in resource.data.collaborators.map(c =&gt; c.userId));
+  allow create: if request.auth != null &amp;&amp; request.resource.data.ownerId == request.auth.uid;
+  allow update: if request.auth != null &amp;&amp; (resource.data.ownerId == request.auth.uid || (request.auth.uid in resource.data.collaborators.map(c =&gt; c.userId) &amp;&amp; getCollaboratorRole(request.auth.uid) == 'editor'));
+  allow delete: if request.auth != null &amp;&amp; resource.data.ownerId == request.auth.uid;
+}" path="collabcanvas/firestore.rules"/>
+  </interfaces>
+  <tests>
+    <standards>Testing follows established patterns from Story 1.1. Unit tests for service layer functions and calculation logic. Integration tests for Firebase operations, Firestore security rules, and real-time listeners. E2E tests for user flows: project creation, status changes, sharing, deletion, error scenarios. Security tests for access control and unauthorized access attempts. Testing frameworks: Vitest for unit/integration tests, Playwright for E2E tests.</standards>
+    <locations>Unit tests: `collabcanvas/src/store/*.test.ts`, `collabcanvas/src/services/*.test.ts`
+Integration tests: `collabcanvas/src/services/*.integration.test.ts`
+E2E tests: `collabcanvas/tests/e2e/*.spec.ts`</locations>
+    <ideas>
+      <test acId="AC1">Test project list displays all user's projects with correct status indicators. Test empty state when no projects exist. Test loading state during fetch.</test>
+      <test acId="AC2">Test project creation form validation. Test successful project creation. Test project appears in list with "Estimating" status.</test>
+      <test acId="AC3">Test clicking project navigates to project page with four-view navigation tabs visible.</test>
+      <test acId="AC4">Test status dropdown updates project status. Test status persists after page reload. Test real-time status updates across multiple users.</test>
+      <test acId="AC5">Test profit/loss calculation when marking "Completed Profitable" with actual costs. Test profit/loss calculation when marking "Completed Unprofitable" with actual costs.</test>
+      <test acId="AC6">Test status becomes "Completed - Unknown" when marking complete without cost tracking.</test>
+      <test acId="AC7">Test search filters projects by name/description. Test filter dropdown filters by status. Test date filtering.</test>
+      <test acId="AC8">Test delete button shows confirmation dialog. Test deletion after confirmation. Test cancellation prevents deletion.</test>
+      <test acId="AC9">Test unauthenticated user redirected to login. Test protected routes require authentication.</test>
+      <test acId="AC10">Test unauthorized user receives access denied error. Test user cannot access project they don't own or aren't invited to.</test>
+      <test acId="AC11">Test viewer role can view but cannot modify project. Test viewer restrictions in UI and Firestore rules.</test>
+      <test acId="AC12">Test editor role can view and modify project. Test editor permissions in UI and Firestore rules.</test>
+      <test acId="AC13">Test network error displays error message. Test retry button retries failed request.</test>
+      <test acId="AC14">Test project creation failure displays error message. Test form data preserved on failure.</test>
+      <test acId="AC15">Test project deletion failure displays error message. Test project not deleted on failure.</test>
+    </ideas>
+  </tests>
+</story-context>
+

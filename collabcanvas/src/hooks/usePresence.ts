@@ -1,9 +1,11 @@
 import { useEffect, useCallback, useRef } from 'react';
+import { useLocation } from 'react-router-dom';
 import { useAuth } from './useAuth';
 import { useCanvasStore } from '../store/canvasStore';
 import { 
   setPresence, 
   updateCursor, 
+  updateCurrentView,
   removePresence, 
   subscribeToPresence,
   type PresenceData 
@@ -24,11 +26,13 @@ import type { Presence } from '../types';
  */
 export const usePresence = () => {
   const { user } = useAuth();
+  const location = useLocation();
   const { users, setUsers } = useCanvasStore();
   const unsubscribeRef = useRef<(() => void) | null>(null);
   const isPresenceSetRef = useRef(false);
   const userIdRef = useRef<string | null>(null);
   const lastSentRef = useRef<{ x: number; y: number } | null>(null);
+  const lastViewRef = useRef<string | null>(null);
   const otherUsersUpdateRef = useRef(
     throttle((users: Presence[]) => {
       setUsers(users);
@@ -42,6 +46,35 @@ export const usePresence = () => {
   // Emergency: Disable Firebase RTDB for multi-user scenarios to prevent emulator overload
   const isMultiUserMode = users.size > 1;
   const shouldDisableRTDB = isMultiUserMode && import.meta.env.DEV;
+
+  // Extract current view from pathname
+  const getCurrentView = useCallback((): 'scope' | 'time' | 'space' | 'money' | null => {
+    const pathname = location.pathname;
+    if (pathname.includes('/scope')) return 'scope';
+    if (pathname.includes('/time')) return 'time';
+    if (pathname.includes('/space')) return 'space';
+    if (pathname.includes('/money')) return 'money';
+    return null;
+  }, [location.pathname]);
+
+  // Update currentView when route changes
+  useEffect(() => {
+    if (!user || !isPresenceSetRef.current) return;
+    
+    const currentView = getCurrentView();
+    if (!currentView || currentView === lastViewRef.current) return;
+    
+    lastViewRef.current = currentView;
+    
+    // Emergency: Skip Firebase RTDB in multi-user dev mode
+    if (shouldDisableRTDB) {
+      return;
+    }
+    
+    updateCurrentView(user.uid, currentView).catch((error) => {
+      console.error('Failed to update current view:', error);
+    });
+  }, [user, getCurrentView, shouldDisableRTDB]);
   
   if (shouldDisableRTDB) {
     console.warn('🚫 Multi-user mode detected - disabling Firebase RTDB to prevent emulator overload');
@@ -189,6 +222,7 @@ export const usePresence = () => {
         return {
           ...presence,
           lastSeen: lastSeenMillis,
+          currentView: presence.currentView, // Preserve currentView field
         };
       });
 
