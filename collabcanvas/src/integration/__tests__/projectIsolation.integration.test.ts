@@ -14,15 +14,15 @@ vi.mock('../../services/firebase', () => ({
 }));
 
 vi.mock('../../services/firestore', () => ({
-  subscribeToShapesChanges: vi.fn((projectId: string, callback: any) => () => {}),
-  subscribeToLayersChanges: vi.fn((projectId: string, callback: any) => () => {}),
-  subscribeToBoardState: vi.fn((projectId: string, callback: any) => () => {}),
-  createShape: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
-  updateShapePosition: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
-  createLayer: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
-  updateLayer: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
-  deleteLayer: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
-  initializeBoard: vi.fn((projectId: string, ...args: any[]) => Promise.resolve()),
+  subscribeToShapesChanges: vi.fn((_projectId: string, _callback: () => void) => () => {}),
+  subscribeToLayersChanges: vi.fn((_projectId: string, _callback: () => void) => () => {}),
+  subscribeToBoardState: vi.fn((_projectId: string, _callback: () => void) => () => {}),
+  createShape: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
+  updateShapePosition: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
+  createLayer: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
+  updateLayer: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
+  deleteLayer: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
+  initializeBoard: vi.fn((_projectId: string, ..._args: unknown[]) => Promise.resolve()),
 }));
 
 describe('Project Isolation - Integration Tests', () => {

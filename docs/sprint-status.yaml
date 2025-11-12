@@ -46,7 +46,7 @@ development_status:
 
   # Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support
   epic-2: contexted
-  2-1-project-isolation-canvas-bom-per-project: review
+  2-1-project-isolation-canvas-bom-per-project: done
   2-2-counter-tool-fixture-counting: backlog
   2-3-multi-floor-project-support: backlog
   epic-2-retrospective: optional

@@ -1,5 +1,5 @@
 import { faker } from '@faker-js/faker';
-import type { Shape, ShapeType } from '../../../../src/types';
+import type { Shape } from '../../../../src/types';
 
 /**
  * Shape data factory for test data generation

@@ -1487,15 +1487,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       //     deleteBackgroundImageFromFirestore(state.currentUser.uid, '').catch((error) => {
       //       console.error('❌ Failed to delete background image from Firestore:', error);
       //     });
-          
-          // Delete from Storage if URL exists
-          if (previousImageUrl) {
-            deleteConstructionPlanImage(previousImageUrl).catch((error) => {
-              console.error('❌ Failed to delete background image from Storage:', error);
-              // Don't throw - Storage deletion failure shouldn't block Firestore deletion
-            });
-          }
-        }
+      //     
+      //     // Delete from Storage if URL exists
+      //     if (previousImageUrl) {
+      //       deleteConstructionPlanImage(previousImageUrl).catch((error) => {
+      //         console.error('❌ Failed to delete background image from Storage:', error);
+      //         // Don't throw - Storage deletion failure shouldn't block Firestore deletion
+      //       });
+      //     }
+      //   }
+      // }
+      
+      // Delete from Storage if URL exists (even without Firestore sync)
+      if (!image && state.canvasScale.backgroundImage?.url) {
+        const previousImageUrl = state.canvasScale.backgroundImage.url;
+        deleteConstructionPlanImage(previousImageUrl).catch((error) => {
+          console.error('❌ Failed to delete background image from Storage:', error);
+        });
       }
       
       return newState;

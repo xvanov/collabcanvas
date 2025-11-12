@@ -47,7 +47,7 @@ export const test = base.extend<TestFixtures>({
     await useFixture(factory);
   },
 
-  authenticatedProject: async ({ page, projectFactory, userFactory }, use) => {
+  authenticatedProject: async ({ page, projectFactory, userFactory }, _use) => {
     // Setup: Create user and project
     const user = userFactory.createUser();
     const project = projectFactory.createProject({ ownerId: user.id });

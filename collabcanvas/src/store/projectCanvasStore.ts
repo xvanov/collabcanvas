@@ -5,7 +5,7 @@
 
 import { create, useStore } from 'zustand';
 import type { StoreApi } from 'zustand';
-import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, SnapIndicator, AICommand, AIStatus, BackgroundImage, ScaleLine, UnitType, DialogueContext, DialogueStage, MaterialRequest, BillOfMaterials, MaterialCalculation, UserMaterialPreferences } from '../types';
+import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, CanvasAction, CreateActionData, UpdateActionData, MoveActionData, BulkDuplicateActionData, BulkMoveActionData, BulkRotateActionData, Layer, AlignmentType, SnapIndicator, AICommand, AIStatus, BackgroundImage, ScaleLine, UnitType, DialogueContext, DialogueStage, BillOfMaterials, MaterialCalculation, UserMaterialPreferences } from '../types';
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService } from '../services/historyService';
@@ -1090,7 +1090,6 @@ export function releaseProjectCanvasStore(projectId: string): void {
 let defaultStoreInstance: StoreApi<CanvasState> | null = null;
 
 // @ts-expect-error - Intentionally unused, kept for potential future use
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 function _getDefaultStore(): StoreApi<CanvasState> {
   if (!defaultStoreInstance) {
     // Create a store with the default state
@@ -1107,7 +1106,6 @@ function _getDefaultStore(): StoreApi<CanvasState> {
 
 // Stable equality function for Maps and Arrays (currently unused, kept for future use if Zustand adds custom equality support)
 // @ts-expect-error - Intentionally unused, kept for future use
-// eslint-disable-next-line @typescript-eslint/no-unused-vars
 const _mapArrayEquality = <T,>(a: T, b: T): boolean => {
   if (a === b) return true;
   if (a instanceof Map && b instanceof Map) {
@@ -1120,7 +1118,7 @@ const _mapArrayEquality = <T,>(a: T, b: T): boolean => {
 };
 
 // Cache for default selector results to prevent infinite loops
-const defaultSelectorCache = new WeakMap<(state: CanvasState) => any, any>();
+const defaultSelectorCache = new WeakMap<(state: CanvasState) => unknown, unknown>();
 
 const canvasStoreApi = useCanvasStore as unknown as StoreApi<CanvasState>;
 
@@ -1164,6 +1162,21 @@ export function useScopedCanvasStore<T>(
   selector: (state: CanvasState) => T,
   _equalityFn?: (a: T, b: T) => boolean
 ): T {
+  // Always call hooks in the same order - useMemo first, then useStore
+  const store = useMemo<StoreApi<CanvasState>>(
+    () => {
+      if (!projectId) {
+        // Return global store API when no projectId
+        return canvasStoreApi;
+      }
+      return getProjectCanvasStore(projectId);
+    },
+    [projectId]
+  );
+  
+  // Always call useStore hook - never conditionally
+  const storeValue = useStore(store, selector);
+  
   // When projectId is undefined, use cached values to prevent infinite loops
   // This matches the behavior of useProjectCanvasStore
   if (!projectId) {
@@ -1178,18 +1191,13 @@ export function useScopedCanvasStore<T>(
     return result;
   }
   
-  const store = useMemo<StoreApi<CanvasState>>(
-    () => getProjectCanvasStore(projectId),
-    [projectId]
-  );
-  
   // Use reference equality by default (no custom equality function)
   // This prevents infinite loops by only re-rendering when the selected value reference changes
   // For Maps/Arrays, reference equality is correct (they're compared by reference)
   // For functions/primitives, reference equality is also correct
   // Note: Zustand's useStore doesn't support custom equality functions in this version
   // We rely on Zustand's default reference equality comparison
-  return useStore(store, selector);
+  return storeValue;
 }
 
 export function useScopedCanvasStoreApi(projectId: string | undefined): StoreApi<CanvasState> {
