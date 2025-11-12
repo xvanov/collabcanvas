@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useAuth } from './useAuth';
 import { 
   createLayer as createLayerInFirestore, 
@@ -40,24 +40,24 @@ function convertFirestoreLayer(firestoreLayer: FirestoreLayer): Layer {
  * Hook for managing Firestore layers synchronization
  * Provides real-time sync with optimistic updates
  */
-export function useLayers() {
+export function useLayers(projectId: string | undefined) {
   const { user } = useAuth();
-  const {
-    layers,
-    createLayer: createLayerInStore,
-    updateLayer: updateLayerInStore,
-    deleteLayer: deleteLayerInStore,
-    setLayers,
-    setActiveLayer,
-    activeLayerId,
-  } = useCanvasStore();
+  
+  // Use project-scoped store when projectId is provided, otherwise use global store
+  const layers = useScopedCanvasStore(projectId, (state) => state.layers);
+  const createLayerInStore = useScopedCanvasStore(projectId, (state) => state.createLayer);
+  const updateLayerInStore = useScopedCanvasStore(projectId, (state) => state.updateLayer);
+  const deleteLayerInStore = useScopedCanvasStore(projectId, (state) => state.deleteLayer);
+  const setLayers = useScopedCanvasStore(projectId, (state) => state.setLayers);
+  const setActiveLayer = useScopedCanvasStore(projectId, (state) => state.setActiveLayer);
+  const activeLayerId = useScopedCanvasStore(projectId, (state) => state.activeLayerId);
 
   // Stable refs to avoid resubscribing listeners on state changes
   const userRef = useRef(user);
   const layersRef = useRef(layers);
   
-  // Track if we're currently creating a layer to prevent initialization logic from overriding
-  const isCreatingLayerRef = useRef(false);
+  // Track the layer ID being created to prevent initialization logic from overriding
+  const creatingLayerIdRef = useRef<string | null>(null);
 
   useEffect(() => {
     userRef.current = user;
@@ -71,8 +71,8 @@ export function useLayers() {
    * Create a new layer with optimistic updates and offline handling
    */
   const createLayer = useCallback(async (name: string) => {
-    if (!user) {
-      console.warn('Cannot create layer: user not authenticated');
+    if (!user || !projectId) {
+      console.warn('Cannot create layer: user not authenticated or projectId missing');
       return;
     }
 
@@ -85,29 +85,34 @@ export function useLayers() {
     
     console.log('🆕 Generated layer ID:', layerId);
 
-    // Set flag to prevent initialization logic from overriding active layer
-    isCreatingLayerRef.current = true;
+    // Track the layer ID being created to prevent initialization logic from overriding active layer
+    creatingLayerIdRef.current = layerId;
 
     // Create layer in store with the generated ID
     createLayerInStore(name, layerId);
     
     try {
       // Sync to Firestore with the same ID
-      await createLayerInFirestore(layerId, name, user.uid, order);
+      await createLayerInFirestore(projectId, layerId, name, user.uid, order);
       console.log(`✅ Layer created successfully: ${name} (${layerId})`);
+      
+      // Clear the flag once Firestore write completes successfully
+      // The subscription handler will also clear it when the layer appears, but this ensures cleanup
+      creatingLayerIdRef.current = null;
     } catch (error) {
       console.error('❌ Failed to create layer in Firestore:', error);
       
       // Queue for offline sync (we'll need to add this to offline manager)
       console.log(`📝 Queued layer creation for offline sync: ${layerId}`);
-            } finally {
-              // Clear the flag after a longer delay to allow Firestore subscription to complete
-              setTimeout(() => {
-                isCreatingLayerRef.current = false;
-                console.log('🏁 Layer creation process completed');
-              }, 5000); // Increased from 3000ms to 5000ms
-            }
-  }, [user, createLayerInStore]);
+      
+      // Clear the flag on error after a short delay to allow retry
+      setTimeout(() => {
+        if (creatingLayerIdRef.current === layerId) {
+          creatingLayerIdRef.current = null;
+        }
+      }, 1000);
+    }
+  }, [user, projectId, createLayerInStore]);
 
   /**
    * Update a layer with Firestore sync
@@ -116,8 +121,8 @@ export function useLayers() {
     layerId: string, 
     updates: Partial<Omit<Layer, 'id'>>
   ) => {
-    if (!user) {
-      console.warn('Cannot update layer: user not authenticated');
+    if (!user || !projectId) {
+      console.warn('Cannot update layer: user not authenticated or projectId missing');
       return;
     }
 
@@ -126,18 +131,18 @@ export function useLayers() {
 
     try {
       // Sync to Firestore
-      await updateLayerInFirestore(layerId, updates, user.uid);
+      await updateLayerInFirestore(projectId, layerId, updates, user.uid);
     } catch (error) {
       console.error('❌ Failed to update layer in Firestore:', error);
     }
-  }, [user, updateLayerInStore]);
+  }, [user, projectId, updateLayerInStore]);
 
   /**
    * Delete a layer with Firestore sync
    */
   const deleteLayer = useCallback(async (layerId: string) => {
-    if (!user) {
-      console.warn('Cannot delete layer: user not authenticated');
+    if (!user || !projectId) {
+      console.warn('Cannot delete layer: user not authenticated or projectId missing');
       return;
     }
 
@@ -146,15 +151,15 @@ export function useLayers() {
 
     try {
       // Sync to Firestore
-      await deleteLayerInFirestore(layerId);
+      await deleteLayerInFirestore(projectId, layerId);
     } catch (error) {
       console.error('❌ Failed to delete layer in Firestore:', error);
     }
-  }, [user, deleteLayerInStore]);
+  }, [user, projectId, deleteLayerInStore]);
 
   // Initialize layers from Firestore and create default layer if needed
   useEffect(() => {
-    if (!user) return;
+    if (!user || !projectId) return;
 
     // Only log in development
     if (import.meta.env.DEV) {
@@ -164,10 +169,10 @@ export function useLayers() {
     const initializeLayers = async () => {
       try {
         // First, initialize the board document to ensure it exists
-        await initializeBoard(user.uid);
+        await initializeBoard(projectId, user.uid);
         
         // Then, get all existing layers from Firestore
-        const unsubscribe = subscribeToLayers((firestoreLayers: FirestoreLayer[]) => {
+        const unsubscribe = subscribeToLayers(projectId, (firestoreLayers: FirestoreLayer[]) => {
           console.log('📋 Loaded layers from Firestore:', firestoreLayers.length);
           
           if (firestoreLayers.length === 0) {
@@ -188,7 +193,7 @@ export function useLayers() {
             setActiveLayer('default-layer');
             
             // Then create in Firestore
-            createLayerInFirestore('default-layer', 'Default Layer', user.uid, 0)
+            createLayerInFirestore(projectId, 'default-layer', 'Default Layer', user.uid, 0)
               .then(() => {
                 console.log('✅ Default layer created successfully in Firestore');
               })
@@ -240,7 +245,7 @@ export function useLayers() {
             // Only set activeLayerId to default layer if no active layer is currently set
             // or if the current active layer doesn't exist in the loaded layers
             // BUT NOT if we're currently creating a layer (to prevent race condition)
-            if (!isCreatingLayerRef.current) {
+            if (!creatingLayerIdRef.current) {
               const currentActiveLayer = layersRef.current.find(layer => layer.id === activeLayerId);
               const currentActiveLayerInLoaded = localLayers.find(layer => layer.id === activeLayerId);
               
@@ -268,18 +273,18 @@ export function useLayers() {
 
     initializeLayers();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user, setLayers, setActiveLayer]); // Intentionally excluding activeLayerId to prevent race condition
+  }, [user, projectId, setLayers, setActiveLayer]); // Intentionally excluding activeLayerId to prevent race condition
 
   // Subscribe to board state changes (activeLayerId synchronization)
   useEffect(() => {
-    if (!user) return;
+    if (!user || !projectId) return;
 
     // Only log in development
     if (import.meta.env.DEV) {
       console.log('🔗 Subscribing to board state changes');
     }
 
-    const unsubscribe = subscribeToBoardState((state: FirestoreBoardState | null) => {
+    const unsubscribe = subscribeToBoardState(projectId, (state: FirestoreBoardState | null) => {
       if (state && state.activeLayerId) {
         // Only update if the value from Firestore is genuinely different
         // AND if it was updated by a different user (to support multi-user collaboration)
@@ -296,18 +301,18 @@ export function useLayers() {
       }
       unsubscribe();
     };
-  }, [user, activeLayerId, setActiveLayer]);
+  }, [user, projectId, activeLayerId, setActiveLayer]);
 
   // Subscribe to layers changes
   useEffect(() => {
-    if (!user) return;
+    if (!user || !projectId) return;
 
     // Only log in development
     if (import.meta.env.DEV) {
       console.log('🔗 Subscribing to layers changes');
     }
 
-    const unsubscribe = subscribeToLayersChanges((changes: FirestoreLayerChange[]) => {
+    const unsubscribe = subscribeToLayersChanges(projectId, (changes: FirestoreLayerChange[]) => {
       console.log('📡 Received layer changes:', changes);
       changes.forEach((change) => {
         const layer = convertFirestoreLayer(change.layer);
@@ -329,6 +334,12 @@ export function useLayers() {
               }
             } else {
               console.log('⚠️ Layer already exists locally, skipping:', layer.id);
+            }
+            
+            // Clear the creating flag if this is the layer we were creating
+            if (creatingLayerIdRef.current === layer.id) {
+              console.log(`🏁 Layer creation confirmed via subscription: ${layer.id}`);
+              creatingLayerIdRef.current = null;
             }
             break;
           }
@@ -367,7 +378,7 @@ export function useLayers() {
       console.log('🔌 Unsubscribing from layers changes');
       unsubscribe();
     };
-  }, [user, setLayers, updateLayerInStore, deleteLayerInStore]);
+  }, [user, projectId, setLayers, updateLayerInStore, deleteLayerInStore]);
 
   return {
     layers,

@@ -5,19 +5,25 @@
 
 import React, { useRef, useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { uploadConstructionPlanImage, validateImageFile } from '../services/storage';
 import type { BackgroundImage } from '../types';
 
 interface FileUploadProps {
+  projectId?: string;
   onUploadComplete?: (image: BackgroundImage) => void;
   onUploadError?: (error: string) => void;
   disabled?: boolean;
 }
 
-export function FileUpload({ onUploadComplete, onUploadError, disabled = false }: FileUploadProps) {
+export function FileUpload({ projectId, onUploadComplete, onUploadError, disabled = false }: FileUploadProps) {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const { currentUser, canvasScale, setBackgroundImage, setIsImageUploadMode } = useCanvasStore();
+  const currentUser = useCanvasStore((state) => state.currentUser);
+  // Use project-scoped store when projectId is available
+  const canvasScale = useScopedCanvasStore(projectId, (state) => state.canvasScale);
+  const setBackgroundImage = useScopedCanvasStore(projectId, (state) => state.setBackgroundImage);
+  const setIsImageUploadMode = useScopedCanvasStore(projectId, (state) => state.setIsImageUploadMode);
 
   const handleFileSelect = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -37,8 +43,8 @@ export function FileUpload({ onUploadComplete, onUploadError, disabled = false }
       // Upload to Firebase Storage
       const backgroundImage = await uploadConstructionPlanImage(file, currentUser.uid);
       
-      // Update canvas state
-      setBackgroundImage(backgroundImage);
+      // Update canvas state - pass projectId to ensure Firestore sync works
+      setBackgroundImage(backgroundImage, projectId);
       
       // Notify parent component
       onUploadComplete?.(backgroundImage);
@@ -63,7 +69,7 @@ export function FileUpload({ onUploadComplete, onUploadError, disabled = false }
 
   const handleDeleteImage = () => {
     if (confirm('Are you sure you want to delete the current background image?')) {
-      setBackgroundImage(null);
+      setBackgroundImage(null, projectId);
     }
   };
 

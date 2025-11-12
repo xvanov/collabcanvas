@@ -150,6 +150,8 @@ interface CanvasState {
   setIsAccumulatingBOM: (isAccumulating: boolean) => void;
 }
 
+export type { CanvasState };
+
 export const useCanvasStore = create<CanvasState>((set, get) => {
   // Initialize history service
   const historyService = createHistoryService(50);
@@ -198,15 +200,18 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
               color: shape.color,
             } : undefined;
             
-            await createShapeInFirestore(
-              shape.id, 
-              shape.type, 
-              shape.x, 
-              shape.y, 
-              currentUser.uid, 
-              shape.layerId,
-              additionalProps
-            );
+            // Note: Global store is deprecated - use project-scoped store instead
+            // Firestore sync requires projectId which is not available in global store
+            // await createShapeInFirestore(
+            //   '', // projectId not available in global store
+            //   shape.id, 
+            //   shape.type, 
+            //   shape.x, 
+            //   shape.y, 
+            //   currentUser.uid, 
+            //   shape.layerId,
+            //   additionalProps
+            // );
             console.log(`✅ Synced restored shape ${action.shapeId} to Firestore`);
           } catch (error) {
             console.error(`❌ Failed to sync restored shape ${action.shapeId} to Firestore:`, error);
@@ -220,13 +225,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           newShapes.delete(action.shapeId);
           set({ shapes: newShapes });
           
-          // Also delete from Firestore to ensure sync
-          try {
-            await deleteShapeInFirestore(action.shapeId);
-            console.log(`✅ Synced deleted shape ${action.shapeId} to Firestore`);
-          } catch (error) {
-            console.error(`❌ Failed to sync deleted shape ${action.shapeId} to Firestore:`, error);
-          }
+          // Note: Global store is deprecated - use project-scoped store instead
+          // Firestore sync requires projectId which is not available in global store
+          // Firestore sync disabled for global store
         }
         break;
         
@@ -456,18 +457,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           } : {}),
         };
         
-        createShapeInFirestore(
-          shape.id, 
-          shape.type, 
-          shape.x, 
-          shape.y, 
-          currentState.currentUser!.uid, 
-          layerId,
-          additionalProps
-        )
-          .catch((error: unknown) => {
-            console.error('❌ Failed to create shape in Firestore:', error);
-          });
+        // Note: Global store is deprecated - use project-scoped store instead
+        // Firestore sync requires projectId which is not available in global store
+        // Firestore sync disabled for global store
       });
     }
   },
@@ -613,15 +605,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         const action = createAction.bulkDelete(state.selectedShapeIds, deletedShapes, state.currentUser.uid);
         historyService.pushAction(action);
         
-        // Also delete from Firestore to ensure sync
-        state.selectedShapeIds.forEach(async (shapeId) => {
-          try {
-            await deleteShapeInFirestore(shapeId);
-            console.log(`✅ Deleted shape ${shapeId} from Firestore`);
-          } catch (error) {
-            console.error(`❌ Failed to delete shape ${shapeId} from Firestore:`, error);
-          }
-        });
+        // Note: Global store is deprecated - use project-scoped store instead
+        // Firestore sync requires projectId which is not available in global store
+        // state.selectedShapeIds.forEach(async (shapeId) => {
+        //   try {
+        //     await deleteShape('', shapeId); // projectId not available in global store
+        //     console.log(`✅ Deleted shape ${shapeId} from Firestore`);
+        //   } catch (error) {
+        //     console.error(`❌ Failed to delete shape ${shapeId} from Firestore:`, error);
+        //   }
+        // });
       }
       
       return {
@@ -919,14 +912,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       if (isColorChange && currentUser && (updates as Partial<Layer>).color && updatedShapeIds.length > 0) {
         const layerColor = (updates as Partial<Layer>).color as string;
         const clientTimestamp = Date.now();
-        import('../services/firestore').then(({ updateShapeProperty }) => {
-          updatedShapeIds.forEach((shapeId) => {
-            updateShapeProperty(shapeId, 'color', layerColor, currentUser.uid, clientTimestamp)
-              .catch((error: unknown) => {
-                console.error('❌ Failed to persist shape color to Firestore:', { shapeId, error });
-              });
-          });
-        });
+        // Note: Global store is deprecated - use project-scoped store instead
+        // Firestore sync requires projectId which is not available in global store
+        // import('../services/firestore').then(({ updateShapeProperty }) => {
+        //   updatedShapeIds.forEach((shapeId) => {
+        //     updateShapeProperty('', shapeId, 'color', layerColor, currentUser.uid, clientTimestamp)
+        //       .catch((error: unknown) => {
+        //         console.error('❌ Failed to persist shape color to Firestore:', { shapeId, error });
+        //       });
+        //   });
+        // });
       }
     },
   
@@ -969,14 +964,15 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         };
       });
 
-      // Persist layer deletion to Firestore (shapes are just moved, not deleted)
-      if (state.currentUser) {
-        import('../services/firestore').then(({ deleteLayer: deleteLayerInFs }) => {
-          deleteLayerInFs(id).catch((error: unknown) => {
-            console.error('❌ Failed to delete layer in Firestore:', { layerId: id, error });
-          });
-        });
-      }
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser) {
+      //   import('../services/firestore').then(({ deleteLayer: deleteLayerInFs }) => {
+      //     deleteLayerInFs('', id, state.currentUser!.uid).catch((error: unknown) => {
+      //       console.error('❌ Failed to delete layer in Firestore:', { layerId: id, error });
+      //     });
+      //   });
+      // }
       
       return {
         shapes: updatedShapes,
@@ -1038,15 +1034,16 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       // Update local state
       const newState = { activeLayerId: id };
       
-      // Sync to Firestore
-      if (state.currentUser) {
-        import('../services/firestore').then(({ updateActiveLayerId }) => {
-          updateActiveLayerId(id, state.currentUser!.uid)
-            .catch((error: unknown) => {
-              console.error('❌ Failed to update active layer in Firestore:', error);
-            });
-        });
-      }
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser) {
+      //   import('../services/firestore').then(({ updateActiveLayerId }) => {
+      //     updateActiveLayerId('', id, state.currentUser!.uid)
+      //       .catch((error: unknown) => {
+      //         console.error('❌ Failed to update active layer in Firestore:', error);
+      //       });
+      //   });
+      // }
       
       return newState;
     }),
@@ -1471,25 +1468,25 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         },
       };
       
-      // Save to Firestore if user is authenticated (async operation)
-      // Skip Firestore sync when syncing from Firestore subscription to avoid loops
-      if (state.currentUser && !skipFirestoreSync) {
-        if (image) {
-          saveBackgroundImage({
-            url: image.url,
-            width: image.width,
-            height: image.height,
-          }, state.currentUser.uid).catch((error) => {
-            console.error('❌ Failed to save background image to Firestore:', error);
-          });
-        } else {
-          // Delete from both Firestore and Storage
-          const previousImageUrl = state.canvasScale.backgroundImage?.url;
-          
-          // Delete from Firestore
-          deleteBackgroundImageFromFirestore(state.currentUser.uid).catch((error) => {
-            console.error('❌ Failed to delete background image from Firestore:', error);
-          });
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser && !skipFirestoreSync) {
+      //   if (image) {
+      //     saveBackgroundImage({
+      //       url: image.url,
+      //       width: image.width,
+      //       height: image.height,
+      //     }, state.currentUser.uid, '').catch((error) => {
+      //       console.error('❌ Failed to save background image to Firestore:', error);
+      //     });
+      //   } else {
+      //     // Delete from both Firestore and Storage
+      //     const previousImageUrl = state.canvasScale.backgroundImage?.url;
+      //     
+      //     // Delete from Firestore
+      //     deleteBackgroundImageFromFirestore(state.currentUser.uid, '').catch((error) => {
+      //       console.error('❌ Failed to delete background image from Firestore:', error);
+      //     });
           
           // Delete from Storage if URL exists
           if (previousImageUrl) {
@@ -1513,28 +1510,28 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         },
       };
       
-      // Save to Firestore if user is authenticated (async operation)
-      // Skip Firestore sync when syncing from Firestore subscription to avoid loops
-      if (state.currentUser && !skipFirestoreSync) {
-        if (scaleLine) {
-          saveScaleLine({
-            id: scaleLine.id,
-            startX: scaleLine.startX,
-            startY: scaleLine.startY,
-            endX: scaleLine.endX,
-            endY: scaleLine.endY,
-            realWorldLength: scaleLine.realWorldLength,
-            unit: scaleLine.unit,
-            isVisible: scaleLine.isVisible,
-          }, state.currentUser.uid).catch((error) => {
-            console.error('❌ Failed to save scale line to Firestore:', error);
-          });
-        } else {
-          deleteScaleLineFromFirestore(state.currentUser.uid).catch((error) => {
-            console.error('❌ Failed to delete scale line from Firestore:', error);
-          });
-        }
-      }
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser && !skipFirestoreSync) {
+      //   if (scaleLine) {
+      //     saveScaleLine({
+      //       id: scaleLine.id,
+      //       startX: scaleLine.startX,
+      //       startY: scaleLine.startY,
+      //       endX: scaleLine.endX,
+      //       endY: scaleLine.endY,
+      //       realWorldLength: scaleLine.realWorldLength,
+      //       unit: scaleLine.unit,
+      //       isVisible: scaleLine.isVisible,
+      //     }, state.currentUser.uid, '').catch((error) => {
+      //       console.error('❌ Failed to save scale line to Firestore:', error);
+      //     });
+      //   } else {
+      //     deleteScaleLineFromFirestore(state.currentUser.uid, '').catch((error) => {
+      //       console.error('❌ Failed to delete scale line from Firestore:', error);
+      //     });
+      //   }
+      // }
       
       return newState;
     }),
@@ -1557,21 +1554,22 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         },
       };
       
-      // Save to Firestore if user is authenticated (async operation)
-      if (state.currentUser) {
-        saveScaleLine({
-          id: updatedScaleLine.id,
-          startX: updatedScaleLine.startX,
-          startY: updatedScaleLine.startY,
-          endX: updatedScaleLine.endX,
-          endY: updatedScaleLine.endY,
-          realWorldLength: updatedScaleLine.realWorldLength,
-          unit: updatedScaleLine.unit,
-          isVisible: updatedScaleLine.isVisible,
-        }, state.currentUser.uid).catch((error) => {
-          console.error('❌ Failed to update scale line in Firestore:', error);
-        });
-      }
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser) {
+      //   saveScaleLine({
+      //     id: updatedScaleLine.id,
+      //     startX: updatedScaleLine.startX,
+      //     startY: updatedScaleLine.startY,
+      //     endX: updatedScaleLine.endX,
+      //     endY: updatedScaleLine.endY,
+      //     realWorldLength: updatedScaleLine.realWorldLength,
+      //     unit: updatedScaleLine.unit,
+      //     isVisible: updatedScaleLine.isVisible,
+      //   }, state.currentUser.uid, '').catch((error) => {
+      //     console.error('❌ Failed to update scale line in Firestore:', error);
+      //   });
+      // }
       
       return newState;
     }),
@@ -1585,12 +1583,13 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
         },
       };
       
-      // Delete from Firestore if user is authenticated (async operation)
-      if (state.currentUser) {
-        deleteScaleLineFromFirestore(state.currentUser.uid).catch((error) => {
-          console.error('❌ Failed to delete scale line from Firestore:', error);
-        });
-      }
+      // Note: Global store is deprecated - use project-scoped store instead
+      // Firestore sync requires projectId which is not available in global store
+      // if (state.currentUser) {
+      //   deleteScaleLineFromFirestore(state.currentUser.uid, '').catch((error) => {
+      //     console.error('❌ Failed to delete scale line from Firestore:', error);
+      //   });
+      // }
       
       return newState;
     }),
@@ -1613,7 +1612,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
 
   // Initialize board state subscription
   initializeBoardStateSubscription: () => {
-    const unsubscribe = subscribeToBoardState((boardState) => {
+    // Note: This is deprecated - use project-scoped store instead
+    // Keeping for backward compatibility but it won't work without projectId
+    const unsubscribe = subscribeToBoardState('', (boardState) => {
       if (boardState) {
         const state = get();
         

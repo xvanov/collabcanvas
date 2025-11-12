@@ -8,7 +8,9 @@ CollabCanvas uses Firestore for persistent data storage and Realtime Database fo
 
 ### Shapes Collection
 
-**Path**: `/boards/{boardId}/shapes/{shapeId}`
+**Path**: `/projects/{projectId}/shapes/{shapeId}`
+
+**Note**: As of Story 2.1, shapes are project-scoped. The previous global board path `/boards/global/shapes` is no longer used.
 
 **Document**: `FirestoreShape`
 
@@ -50,7 +52,9 @@ interface FirestoreShape {
 
 ### Layers Collection
 
-**Path**: `/boards/{boardId}/layers/{layerId}`
+**Path**: `/projects/{projectId}/layers/{layerId}`
+
+**Note**: As of Story 2.1, layers are project-scoped. The previous global board path `/boards/global/layers` is no longer used.
 
 **Document**: `FirestoreLayer`
 
@@ -77,7 +81,9 @@ interface FirestoreLayer {
 
 ### Board Document
 
-**Path**: `/boards/{boardId}`
+**Path**: `/projects/{projectId}/board/data`
+
+**Note**: As of Story 2.1, board state is project-scoped. The previous global board path `/boards/global` is no longer used. The board document is stored in a `board` collection with a fixed `data` document ID, following the same pattern as `scope/data` and `bom/data`.
 
 **Document**: `FirestoreBoardState`
 

@@ -66,7 +66,7 @@ export async function uploadScope(
       const layerName = item.scope;
       
       try {
-        await createLayer(layerId, layerName, userId, index);
+        await createLayer(projectId, layerId, layerName, userId, index);
         console.log(`[SCOPE] Created layer: ${layerName} (${layerId})`);
       } catch {
         // Layer might already exist, which is fine

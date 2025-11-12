@@ -28,13 +28,14 @@ interface ToolbarProps {
   onToggleGrid?: () => void;
   onActivatePolylineTool?: () => void;
   onActivatePolygonTool?: () => void;
+  projectId?: string;
 }
 
 /**
  * Toolbar component
  * Top navigation bar with user authentication info, FPS counter, zoom level, and shape creation controls
  */
-export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid, onActivatePolylineTool, onActivatePolygonTool }: ToolbarProps) {
+export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid, onActivatePolylineTool, onActivatePolygonTool, projectId }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
   const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
@@ -413,6 +414,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
                   {/* File Upload */}
                   <div className="px-4 py-2">
                     <FileUpload
+                      projectId={projectId}
                       onUploadComplete={(image) => {
                         console.log('Image uploaded:', image);
                         setIsToolsMenuOpen(false);
@@ -427,6 +429,7 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
                   {/* Scale Tool */}
                   <div className="px-4 py-2">
                     <ScaleTool
+                      projectId={projectId}
                       onScaleComplete={(scaleLine) => {
                         console.log('Scale line created:', scaleLine);
                         setIsToolsMenuOpen(false);

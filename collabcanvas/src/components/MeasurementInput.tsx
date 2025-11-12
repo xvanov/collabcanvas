@@ -11,6 +11,7 @@ import { parseMeasurement, formatMeasurement } from '../services/unitConversion'
 interface MeasurementInputProps {
   isOpen: boolean;
   onClose: () => void;
+  onCancel?: () => void; // Optional cancel handler - if not provided, uses onClose
   onSubmit: (value: number, unit: UnitType) => void;
   initialValue?: number;
   initialUnit?: UnitType;
@@ -20,6 +21,7 @@ interface MeasurementInputProps {
 export function MeasurementInput({
   isOpen,
   onClose,
+  onCancel,
   onSubmit,
   initialValue = 0,
   initialUnit = 'feet',
@@ -68,12 +70,19 @@ export function MeasurementInput({
       return;
     }
 
+    // Call onSubmit first, then close
+    // Don't call onClose here - let the parent handle closing after submission
     onSubmit(parsedValue, selectedUnit);
-    onClose();
+    // Note: onClose is called separately by the parent after successful submission
   };
 
   const handleCancel = () => {
-    onClose();
+    // Use onCancel if provided, otherwise use onClose
+    if (onCancel) {
+      onCancel();
+    } else {
+      onClose();
+    }
   };
 
   if (!isOpen) return null;

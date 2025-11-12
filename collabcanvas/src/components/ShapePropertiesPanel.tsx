@@ -10,13 +10,14 @@ import { useShapes } from '../hooks/useShapes';
 
 interface ShapePropertiesPanelProps {
   className?: string;
+  projectId?: string;
 }
 
-export function ShapePropertiesPanel({ className = '' }: ShapePropertiesPanelProps) {
+export function ShapePropertiesPanel({ className = '', projectId }: ShapePropertiesPanelProps) {
   const selectedShapeId = useCanvasStore((state) => state.selectedShapeId);
   const shapes = useCanvasStore((state) => state.shapes);
   const currentUser = useCanvasStore((state) => state.currentUser);
-  const { updateShapeProperty } = useShapes();
+  const { updateShapeProperty } = useShapes(projectId);
 
   const selectedShape = selectedShapeId ? shapes.get(selectedShapeId) : null;
 

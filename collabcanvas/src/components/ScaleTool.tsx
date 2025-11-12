@@ -5,22 +5,23 @@
 
 import { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import type { ScaleLine, UnitType } from '../types';
 import { MeasurementInput } from './MeasurementInput';
 
 interface ScaleToolProps {
+  projectId?: string;
   onScaleComplete?: (scaleLine: ScaleLine) => void;
   disabled?: boolean;
 }
 
-export function ScaleTool({ disabled = false }: ScaleToolProps) {
-  const { 
-    currentUser, 
-    canvasScale, 
-    deleteScaleLine, 
-    setIsScaleMode,
-    updateScaleLine
-  } = useCanvasStore();
+export function ScaleTool({ projectId, disabled = false }: ScaleToolProps) {
+  const currentUser = useCanvasStore((state) => state.currentUser);
+  // Use project-scoped store when projectId is available
+  const canvasScale = useScopedCanvasStore(projectId, (state) => state.canvasScale);
+  const deleteScaleLine = useScopedCanvasStore(projectId, (state) => state.deleteScaleLine);
+  const setIsScaleMode = useScopedCanvasStore(projectId, (state) => state.setIsScaleMode);
+  const updateScaleLine = useScopedCanvasStore(projectId, (state) => state.updateScaleLine);
 
   const [showEditModal, setShowEditModal] = useState(false);
 
@@ -34,7 +35,7 @@ export function ScaleTool({ disabled = false }: ScaleToolProps) {
       );
       if (!shouldReplace) return;
       
-      deleteScaleLine();
+      deleteScaleLine(projectId);
     }
     
     setIsScaleMode(true);
@@ -49,7 +50,7 @@ export function ScaleTool({ disabled = false }: ScaleToolProps) {
     updateScaleLine({ 
       realWorldLength: value,
       unit: unit
-    });
+    }, projectId);
     setShowEditModal(false);
   };
 
@@ -62,7 +63,7 @@ export function ScaleTool({ disabled = false }: ScaleToolProps) {
     
     const shouldDelete = window.confirm('Are you sure you want to delete the scale line?');
     if (shouldDelete) {
-      deleteScaleLine();
+      deleteScaleLine(projectId);
     }
   };
 

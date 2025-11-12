@@ -4,7 +4,7 @@
  */
 
 import { Layer, Line, Circle, Text } from 'react-konva';
-import { useCanvasStore } from '../store/canvasStore';
+import type { CanvasScale, Layer as LayerType } from '../types';
 import { calculatePolygonArea, convertAreaToRealWorld, formatMeasurement, calculateDistance } from '../services/measurementService';
 
 interface Point {
@@ -17,16 +17,16 @@ interface PolygonToolProps {
   onComplete?: () => void;
   points: Point[];
   previewPoint: Point | null;
+  canvasScale: CanvasScale;
+  layers: LayerType[];
+  activeLayerId: string;
 }
 
 /**
  * Polygon drawing tool for room area measurements
  * Uses fixed sizes for performance (no zoom dependency)
  */
-export function PolygonTool({ isActive, points, previewPoint }: PolygonToolProps) {
-  const canvasScale = useCanvasStore((state) => state.canvasScale);
-  const layers = useCanvasStore((state) => state.layers);
-  const activeLayerId = useCanvasStore((state) => state.activeLayerId);
+export function PolygonTool({ isActive, points, previewPoint, canvasScale, layers, activeLayerId }: PolygonToolProps) {
 
   // Get active layer color
   const activeLayer = layers.find(l => l.id === activeLayerId);

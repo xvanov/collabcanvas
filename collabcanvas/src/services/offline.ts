@@ -27,6 +27,7 @@ import type { ShapeType } from '../types';
  */
 export interface QueuedCreateShape {
   type: 'createShape';
+  projectId: string;
   shapeId: string;
   shapeType: ShapeType;
   x: number;
@@ -38,6 +39,7 @@ export interface QueuedCreateShape {
 
 export interface QueuedUpdatePosition {
   type: 'updatePosition';
+  projectId: string;
   shapeId: string;
   x: number;
   y: number;
@@ -47,6 +49,7 @@ export interface QueuedUpdatePosition {
 
 export interface QueuedDeleteShape {
   type: 'deleteShape';
+  projectId: string;
   shapeId: string;
   userId: string;
   timestamp: number;
@@ -184,9 +187,10 @@ class OfflineManager {
   /**
    * Queue a shape creation for later sync
    */
-  public queueCreateShape(shapeId: string, shapeType: ShapeType, x: number, y: number, userId: string, layerId?: string): void {
+  public queueCreateShape(projectId: string, shapeId: string, shapeType: ShapeType, x: number, y: number, userId: string, layerId?: string): void {
     const update: QueuedCreateShape = {
       type: 'createShape',
+      projectId,
       shapeId,
       shapeType,
       x,
@@ -203,14 +207,15 @@ class OfflineManager {
   /**
    * Queue a position update for later sync
    */
-  public queueUpdatePosition(shapeId: string, x: number, y: number, userId: string, clientTimestamp?: number): void {
+  public queueUpdatePosition(projectId: string, shapeId: string, x: number, y: number, userId: string, clientTimestamp?: number): void {
     // Remove any existing position updates for this shape to avoid duplicates
     this.queuedUpdates = this.queuedUpdates.filter(
-      update => !(update.type === 'updatePosition' && update.shapeId === shapeId)
+      update => !(update.type === 'updatePosition' && update.shapeId === shapeId && update.projectId === projectId)
     );
 
     const update: QueuedUpdatePosition = {
       type: 'updatePosition',
+      projectId,
       shapeId,
       x,
       y,
@@ -225,9 +230,10 @@ class OfflineManager {
   /**
    * Queue a shape deletion for later sync
    */
-  public queueDeleteShape(shapeId: string, userId: string): void {
+  public queueDeleteShape(projectId: string, shapeId: string, userId: string): void {
     const update: QueuedDeleteShape = {
       type: 'deleteShape',
+      projectId,
       shapeId,
       userId,
       timestamp: Date.now(),
@@ -327,15 +333,15 @@ class OfflineManager {
   private async processSingleUpdate(update: QueuedUpdate): Promise<void> {
     switch (update.type) {
       case 'createShape':
-        await createShapeInFirestore(update.shapeId, update.shapeType, update.x, update.y, update.userId);
+        await createShapeInFirestore(update.projectId, update.shapeId, update.shapeType, update.x, update.y, update.userId, update.layerId);
         break;
         
       case 'updatePosition':
-        await updateShapePositionInFirestore(update.shapeId, update.x, update.y, update.userId, update.timestamp);
+        await updateShapePositionInFirestore(update.projectId, update.shapeId, update.x, update.y, update.userId, update.timestamp);
         break;
         
       case 'deleteShape':
-        await deleteShapeInFirestore(update.shapeId);
+        await deleteShapeInFirestore(update.projectId, update.shapeId);
         break;
         
       case 'acquireLock':

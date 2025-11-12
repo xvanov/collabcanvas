@@ -5,6 +5,7 @@
 
 import React, { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useLayers } from '../hooks/useLayers';
 import { ColorPicker } from './ColorPicker';
 import { 
@@ -19,27 +20,27 @@ import { flatPointsToPoints } from '../services/shapeService';
 interface LayersPanelProps {
   isVisible: boolean;
   onClose: () => void;
+  projectId?: string;
 }
 
-export function LayersPanel({ isVisible, onClose }: LayersPanelProps) {
-  const {
-    layers,
-    activeLayerId,
-    setActiveLayer,
-    shapes,
-    selectedShapeIds,
-    reorderLayers,
-    toggleLayerVisibility,
-    toggleLayerLock,
-    updateLayer: updateLayerInStore,
-    canvasScale,
-  } = useCanvasStore();
+export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps) {
+  // Use project-scoped store when projectId is available
+  const layers = useScopedCanvasStore(projectId, (state) => state.layers);
+  const activeLayerId = useScopedCanvasStore(projectId, (state) => state.activeLayerId);
+  const setActiveLayer = useScopedCanvasStore(projectId, (state) => state.setActiveLayer);
+  const shapes = useScopedCanvasStore(projectId, (state) => state.shapes);
+  const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
+  const reorderLayers = useScopedCanvasStore(projectId, (state) => state.reorderLayers);
+  const toggleLayerVisibility = useScopedCanvasStore(projectId, (state) => state.toggleLayerVisibility);
+  const toggleLayerLock = useScopedCanvasStore(projectId, (state) => state.toggleLayerLock);
+  const updateLayerInStore = useScopedCanvasStore(projectId, (state) => state.updateLayer);
+  const canvasScale = useScopedCanvasStore(projectId, (state) => state.canvasScale);
   
   const {
     createLayer,
     updateLayer,
     deleteLayer,
-  } = useLayers();
+  } = useLayers(projectId);
 
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
   const [newLayerName, setNewLayerName] = useState('');

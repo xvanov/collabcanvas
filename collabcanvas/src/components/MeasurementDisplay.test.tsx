@@ -6,19 +6,13 @@ import React from 'react';
 import { describe, test, expect, vi, beforeEach } from 'vitest';
 import { render } from '@testing-library/react';
 import { MeasurementDisplay } from './MeasurementDisplay';
-import { useCanvasStore } from '../store/canvasStore';
-import type { Shape } from '../types';
+import type { Shape, CanvasScale } from '../types';
 
 // Mock react-konva components
 vi.mock('react-konva', () => ({
   Text: (props: { text?: string }) => (
     <div data-testid="konva-text" data-text={props.text} />
   ),
-}));
-
-// Mock the canvas store
-vi.mock('../store/canvasStore', () => ({
-  useCanvasStore: vi.fn(),
 }));
 
 describe('MeasurementDisplay Component', () => {
@@ -45,17 +39,6 @@ describe('MeasurementDisplay Component', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
-    type CanvasState = {
-      canvasScale: typeof mockCanvasScale;
-    };
-    (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockImplementation(
-      <T,>(selector: (state: CanvasState) => T): T => {
-        const mockState: CanvasState = {
-          canvasScale: mockCanvasScale,
-        };
-        return selector(mockState);
-      }
-    );
   });
 
   describe('Polyline Measurements', () => {
@@ -80,6 +63,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -109,6 +93,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -137,6 +122,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -166,6 +152,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polygonShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -194,6 +181,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polygonShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -222,6 +210,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polygonShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -231,14 +220,12 @@ describe('MeasurementDisplay Component', () => {
 
   describe('Scale Requirements', () => {
     test('returns null when no scale is set', () => {
-      (useCanvasStore as unknown as ReturnType<typeof vi.fn>).mockReturnValue({
-        canvasScale: {
-          scaleLine: null,
-          backgroundImage: null,
-          isScaleMode: false,
-          isImageUploadMode: false,
-        },
-      });
+      const canvasScaleWithoutScale: CanvasScale = {
+        scaleLine: null,
+        backgroundImage: null,
+        isScaleMode: false,
+        isImageUploadMode: false,
+      };
 
       const polylineShape: Shape = {
         id: 'polyline-1',
@@ -260,6 +247,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={canvasScaleWithoutScale}
         />
       );
 
@@ -287,6 +275,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={rectShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -313,6 +302,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={circleShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -339,6 +329,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={textShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 
@@ -368,6 +359,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={mockCanvasScale as CanvasScale}
           opacity={0.5}
         />
       );
@@ -397,6 +389,7 @@ describe('MeasurementDisplay Component', () => {
       const { container } = render(
         <MeasurementDisplay
           shape={polylineShape}
+          canvasScale={mockCanvasScale as CanvasScale}
         />
       );
 

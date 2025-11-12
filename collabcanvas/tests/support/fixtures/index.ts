@@ -1,6 +1,10 @@
 /* eslint-disable react-hooks/rules-of-hooks */
 import { test as base } from '@playwright/test';
 import { UserFactory } from './factories/user-factory';
+import { ProjectFactory } from './factories/project-factory';
+import { ShapeFactory } from './factories/shape-factory';
+import { LayerFactory } from './factories/layer-factory';
+import type { Project } from '../../../src/types/project';
 
 /**
  * Test fixtures for CollabCanvas E2E tests
@@ -12,6 +16,10 @@ import { UserFactory } from './factories/user-factory';
  */
 type TestFixtures = {
   userFactory: UserFactory;
+  projectFactory: ProjectFactory;
+  shapeFactory: ShapeFactory;
+  layerFactory: LayerFactory;
+  authenticatedProject: Project;
 };
 
 export const test = base.extend<TestFixtures>({
@@ -20,6 +28,38 @@ export const test = base.extend<TestFixtures>({
     await useFixture(factory);
     // Auto-cleanup: Delete all users created during test
     await factory.cleanup();
+  },
+
+  projectFactory: async (_fixtures, useFixture) => {
+    const factory = new ProjectFactory();
+    await useFixture(factory);
+    // Auto-cleanup: Delete all projects created during test
+    await factory.cleanup();
+  },
+
+  shapeFactory: async (_fixtures, useFixture) => {
+    const factory = new ShapeFactory();
+    await useFixture(factory);
+  },
+
+  layerFactory: async (_fixtures, useFixture) => {
+    const factory = new LayerFactory();
+    await useFixture(factory);
+  },
+
+  authenticatedProject: async ({ page, projectFactory, userFactory }, use) => {
+    // Setup: Create user and project
+    const user = userFactory.createUser();
+    const project = projectFactory.createProject({ ownerId: user.id });
+    
+    // TODO: When authentication is implemented, authenticate user and create project via API
+    // For now, track project for cleanup
+    projectFactory.trackProject(project.id);
+    
+    // Provide project to test
+    await use(project);
+    
+    // Cleanup handled by projectFactory.cleanup()
   },
 });
 

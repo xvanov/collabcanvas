@@ -2,7 +2,12 @@
 
 ## Overview
 
-CollabCanvas uses Zustand for state management. The application has a single centralized store (`canvasStore`) that manages all application state including shapes, layers, selection, locks, presence, and AI commands.
+CollabCanvas uses Zustand for state management. As of Story 2.1, the application uses **project-scoped stores** (`projectCanvasStore`) that provide isolated state per project. Each project gets its own Zustand store instance, ensuring complete data isolation between projects.
+
+**Store Architecture:**
+- **Global Store**: `canvasStore.ts` - Legacy store, still used when `projectId` is undefined
+- **Project-Scoped Stores**: `projectCanvasStore.ts` - Provides isolated stores per project via `getProjectCanvasStore(projectId)`
+- **Hook**: `useScopedCanvasStore(projectId, selector)` - Automatically uses project-scoped store when `projectId` is provided
 
 ## Store Architecture
 
@@ -30,7 +35,7 @@ CollabCanvas uses Zustand for state management. The application has a single cen
 - `deleteShapes(ids: string[])` - Delete multiple shapes
 - `duplicateShapes(ids: string[], duplicatedBy: string)` - Duplicate shapes
 
-**Sync**: Real-time sync with Firestore via `subscribeToShapesChanges`
+**Sync**: Real-time sync with Firestore via `subscribeToShapesChanges(projectId, callback)` - project-scoped subscription
 
 ### History State (Undo/Redo)
 

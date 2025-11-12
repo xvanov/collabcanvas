@@ -1,0 +1,233 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>1</storyId>
+    <title>Project Isolation - Canvas, BOM, and Views Per Project</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-12T10:00:00Z</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/2-1-project-isolation-canvas-bom-per-project.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>contractor</asA>
+    <iWant>each project to have its own isolated canvas (Space view), bill of materials, and all view data</iWant>
+    <soThat>shapes, annotations, and estimates from one project don't appear in other projects</soThat>
+    <tasks>
+      <task id="1" title="Refactor Firestore Service Layer for Project Scoping">
+        <subtask>Update `services/firestore.ts` to accept `projectId` parameter in all functions</subtask>
+        <subtask>Change shapes collection path from `/boards/global/shapes` to `/projects/{projectId}/shapes`</subtask>
+        <subtask>Change layers collection path from `/boards/global/layers` to `/projects/{projectId}/layers`</subtask>
+        <subtask>Change board document path from `/boards/global` to `/projects/{projectId}/board`</subtask>
+        <subtask>Update `createShape`, `updateShapePosition`, `updateShapeProperty`, `deleteShape` functions</subtask>
+        <subtask>Update `subscribeToShapes` and `subscribeToShapesChanges` to accept projectId</subtask>
+        <subtask>Update `createLayer`, `updateLayer`, `deleteLayer` functions</subtask>
+        <subtask>Update `subscribeToLayers` and `subscribeToLayersChanges` to accept projectId</subtask>
+        <subtask>Update `saveBackgroundImage`, `saveScaleLine`, `subscribeToBoardState` to accept projectId</subtask>
+        <subtask>Add unit tests for project-scoped Firestore operations</subtask>
+      </task>
+      <task id="2" title="Update useShapes Hook for Project Scoping">
+        <subtask>Modify `hooks/useShapes.ts` to accept `projectId` parameter</subtask>
+        <subtask>Update all Firestore service calls to pass projectId</subtask>
+        <subtask>Ensure subscription cleanup when projectId changes</subtask>
+        <subtask>Add useMemo/useCallback to prevent infinite loops</subtask>
+        <subtask>Update subscription logic to unsubscribe before creating new subscription</subtask>
+        <subtask>Add projectId to dependency arrays correctly</subtask>
+        <subtask>Test subscription cleanup on project switch</subtask>
+        <subtask>Add integration tests for project isolation</subtask>
+      </task>
+      <task id="3" title="Update useLayers Hook for Project Scoping">
+        <subtask>Modify `hooks/useLayers.ts` to accept `projectId` parameter</subtask>
+        <subtask>Update all Firestore service calls to pass projectId</subtask>
+        <subtask>Ensure subscription cleanup when projectId changes</subtask>
+        <subtask>Add useMemo/useCallback to prevent infinite loops</subtask>
+        <subtask>Update subscription logic to unsubscribe before creating new subscription</subtask>
+        <subtask>Add projectId to dependency arrays correctly</subtask>
+        <subtask>Test subscription cleanup on project switch</subtask>
+        <subtask>Add integration tests for project isolation</subtask>
+      </task>
+      <task id="4" title="Update Components to Pass projectId">
+        <subtask>Update `pages/Board.tsx` (Space view) to pass projectId to useShapes and useLayers</subtask>
+        <subtask>Update `components/Canvas.tsx` to use project-scoped store</subtask>
+        <subtask>Update `components/money/MoneyView.tsx` to ensure BOM uses projectId (verify already working)</subtask>
+        <subtask>Update `components/time/TimeView.tsx` to pass projectId if needed</subtask>
+        <subtask>Update `components/scope/ScopeView.tsx` to pass projectId if needed</subtask>
+        <subtask>Verify all view components receive projectId from route params</subtask>
+        <subtask>Add error handling for missing projectId</subtask>
+        <subtask>Add integration tests for component projectId passing and project isolation</subtask>
+      </task>
+      <task id="5" title="Update Project Canvas Store Integration">
+        <subtask>Verify `store/projectCanvasStore.ts` properly isolates stores per project</subtask>
+        <subtask>Ensure store cleanup when switching projects (if needed)</subtask>
+        <subtask>Update components using `useProjectCanvasStore` to pass projectId</subtask>
+        <subtask>Test that switching projects clears previous project's state</subtask>
+        <subtask>Verify no memory leaks from unused stores</subtask>
+      </task>
+      <task id="6" title="Update Firestore Security Rules">
+        <subtask>Update `firestore.rules` to include project-scoped collections</subtask>
+        <subtask>Add rules for `/projects/{projectId}/shapes/{shapeId}`</subtask>
+        <subtask>Add rules for `/projects/{projectId}/layers/{layerId}`</subtask>
+        <subtask>Add rules for `/projects/{projectId}/board`</subtask>
+        <subtask>Ensure access control checks project ownership/collaboration</subtask>
+        <subtask>Test security rules with Firebase emulator</subtask>
+        <subtask>Document security rule changes</subtask>
+      </task>
+      <task id="7" title="Handle Data Migration">
+        <subtask>Create migration utility to move shapes from `/boards/global/shapes` to project-scoped collections</subtask>
+        <subtask>Create migration utility for layers</subtask>
+        <subtask>Create migration utility for board state</subtask>
+        <subtask>Add migration script or on-demand migration logic</subtask>
+        <subtask>Add backward compatibility check for global board</subtask>
+        <subtask>Document migration process</subtask>
+        <subtask>Test migration with existing data</subtask>
+      </task>
+      <task id="8" title="Integration Testing">
+        <subtask>Create E2E test for project isolation (create shape in Project A, verify not in Project B)</subtask>
+        <subtask>Create test for subscription cleanup on project switch</subtask>
+        <subtask>Create test for real-time collaboration per project</subtask>
+        <subtask>Create performance test for rapid project switching</subtask>
+        <subtask>Test with multiple projects (10+) to verify no performance degradation</subtask>
+        <subtask>Verify no infinite loops in subscription chains</subtask>
+      </task>
+      <task id="9" title="Documentation Updates">
+        <subtask>Update `docs/data-models.md` with new Firestore paths</subtask>
+        <subtask>Update `docs/architecture.md` with project isolation architecture</subtask>
+        <subtask>Update `docs/state-management.md` with project-scoped store patterns</subtask>
+        <subtask>Document migration process for existing users</subtask>
+        <subtask>Update API contracts documentation</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="1">Given I have multiple projects, When I create a shape in Project A's Space view, Then The shape is stored in Firestore at `/projects/{projectId}/shapes/{shapeId}` and does not appear in Project B</criterion>
+    <criterion id="2">Given I have multiple projects, When I create a layer in Project A's Space view, Then The layer is stored in Firestore at `/projects/{projectId}/layers/{layerId}` and does not appear in Project B</criterion>
+    <criterion id="3">Given I have multiple projects, When I upload a background image or create a scale line in Project A's Space view, Then The board state is stored in Firestore at `/projects/{projectId}/board` and does not affect Project B</criterion>
+    <criterion id="4">Given I have multiple projects, When I generate a BOM in Project A's Money view, Then The BOM is stored in Firestore at `/projects/{projectId}/bom/data` (already working correctly)</criterion>
+    <criterion id="5">Given I have multiple projects, When I switch between projects, Then Each project uses its own isolated Zustand store instance with no data leakage</criterion>
+    <criterion id="6">Given I am viewing Project A, When I navigate to Project B, Then All Firestore subscriptions for Project A are properly cleaned up and new subscriptions for Project B are established</criterion>
+    <criterion id="7">Given I am viewing a project, When I create, update, or delete shapes, Then No infinite re-render loops occur and subscriptions do not trigger cascading updates</criterion>
+    <criterion id="8">Given I am in a project's Space view, When The useShapes hook is called, Then It accepts projectId and subscribes to the correct project's shapes collection</criterion>
+    <criterion id="9">Given I am in a project's Space view, When The useLayers hook is called, Then It accepts projectId and subscribes to the correct project's layers collection</criterion>
+    <criterion id="10">Given I am viewing a project, When I navigate to Space, Time, or Money views, Then All components correctly pass projectId to hooks and services</criterion>
+    <criterion id="11">Given I have project-scoped collections, When A user tries to access shapes, layers, or board state, Then Firestore security rules enforce project-level access control</criterion>
+    <criterion id="12">Given I have existing shapes in the global `/boards/global/shapes` collection, When I access a project, Then The system handles the migration gracefully (either migrate on first access or maintain backward compatibility)</criterion>
+    <criterion id="13">Given Multiple users are viewing different projects, When User A creates a shape in Project 1, Then Only users viewing Project 1 see the update, users viewing Project 2 do not</criterion>
+    <criterion id="14">Given I have 10+ projects with shapes and layers, When I switch between projects rapidly, Then The application maintains 60 FPS and subscriptions are efficiently managed</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support">
+        Epic 2 defines project isolation as the foundation for multi-project support. Story 2.1 requires refactoring Firestore data structure to store shapes, layers, and board state per project, matching the existing project-scoped BOM structure.
+      </doc>
+      <doc path="docs/tech-spec-epic-2.md" title="Epic 2 Technical Specification" section="Story 2.1: Project Isolation Workflow">
+        Technical specification details the refactoring approach: update firestore.ts to accept projectId parameter, change collection paths from `/boards/global/*` to `/projects/{projectId}/*`, update hooks with proper subscription cleanup, and handle data migration.
+      </doc>
+      <doc path="docs/PRD.md" title="Product Requirements Document" section="Epic 2">
+        PRD establishes project isolation as a requirement for multi-project support, ensuring shapes, annotations, and estimates from one project don't appear in other projects.
+      </doc>
+      <doc path="docs/architecture.md" title="Architecture Document" section="Epic 2: Phase 2 - Advanced Annotation Tools">
+        Architecture document specifies project-scoped Firestore collections (`/projects/{projectId}/shapes`, `/projects/{projectId}/layers`, `/projects/{projectId}/board`) replacing the global board structure, and extends canvasStore.ts to support project isolation.
+      </doc>
+      <doc path="docs/data-models.md" title="Data Models" section="Firestore Collections">
+        Data models document shows current structure using `/boards/{boardId}/shapes/{shapeId}` and `/boards/{boardId}/layers/{layerId}` paths. Story requires updating to `/projects/{projectId}/shapes/{shapeId}` and `/projects/{projectId}/layers/{layerId}`.
+      </doc>
+      <doc path="docs/api-contracts.md" title="API Contracts" section="Firestore Operations">
+        API contracts document shows current Firestore service interfaces without projectId parameter. Story requires adding projectId to all shape and layer operations.
+      </doc>
+      <doc path="docs/stories/1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration.md" title="Story 1.4 Learnings" section="Dev Agent Record">
+        Story 1.4 demonstrates project-scoped BOM storage at `/projects/{projectId}/bom/data` - this is the target pattern for shapes, layers, and board state. BOM service shows project-scoped service operations pattern to follow.
+      </doc>
+      <doc path="docs/stories/1-3-four-view-navigation-scope-view.md" title="Story 1.3 Learnings" section="Dev Agent Record">
+        Story 1.3 established React Router nested routes providing projectId from route params. Real-time subscriptions use Firestore listeners with proper cleanup in useEffect cleanup functions - same pattern needed for useShapes and useLayers.
+      </doc>
+    </docs>
+    <code>
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="createShape, updateShapePosition, subscribeToShapes" lines="114-264" reason="Firestore service functions currently use global board collection (`/boards/global/shapes`). Need to refactor to accept projectId parameter and use `/projects/{projectId}/shapes` path." />
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="createLayer, subscribeToLayers" lines="294-400" reason="Layer management functions use global board collection. Need to accept projectId and use `/projects/{projectId}/layers` path." />
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="saveBackgroundImage, saveScaleLine, subscribeToBoardState" lines="400-500" reason="Board state functions use global board document. Need to accept projectId and use `/projects/{projectId}/board` path." />
+      <artifact path="collabcanvas/src/hooks/useShapes.ts" kind="hook" symbol="useShapes" lines="66-656" reason="Hook currently subscribes to global shapes collection. Need to accept projectId parameter, pass to service functions, and ensure proper subscription cleanup when projectId changes." />
+      <artifact path="collabcanvas/src/hooks/useLayers.ts" kind="hook" symbol="useLayers" lines="43-378" reason="Hook currently subscribes to global layers collection. Need to accept projectId parameter, pass to service functions, and ensure proper subscription cleanup when projectId changes." />
+      <artifact path="collabcanvas/src/store/projectCanvasStore.ts" kind="store" symbol="getProjectCanvasStore, useProjectCanvasStore" lines="903-1071" reason="Store factory already provides project-scoped store isolation. Need to verify proper cleanup when switching projects and ensure components use project-scoped store correctly." />
+      <artifact path="collabcanvas/src/pages/Board.tsx" kind="component" symbol="Board" lines="22-240" reason="Board component uses useShapes and useLayers hooks without projectId. Need to extract projectId from route params and pass to hooks." />
+      <artifact path="collabcanvas/src/components/Canvas.tsx" kind="component" symbol="Canvas" lines="1-41" reason="Canvas component uses useCanvasStore. Need to verify it uses project-scoped store via useProjectCanvasStore when projectId is available." />
+      <artifact path="collabcanvas/firestore.rules" kind="config" symbol="shapes, layers, board rules" lines="1-100" reason="Security rules currently allow access to `/boards/{boardId}/*`. Need to add rules for `/projects/{projectId}/shapes`, `/projects/{projectId}/layers`, `/projects/{projectId}/board` with project-level access control." />
+      <artifact path="collabcanvas/src/services/bomService.ts" kind="service" symbol="BOM operations" reason="BOM service already uses project-scoped paths (`/projects/{projectId}/bom`). Use as reference pattern for refactoring firestore.ts to accept projectId parameter." />
+      <artifact path="collabcanvas/src/store/__tests__/projectCanvasStore.test.ts" kind="test" symbol="project isolation tests" reason="Existing tests verify project-scoped store isolation. Use as reference for testing project isolation in Firestore operations." />
+      <artifact path="collabcanvas/src/hooks/__tests__/useShapes.projectIsolation.test.ts" kind="test" symbol="useShapes project isolation tests" reason="Tests verify useShapes hook with projectId parameter. Use as reference for implementation and additional test cases." />
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="firebase" version="^12.4.0" />
+        <package name="react" version="^19.2.0" />
+        <package name="react-router-dom" version="^7.9.5" />
+        <package name="zustand" version="^5.0.8" />
+        <package name="konva" version="^10.0.2" />
+        <package name="react-konva" version="^19.0.10" />
+      </ecosystem>
+      <ecosystem name="dev">
+        <package name="vitest" version="^3.2.4" />
+        <package name="@playwright/test" version="^1.50.0" />
+        <package name="@firebase/rules-unit-testing" version="^5.0.0" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>Firestore collection paths must change from `/boards/global/*` to `/projects/{projectId}/*` - breaking change requiring refactoring</constraint>
+    <constraint>All firestore.ts service functions must accept `projectId` parameter - breaking API change</constraint>
+    <constraint>useShapes and useLayers hooks must accept `projectId` parameter - breaking hook API change</constraint>
+    <constraint>Subscription cleanup is critical - improper cleanup causes memory leaks and infinite loops</constraint>
+    <constraint>Use `useRef` to track subscription state and prevent re-subscription loops</constraint>
+    <constraint>Dependency arrays must include projectId to trigger re-subscription when project changes</constraint>
+    <constraint>Use `isSyncing` flags to prevent circular updates (Firestore → Store → Firestore)</constraint>
+    <constraint>Memoize callbacks with `useCallback` and proper dependencies to prevent infinite loops</constraint>
+    <constraint>Firestore security rules must enforce project-level access control</constraint>
+    <constraint>Data migration must handle existing global board data gracefully</constraint>
+    <constraint>Project isolation must be 100% - no data leakage between projects under any conditions</constraint>
+    <constraint>Performance target: Maintain 60 FPS with 100+ objects when switching between projects</constraint>
+    <constraint>Subscription cleanup must be 100% - no memory leaks from unused subscriptions</constraint>
+    <constraint>Follow existing patterns from bomService.ts for project-scoped service operations</constraint>
+    <constraint>Follow existing patterns from scopeStore.ts for subscription cleanup in useEffect</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="Firestore Service API" kind="function signatures" signature="createShape(projectId: string, shapeId: string, shapeType: ShapeType, x: number, y: number, userId: string, layerId?: string): Promise&lt;void&gt;" path="collabcanvas/src/services/firestore.ts" />
+    <interface name="Firestore Service API" kind="function signatures" signature="subscribeToShapes(projectId: string, callback: (shapes: FirestoreShape[]) =&gt; void): Unsubscribe" path="collabcanvas/src/services/firestore.ts" />
+    <interface name="Firestore Service API" kind="function signatures" signature="subscribeToLayers(projectId: string, callback: (layers: FirestoreLayer[]) =&gt; void): Unsubscribe" path="collabcanvas/src/services/firestore.ts" />
+    <interface name="useShapes Hook" kind="React hook" signature="useShapes(projectId: string | undefined): { createShape, updateShapePosition, deleteShape, ... }" path="collabcanvas/src/hooks/useShapes.ts" />
+    <interface name="useLayers Hook" kind="React hook" signature="useLayers(projectId: string | undefined): { createLayer, updateLayer, deleteLayer, ... }" path="collabcanvas/src/hooks/useLayers.ts" />
+    <interface name="Project Canvas Store" kind="Zustand store factory" signature="getProjectCanvasStore(projectId: string): StoreApi&lt;CanvasState&gt;" path="collabcanvas/src/store/projectCanvasStore.ts" />
+    <interface name="Project Canvas Store Hook" kind="React hook" signature="useProjectCanvasStore(projectId: string | undefined): CanvasState" path="collabcanvas/src/store/projectCanvasStore.ts" />
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing uses Vitest for unit/integration tests and Playwright for E2E tests. Unit tests should cover Firestore service functions with projectId parameter, hook subscription cleanup, and store isolation. Integration tests should verify project isolation (shape in Project A doesn't appear in Project B), subscription cleanup on project switch, and real-time updates per project. E2E tests should cover complete workflows: create shape in Project A, switch to Project B, verify shape not visible; rapid project switching; multiple users on different projects. Test coverage target: 80%+ for new/modified service functions.
+    </standards>
+    <locations>
+      <location>collabcanvas/src/services/__tests__/ - Unit tests for Firestore service functions</location>
+      <location>collabcanvas/src/hooks/__tests__/ - Unit tests for useShapes and useLayers hooks</location>
+      <location>collabcanvas/src/store/__tests__/ - Unit tests for project canvas store</location>
+      <location>collabcanvas/src/integration/ - Integration tests for project isolation</location>
+      <location>collabcanvas/tests/ - E2E tests using Playwright</location>
+    </locations>
+    <ideas>
+      <test ac="1" idea="Unit test: createShape with projectId stores shape at correct path `/projects/{projectId}/shapes/{shapeId}`" />
+      <test ac="2" idea="Unit test: createLayer with projectId stores layer at correct path `/projects/{projectId}/layers/{layerId}`" />
+      <test ac="3" idea="Unit test: saveBackgroundImage with projectId stores board state at `/projects/{projectId}/board`" />
+      <test ac="5" idea="Integration test: getProjectCanvasStore returns isolated store instances per projectId" />
+      <test ac="6" idea="Integration test: useShapes hook unsubscribes from Project A when projectId changes to Project B" />
+      <test ac="7" idea="Integration test: create/update/delete shapes does not trigger infinite re-render loops" />
+      <test ac="8" idea="Unit test: useShapes hook accepts projectId and passes to subscribeToShapes service function" />
+      <test ac="9" idea="Unit test: useLayers hook accepts projectId and passes to subscribeToLayers service function" />
+      <test ac="10" idea="Integration test: Board component extracts projectId from route params and passes to useShapes/useLayers" />
+      <test ac="11" idea="E2E test: Firestore security rules deny access to `/projects/{projectId}/shapes` for users without project access" />
+      <test ac="12" idea="Integration test: Migration utility moves shapes from `/boards/global/shapes` to `/projects/{projectId}/shapes`" />
+      <test ac="13" idea="E2E test: User A creates shape in Project 1, User B viewing Project 2 does not see the update" />
+      <test ac="14" idea="Performance test: Switch between 10+ projects rapidly, verify 60 FPS maintained and subscriptions cleaned up" />
+    </ideas>
+  </tests>
+</story-context>
+

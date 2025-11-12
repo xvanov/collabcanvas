@@ -41,13 +41,14 @@ development_status:
   1-1-critical-bug-fixes-performance-optimization: done
   1-2-home-page-project-management-system: done
   1-3-four-view-navigation-scope-view: done
-  1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: in-progress
+  1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration: done
   epic-1-retrospective: optional
 
   # Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support
-  epic-2: backlog
-  2-1-counter-tool-fixture-counting: backlog
-  2-2-multi-floor-project-support: backlog
+  epic-2: contexted
+  2-1-project-isolation-canvas-bom-per-project: review
+  2-2-counter-tool-fixture-counting: backlog
+  2-3-multi-floor-project-support: backlog
   epic-2-retrospective: optional
 
   # Epic 3: Phase 3 - Construction Project Bidding Engine

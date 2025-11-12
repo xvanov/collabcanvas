@@ -532,7 +532,52 @@ So that I can create professional estimates with proper profit margins for clien
 
 **Goal**: Add counter tool and multi-floor project support
 
-### Story 2.1: Counter Tool for Fixture Counting
+### Story 2.1: Project Isolation - Canvas, BOM, and Views Per Project
+
+**Covers:** Critical foundation for multi-project support (FR-1.1 project management)
+
+As a contractor,
+I want each project to have its own isolated canvas (Space view), bill of materials, and all view data,
+So that shapes, annotations, and estimates from one project don't appear in other projects.
+
+**Acceptance Criteria:**
+
+**Given** I have multiple projects
+**When** I create a shape in Project A's Space view
+**Then** The shape is stored in Firestore at `/projects/{projectId}/shapes/{shapeId}` and does not appear in Project B
+
+**And** When I create a layer in Project A's Space view
+**Then** The layer is stored in Firestore at `/projects/{projectId}/layers/{layerId}` and does not appear in Project B
+
+**And** When I upload a background image or create a scale line in Project A's Space view
+**Then** The board state is stored in Firestore at `/projects/{projectId}/board` and does not affect Project B
+
+**And** When I switch between projects
+**Then** All Firestore subscriptions for the previous project are properly cleaned up and new subscriptions for the current project are established
+
+**And** When I create, update, or delete shapes
+**Then** No infinite re-render loops occur and subscriptions do not trigger cascading updates
+
+**Prerequisites:** Story 1.2 (Project Management System), Story 1.3 (Four-View Navigation)
+
+**Technical Notes:**
+- Refactor `services/firestore.ts` to accept `projectId` parameter in all functions
+- Change shapes collection path from `/boards/global/shapes` to `/projects/{projectId}/shapes`
+- Change layers collection path from `/boards/global/layers` to `/projects/{projectId}/layers`
+- Change board document path from `/boards/global` to `/projects/{projectId}/board`
+- Update `useShapes` and `useLayers` hooks to accept projectId with proper cleanup
+- Update all components to pass projectId to hooks and services
+- Update Firestore security rules for project-scoped collections
+- Handle migration of existing data from global board to project-scoped collections
+- Ensure proper subscription cleanup to prevent infinite loops
+- Test project isolation thoroughly to prevent data leakage
+
+**Dependencies:**
+- Blocks: Story 2.2 (Counter Tool), Story 2.3 (Multi-Floor Support) - both need project isolation first
+
+---
+
+### Story 2.2: Counter Tool for Fixture Counting
 
 **Covers:** New annotation tool capability (enhances FR-2 annotation capabilities)
 
@@ -565,7 +610,7 @@ So that I can accurately count instances without manual tracking.
 
 ---
 
-### Story 2.2: Multi-Floor Project Support
+### Story 2.3: Multi-Floor Project Support
 
 **Covers:** FR-1.1 (enhanced with multi-floor support)
 

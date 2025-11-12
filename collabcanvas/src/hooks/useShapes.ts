@@ -5,6 +5,7 @@
 
 import { useEffect, useRef, useCallback, useMemo } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore, getProjectCanvasStoreApi } from '../store/projectCanvasStore';
 import { useAuth } from './useAuth';
 import { 
   createShape as createShapeInFirestore, 
@@ -63,14 +64,14 @@ function convertFirestoreShape(firestoreShape: FirestoreShape): Shape {
  * Hook for managing Firestore shapes synchronization
  * Provides real-time sync with optimistic updates and throttling
  */
-export function useShapes() {
+export function useShapes(projectId: string | undefined) {
   const { user } = useAuth();
-  const {
-    shapes,
-    createShape: createShapeInStore,
-    updateShapePosition: updateShapePositionInStore,
-    setShapesFromMap,
-  } = useCanvasStore();
+  
+  // Use project-scoped store when projectId is provided, otherwise use global store
+  const shapes = useScopedCanvasStore(projectId, (state) => state.shapes);
+  const createShapeInStore = useScopedCanvasStore(projectId, (state) => state.createShape);
+  const updateShapePositionInStore = useScopedCanvasStore(projectId, (state) => state.updateShapePosition);
+  const setShapesFromMap = useScopedCanvasStore(projectId, (state) => state.setShapesFromMap);
 
   // Stable refs for user id and shapes to avoid resubscribing listeners on state changes
   const userIdRef = useRef<string | null>(null);
@@ -115,19 +116,43 @@ export function useShapes() {
     createShapeInStore(shape);
     perfMetrics.markEvent('shapeCreateLocal');
 
+    if (!projectId) {
+      console.warn('Cannot create shape: projectId is required');
+      return;
+    }
+
     try {
       // Sync to Firestore - ensure layerId is valid
       const layerId = shape.layerId || 'default-layer';
-      await createShapeInFirestore(shape.id, shape.type, shape.x, shape.y, user.uid, layerId);
+      
+      // Prepare additional props for type-specific properties
+      const additionalProps: Partial<Shape> = {
+        color: shape.color,
+        w: shape.w,
+        h: shape.h,
+        ...(shape.type === 'polyline' || shape.type === 'polygon' || shape.type === 'line' ? {
+          points: shape.points,
+          strokeWidth: shape.strokeWidth,
+        } : {}),
+        ...(shape.type === 'circle' ? {
+          radius: shape.radius,
+        } : {}),
+        ...(shape.type === 'text' ? {
+          text: shape.text,
+          fontSize: shape.fontSize,
+        } : {}),
+      };
+      
+      await createShapeInFirestore(projectId, shape.id, shape.type, shape.x, shape.y, user.uid, layerId, additionalProps);
     } catch (error) {
       console.error('❌ Failed to create shape in Firestore:', error);
       
       // Queue for offline sync - ensure layerId is valid
       const layerId = shape.layerId || 'default-layer';
-      offlineManager.queueCreateShape(shape.id, shape.type, shape.x, shape.y, user.uid, layerId);
+      offlineManager.queueCreateShape(projectId, shape.id, shape.type, shape.x, shape.y, user.uid, layerId);
       console.log(`📝 Queued shape creation for offline sync: ${shape.id}`);
     }
-  }, [user, createShapeInStore]);
+  }, [user, projectId, createShapeInStore]);
 
   /**
    * Update shape position with throttling and optimistic updates
@@ -149,15 +174,18 @@ export function useShapes() {
 
         // Track this write
         const writePromise = (async () => {
+          if (!projectId) {
+            throw new Error('projectId is required');
+          }
           try {
-            await updateShapePositionInFirestore(shapeId, x, y, userId, clientTimestamp);
+            await updateShapePositionInFirestore(projectId, shapeId, x, y, userId, clientTimestamp);
             perfMetrics.markEvent('shapeUpdateSuccess');
           } catch (error) {
             console.error('❌ Failed to update shape position in Firestore:', error);
             perfMetrics.markEvent('shapeUpdateFailure');
             
             // Queue for offline sync
-            offlineManager.queueUpdatePosition(shapeId, x, y, userId, clientTimestamp);
+            offlineManager.queueUpdatePosition(projectId, shapeId, x, y, userId, clientTimestamp);
             console.log(`📝 Queued position update for offline sync: ${shapeId}`);
             throw error; // Re-throw to trigger adaptive throttling
           } finally {
@@ -171,14 +199,14 @@ export function useShapes() {
       }, 16, 100), // Base 16ms, max 100ms
       16 // Coalescing interval
     ),
-    []
+    [projectId]
   );
 
   /**
    * Process pending updates and sync to Firestore
    */
   const processPendingUpdates = useCallback(() => {
-    if (!user || pendingUpdates.current.size === 0) return;
+    if (!user || !projectId || pendingUpdates.current.size === 0) return;
 
     const updates = Array.from(pendingUpdates.current.entries());
     pendingUpdates.current.clear();
@@ -190,7 +218,7 @@ export function useShapes() {
       // Clear the updating flag after we've sent the update
       updatingShapes.current.delete(shapeId);
     });
-  }, [user, throttledFirestoreUpdate]);
+  }, [user, projectId, throttledFirestoreUpdate]);
 
   const scheduleShapesCommit = useCallback(() => {
     if (!latestShapesRef.current) return;
@@ -217,7 +245,7 @@ export function useShapes() {
   }, [setShapesFromMap]);
 
   const schedulePendingFlush = useCallback(() => {
-    if (!user) return;
+    if (!user || !projectId) return;
     if (pendingUpdates.current.size === 0) return;
 
     const scheduleViaRaf = typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function';
@@ -241,7 +269,7 @@ export function useShapes() {
         }
       }, 16);
     }
-  }, [processPendingUpdates, user]);
+  }, [processPendingUpdates, user, projectId]);
 
   useEffect(() => {
     return () => {
@@ -266,8 +294,8 @@ export function useShapes() {
     x: number,
     y: number
   ) => {
-    if (!user) {
-      console.warn('Cannot update shape: user not authenticated');
+    if (!user || !projectId) {
+      console.warn('Cannot update shape: user not authenticated or projectId missing');
       return;
     }
 
@@ -288,7 +316,7 @@ export function useShapes() {
     }
 
     schedulePendingFlush();
-  }, [schedulePendingFlush, updateShapePositionInStore, user]);
+  }, [schedulePendingFlush, updateShapePositionInStore, user, projectId]);
 
   /**
    * Handle incoming Firestore updates
@@ -309,8 +337,11 @@ export function useShapes() {
           perfMetrics.trackShapeUpdate(rawShape.id, clientTimestamp ?? null, isRemoteUpdate);
         });
       }
-      // Build layer color map
-      const layerColorById = useCanvasStore.getState().layers.reduce((acc, l) => {
+      // Build layer color map - use project-scoped store if projectId is available
+      const storeApi = projectId 
+        ? getProjectCanvasStoreApi(projectId)
+        : useCanvasStore;
+      const layerColorById = storeApi.getState().layers.reduce((acc, l) => {
         acc[l.id] = l.color || '#3B82F6';
         return acc;
       }, {} as Record<string, string>);
@@ -346,7 +377,7 @@ export function useShapes() {
     } finally {
       isSyncing.current = false;
     }
-  }, [scheduleShapesCommit]);
+  }, [scheduleShapesCommit, projectId]);
 
   /**
    * Incremental Firestore change handler (added/modified/removed)
@@ -355,7 +386,11 @@ export function useShapes() {
   const handleFirestoreDocChanges = useCallback((changes: FirestoreShapeChange[]) => {
     if (!userIdRef.current) return;
     const merged = new Map(shapesRef.current);
-    const layerColorById = useCanvasStore.getState().layers.reduce((acc, l) => {
+    // Build layer color map - use project-scoped store if projectId is available
+    const storeApi = projectId 
+      ? getProjectCanvasStoreApi(projectId)
+      : useCanvasStore;
+    const layerColorById = storeApi.getState().layers.reduce((acc, l) => {
       acc[l.id] = l.color || '#3B82F6';
       return acc;
     }, {} as Record<string, string>);
@@ -386,7 +421,7 @@ export function useShapes() {
     }
     latestShapesRef.current = merged;
     scheduleShapesCommit();
-  }, [scheduleShapesCommit]);
+  }, [scheduleShapesCommit, projectId]);
 
   /**
    * Reload all shapes from Firestore (useful for page refresh or reconnection)
@@ -399,9 +434,11 @@ export function useShapes() {
       console.log('🔄 Reloading all shapes from Firestore...');
     }
     
+    if (!projectId) return;
+
     try {
       // Set up a one-time listener to get all current shapes
-      const unsubscribe = subscribeToShapes((firestoreShapes) => {
+      const unsubscribe = subscribeToShapes(projectId, (firestoreShapes) => {
         console.log(`📥 Loaded ${firestoreShapes.length} shapes from Firestore`);
         handleFirestoreUpdate(firestoreShapes);
         unsubscribe(); // Unsubscribe after first load
@@ -409,7 +446,7 @@ export function useShapes() {
     } catch (error) {
       console.error('❌ Failed to reload shapes from Firestore:', error);
     }
-  }, [handleFirestoreUpdate]);
+  }, [handleFirestoreUpdate, projectId]);
 
   /**
    * Set up Firestore listener for real-time sync
@@ -417,14 +454,14 @@ export function useShapes() {
   // Set up one stable Firestore listener per authenticated session
   const userUid = user?.uid ?? null;
   useEffect(() => {
-    if (!userUid) return;
+    if (!userUid || !projectId) return;
     console.log('🔄 Setting up Firestore shapes listener (incremental)');
-    const unsubscribe = subscribeToShapesChanges(handleFirestoreDocChanges);
+    const unsubscribe = subscribeToShapesChanges(projectId, handleFirestoreDocChanges);
     return () => {
       console.log('🔄 Cleaning up Firestore shapes listener');
       unsubscribe();
     };
-  }, [handleFirestoreDocChanges, userUid]);
+  }, [handleFirestoreDocChanges, userUid, projectId]);
 
   useEffect(() => {
     if (!isHarnessEnabled()) return;
@@ -455,26 +492,34 @@ export function useShapes() {
     // Update the shape in the store
     const clientTimestamp = Date.now();
     
-    // Update store optimistically
-    const { updateShapeProperty: updateShapePropertyInStore } = useCanvasStore.getState();
+    // Update store optimistically - use project-scoped store if projectId is available
+    const storeApi = projectId 
+      ? getProjectCanvasStoreApi(projectId)
+      : useCanvasStore;
+    const { updateShapeProperty: updateShapePropertyInStore } = storeApi.getState();
     updateShapePropertyInStore(id, property, value, user.uid, clientTimestamp);
+
+    if (!projectId) {
+      console.warn('Cannot update shape property: projectId is required');
+      return;
+    }
 
     try {
       // Sync to Firestore
-      await updateShapePropertyInFirestore(id, property, value, user.uid, clientTimestamp);
+      await updateShapePropertyInFirestore(projectId, id, property, value, user.uid, clientTimestamp);
       console.log(`✅ Updated shape ${id} property ${property} to ${value}`);
     } catch (error) {
       console.error('❌ Failed to update shape property in Firestore:', error);
       // Note: We could queue this for offline sync if needed
     }
-  }, [user, shapes]);
+  }, [user, projectId, shapes]);
 
   /**
    * Delete multiple shapes with optimistic updates and offline handling
    */
   const deleteShapes = useCallback(async (shapeIds: string[]) => {
-    if (!user) {
-      console.warn('Cannot delete shapes: user not authenticated');
+    if (!user || !projectId) {
+      console.warn('Cannot delete shapes: user not authenticated or projectId missing');
       return;
     }
 
@@ -487,8 +532,11 @@ export function useShapes() {
       locallyDeletedShapes.current.add(shapeId);
     });
 
-    // Optimistic update - remove from store immediately
-    const { shapes: currentShapes, setShapesFromMap, selectedShapeIds, clearSelection } = useCanvasStore.getState();
+    // Optimistic update - remove from store immediately - use project-scoped store if projectId is available
+    const storeApi = projectId 
+      ? getProjectCanvasStoreApi(projectId)
+      : useCanvasStore;
+    const { shapes: currentShapes, setShapesFromMap, selectedShapeIds, clearSelection } = storeApi.getState();
     const newShapes = new Map(currentShapes);
     shapeIds.forEach(shapeId => {
       newShapes.delete(shapeId);
@@ -507,7 +555,7 @@ export function useShapes() {
     // Delete from Firestore
     const deletePromises = shapeIds.map(async (shapeId) => {
       try {
-        await deleteShapeInFirestore(shapeId);
+        await deleteShapeInFirestore(projectId, shapeId);
         console.log(`✅ Deleted shape ${shapeId}`);
         // Remove from locally deleted set since Firestore confirms the deletion
         locallyDeletedShapes.current.delete(shapeId);
@@ -515,7 +563,7 @@ export function useShapes() {
         console.error(`❌ Failed to delete shape ${shapeId} in Firestore:`, error);
         
         // Queue for offline sync
-        offlineManager.queueDeleteShape(shapeId, user.uid);
+        offlineManager.queueDeleteShape(projectId, shapeId, user.uid);
         console.log(`📝 Queued shape deletion for offline sync: ${shapeId}`);
         throw error;
       }
@@ -527,7 +575,7 @@ export function useShapes() {
     } catch (error) {
       console.error('❌ Some shape deletions failed:', error);
     }
-  }, [user]);
+  }, [user, projectId]);
 
   /**
    * Duplicate multiple shapes with optimistic updates and offline handling
@@ -566,8 +614,14 @@ export function useShapes() {
 
       duplicatedShapes.push(duplicatedShape);
 
+      if (!projectId) {
+        console.warn('Cannot duplicate shapes: projectId is required');
+        return;
+      }
+
       // Create in Firestore
       const createPromise = createShapeInFirestore(
+        projectId,
         duplicatedShape.id,
         duplicatedShape.type,
         duplicatedShape.x,
@@ -579,6 +633,7 @@ export function useShapes() {
         
         // Queue for offline sync
         offlineManager.queueCreateShape(
+          projectId,
           duplicatedShape.id,
           duplicatedShape.type,
           duplicatedShape.x,
@@ -605,7 +660,7 @@ export function useShapes() {
     } catch (error) {
       console.error('❌ Some shape duplications failed:', error);
     }
-  }, [user, shapes, createShapeInStore]);
+  }, [user, projectId, shapes, createShapeInStore]);
 
   /**
    * Update shape rotation with Firestore sync
@@ -629,19 +684,27 @@ export function useShapes() {
     // Update the shape in the store
     const clientTimestamp = Date.now();
     
-    // Update store optimistically
-    const { updateShapeProperty: updateShapePropertyInStore } = useCanvasStore.getState();
+    // Update store optimistically - use project-scoped store if projectId is available
+    const storeApi = projectId 
+      ? getProjectCanvasStoreApi(projectId)
+      : useCanvasStore;
+    const { updateShapeProperty: updateShapePropertyInStore } = storeApi.getState();
     updateShapePropertyInStore(id, 'rotation', rotation, user.uid, clientTimestamp);
+
+    if (!projectId) {
+      console.warn('Cannot update shape rotation: projectId is required');
+      return;
+    }
 
     try {
       // Sync to Firestore
-      await updateShapePropertyInFirestore(id, 'rotation', rotation, user.uid, clientTimestamp);
+      await updateShapePropertyInFirestore(projectId, id, 'rotation', rotation, user.uid, clientTimestamp);
       console.log(`✅ Updated shape ${id} rotation to ${rotation}`);
     } catch (error) {
       console.error('❌ Failed to update shape rotation in Firestore:', error);
       // Note: We could queue this for offline sync if needed
     }
-  }, [user, shapes]);
+  }, [user, projectId, shapes]);
 
   return {
     createShape,

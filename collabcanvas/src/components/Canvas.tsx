@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState, useImperativeHandle, forwardRef, useCallback } from 'react';
 import { Stage, Layer, Line, Circle, Image } from 'react-konva';
 import Konva from 'konva';
-import { Shape } from './Shape';
+import { Shape as ShapeComponent } from './Shape';
 import { CursorOverlay } from './CursorOverlay';
 import { LockOverlay } from './LockOverlay';
 import { SelectionBox } from './SelectionBox';
@@ -16,14 +16,16 @@ import { PolylineTool } from './PolylineTool';
 import { PolygonTool } from './PolygonTool';
 import { createPolylineShape, createPolygonShape } from '../services/shapeService';
 import { useCanvasStore } from '../store/canvasStore';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useShapes } from '../hooks/useShapes';
 import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
 import { calculateViewportBounds, filterVisibleShapes } from '../utils/viewport';
-import type { SelectionBox as SelectionBoxType, UnitType } from '../types';
+import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerType } from '../types';
 
 interface CanvasProps {
+  projectId?: string;
   onFpsUpdate?: (fps: number) => void;
   onZoomChange?: (scale: number) => void;
   showLayersPanel?: boolean;
@@ -43,7 +45,7 @@ export interface CanvasHandle {
  * Main canvas component with Konva integration
  * Supports pan (click and drag) and zoom (mouse wheel) at 60 FPS
  */
-const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChange, showLayersPanel = false, showAlignmentToolbar = false, onCloseLayersPanel, onCloseAlignmentToolbar }, ref) => {
+const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, onZoomChange, showLayersPanel = false, showAlignmentToolbar = false, onCloseLayersPanel, onCloseAlignmentToolbar }, ref) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
@@ -71,8 +73,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const lowFpsWarningCount = useRef(0); // Track consecutive low FPS warnings
 
   // Store state
-  const { shapes, updateShapePosition } = useShapes();
-  const shapeMap = useCanvasStore((state) => state.shapes);
+  const { shapes, updateShapePosition, createShape } = useShapes(projectId);
+  // Use project-scoped store for shapes when projectId is available (shapes from useShapes is already project-scoped)
+  const shapeMap = useScopedCanvasStore(projectId, (state) => state.shapes);
   const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
   const selectShape = useCanvasStore((state) => state.selectShape);
   const deselectShape = useCanvasStore((state) => state.deselectShape);
@@ -86,15 +89,16 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const updateTransformControls = useCanvasStore((state) => state.updateTransformControls);
   const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const currentUser = useCanvasStore((state) => state.currentUser);
-  const activeLayerId = useCanvasStore((state) => state.activeLayerId);
-  const layers = useCanvasStore((state) => state.layers);
+  // Use project-scoped store for layers when projectId is available
+  const activeLayerId = useScopedCanvasStore(projectId, (state) => state.activeLayerId);
+  const layers = useScopedCanvasStore(projectId, (state) => state.layers);
   const gridState = useCanvasStore((state) => state.gridState);
-  const canvasScale = useCanvasStore((state) => state.canvasScale);
-  const setScaleLine = useCanvasStore((state) => state.setScaleLine);
-  const updateScaleLine = useCanvasStore((state) => state.updateScaleLine);
-  const deleteScaleLine = useCanvasStore((state) => state.deleteScaleLine);
-  const setIsScaleMode = useCanvasStore((state) => state.setIsScaleMode);
-  const createShape = useCanvasStore((state) => state.createShape);
+  // Use project-scoped store for scale line operations when projectId is available
+  const canvasScale = useScopedCanvasStore(projectId, (state) => state.canvasScale);
+  const setScaleLine = useScopedCanvasStore(projectId, (state) => state.setScaleLine);
+  const updateScaleLine = useScopedCanvasStore(projectId, (state) => state.updateScaleLine);
+  const deleteScaleLine = useScopedCanvasStore(projectId, (state) => state.deleteScaleLine);
+  const setIsScaleMode = useScopedCanvasStore(projectId, (state) => state.setIsScaleMode);
   
   // Debug: Track activeLayerId changes
   useEffect(() => {
@@ -241,7 +245,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       if (e.key === 'Escape' && canvasScale.isScaleMode) {
         setIsScaleMode(false);
         if (canvasScale.scaleLine) {
-          deleteScaleLine();
+          deleteScaleLine(projectId);
         }
         return;
       }
@@ -280,7 +284,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       container.addEventListener('keydown', handleKeyDown);
       return () => container.removeEventListener('keydown', handleKeyDown);
     }
-  }, [selectedShapeIds, moveSelectedShapes, canvasScale.isScaleMode, canvasScale.scaleLine, deleteScaleLine, setIsScaleMode]);
+  }, [selectedShapeIds, moveSelectedShapes, canvasScale.isScaleMode, canvasScale.scaleLine, deleteScaleLine, setIsScaleMode, projectId]);
 
   // Handle mouse down - start pan if clicking on empty space, or start selection
   const handleMouseDown = (e: Konva.KonvaEventObject<MouseEvent>) => {
@@ -408,7 +412,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
   const handleMouseUp = () => {
     if (isSelecting.current && selectionBox) {
       // Find shapes that intersect with the selection box
-      const intersectingShapes = shapes.filter(shape => {
+      const shapesArray = Array.from(shapes.values());
+      const intersectingShapes = shapesArray.filter((shape: Shape) => {
         const shapeRight = shape.x + shape.w;
         const shapeBottom = shape.y + shape.h;
         const boxRight = selectionBox.x + selectionBox.width;
@@ -422,16 +427,16 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       
       // Select intersecting shapes
       if (intersectingShapes.length > 0) {
-        const shapeIds = intersectingShapes.map(shape => shape.id);
+        const shapeIds = intersectingShapes.map((shape: Shape) => shape.id);
         selectShapes(shapeIds);
         
         // Update transform controls
         updateTransformControls({
           isVisible: true,
-          x: Math.min(...intersectingShapes.map(s => s.x)),
-          y: Math.min(...intersectingShapes.map(s => s.y)),
-          width: Math.max(...intersectingShapes.map(s => s.x + s.w)) - Math.min(...intersectingShapes.map(s => s.x)),
-          height: Math.max(...intersectingShapes.map(s => s.y + s.h)) - Math.min(...intersectingShapes.map(s => s.y)),
+          x: Math.min(...intersectingShapes.map((s: Shape) => s.x)),
+          y: Math.min(...intersectingShapes.map((s: Shape) => s.y)),
+          width: Math.max(...intersectingShapes.map((s: Shape) => s.x + s.w)) - Math.min(...intersectingShapes.map((s: Shape) => s.x)),
+          height: Math.max(...intersectingShapes.map((s: Shape) => s.y + s.h)) - Math.min(...intersectingShapes.map((s: Shape) => s.y)),
           rotation: 0,
           resizeHandles: ['nw', 'n', 'ne', 'w', 'e', 'sw', 's', 'se'],
         });
@@ -486,7 +491,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
     if (activeDrawingTool === 'polyline' && drawingPoints.length < 2) return;
     if (activeDrawingTool === 'polygon' && drawingPoints.length < 3) return;
 
-    const activeLayer = layers.find(l => l.id === activeLayerId);
+    const activeLayer = layers.find((l: LayerType) => l.id === activeLayerId);
     const shapeColor = activeLayer?.color || '#3B82F6';
 
     const shape = activeDrawingTool === 'polyline'
@@ -577,7 +582,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
         createdBy: currentUser.uid,
         updatedBy: currentUser.uid,
       };
-      setScaleLine(scaleLine);
+      setScaleLine(scaleLine, projectId);
     } else {
       // Second click - set end point and show measurement input modal
       setPendingScaleLine({ endX: x, endY: y });
@@ -587,14 +592,40 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
   // Handle measurement input submission
   const handleMeasurementSubmit = (value: number, unit: UnitType) => {
-    if (!pendingScaleLine) return;
+    console.log('📝 handleMeasurementSubmit called:', { 
+      pendingScaleLine, 
+      scaleLineInStore: canvasScale.scaleLine,
+      projectId 
+    });
     
-    updateScaleLine({
+    if (!pendingScaleLine) {
+      console.warn('⚠️ Cannot update scale line: missing pendingScaleLine');
+      return;
+    }
+    
+    if (!canvasScale.scaleLine) {
+      console.warn('⚠️ Cannot update scale line: scaleLine not found in store');
+      return;
+    }
+    
+    if (!projectId) {
+      console.warn('⚠️ Cannot update scale line: projectId is missing');
+      return;
+    }
+    
+    // Get the current scale line from store to ensure we have the latest state
+    const currentScaleLine = canvasScale.scaleLine;
+    console.log('📋 Current scale line:', currentScaleLine);
+    
+    // Update the scale line with the measurement - pass projectId explicitly
+    const updates = {
       endX: pendingScaleLine.endX,
       endY: pendingScaleLine.endY,
       realWorldLength: value,
       unit: unit,
-    });
+    };
+    console.log('🔄 Calling updateScaleLine with:', updates);
+    updateScaleLine(updates, projectId);
     
     // Exit scale mode after successful creation
     setIsScaleMode(false);
@@ -604,9 +635,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
 
   // Handle measurement input cancellation
   const handleMeasurementCancel = () => {
-    // Remove the temporary line and exit scale mode
-    deleteScaleLine();
+    // Remove the temporary line and exit scale mode - pass projectId explicitly
+    deleteScaleLine(projectId);
     setIsScaleMode(false);
+    setShowMeasurementInput(false);
+    setPendingScaleLine(null);
+  };
+
+  // Handle measurement input modal close (without canceling/deleting)
+  const handleMeasurementClose = () => {
+    // Just close the modal without deleting the scale line
+    // This is used when the form is submitted successfully
     setShowMeasurementInput(false);
     setPendingScaleLine(null);
   };
@@ -770,6 +809,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               onComplete={() => setActiveDrawingTool(null)}
               points={drawingPoints}
               previewPoint={drawingPreviewPoint}
+              canvasScale={canvasScale}
+              layers={layers}
+              activeLayerId={activeLayerId}
             />
           )}
           {activeDrawingTool === 'polygon' && (
@@ -778,6 +820,9 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               onComplete={() => setActiveDrawingTool(null)}
               points={drawingPoints}
               previewPoint={drawingPreviewPoint}
+              canvasScale={canvasScale}
+              layers={layers}
+              activeLayerId={activeLayerId}
             />
           )}
 
@@ -795,13 +840,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               
               // Filter shapes to only render visible ones (viewport culling)
               // Use padding of 200px to include shapes near viewport edge
-              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              const shapesArray = Array.from(shapeMap.values());
+              const visibleShapes = filterVisibleShapes(shapesArray, viewportBounds, 200);
               
               // Log culling stats in development (only if significant reduction)
-              if (import.meta.env.DEV && shapes.length > 50) {
-                const culledCount = shapes.length - visibleShapes.length;
+              if (import.meta.env.DEV && shapesArray.length > 50) {
+                const culledCount = shapesArray.length - visibleShapes.length;
                 if (culledCount > 0) {
-                  console.log(`[PERFORMANCE] Viewport culling: ${visibleShapes.length}/${shapes.length} shapes visible (${culledCount} culled)`);
+                  console.log(`[PERFORMANCE] Viewport culling: ${visibleShapes.length}/${shapesArray.length} shapes visible (${culledCount} culled)`);
                 }
               }
               
@@ -842,7 +888,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               const isShapeLocked = isShapeLockedByUser || isShapeLockedByLayer;
               
               return (
-                <Shape
+                <ShapeComponent
                   key={shape.id}
                   shape={shape}
                   isSelected={isSelected}
@@ -877,7 +923,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
               );
               
               // Filter shapes to only render measurements for visible shapes
-              const visibleShapes = filterVisibleShapes(shapes, viewportBounds, 200);
+              const shapesArrayForMeasurements = Array.from(shapeMap.values());
+              const visibleShapes = filterVisibleShapes(shapesArrayForMeasurements, viewportBounds, 200);
               
               return visibleShapes.map((shape) => {
               if (shape.type !== 'polyline' && shape.type !== 'polygon') return null;
@@ -895,6 +942,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
                 <MeasurementDisplay
                   key={`measure-${shape.id}`}
                   shape={shape}
+                  canvasScale={canvasScale}
                   opacity={opacity}
                 />
               );
@@ -972,6 +1020,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       <LayersPanel
         isVisible={showLayersPanel}
         onClose={onCloseLayersPanel || (() => {})}
+        projectId={projectId}
       />
 
       {/* Alignment Toolbar */}
@@ -983,7 +1032,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ onFpsUpdate, onZoomChang
       {/* Measurement Input Modal */}
       <MeasurementInput
         isOpen={showMeasurementInput}
-        onClose={handleMeasurementCancel}
+        onClose={handleMeasurementClose}
+        onCancel={handleMeasurementCancel}
         onSubmit={handleMeasurementSubmit}
         title="Set Scale Measurement"
       />

@@ -4,7 +4,7 @@
  */
 
 import { Layer, Line, Circle, Text } from 'react-konva';
-import { useCanvasStore } from '../store/canvasStore';
+import type { CanvasScale, Layer as LayerType } from '../types';
 import { calculatePolylineLength, convertToRealWorld, formatMeasurement } from '../services/measurementService';
 
 interface Point {
@@ -17,16 +17,16 @@ interface PolylineToolProps {
   onComplete?: () => void;
   points: Point[];
   previewPoint: Point | null;
+  canvasScale: CanvasScale;
+  layers: LayerType[];
+  activeLayerId: string;
 }
 
 /**
  * Polyline drawing tool for wall measurements
  * Uses fixed sizes for performance (no zoom dependency)
  */
-export function PolylineTool({ isActive, points, previewPoint }: PolylineToolProps) {
-  const canvasScale = useCanvasStore((state) => state.canvasScale);
-  const layers = useCanvasStore((state) => state.layers);
-  const activeLayerId = useCanvasStore((state) => state.activeLayerId);
+export function PolylineTool({ isActive, points, previewPoint, canvasScale, layers, activeLayerId }: PolylineToolProps) {
 
   // Get active layer color
   const activeLayer = layers.find(l => l.id === activeLayerId);

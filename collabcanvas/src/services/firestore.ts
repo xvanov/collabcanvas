@@ -1,6 +1,7 @@
 import {
   collection,
   doc,
+  getDoc,
   setDoc,
   updateDoc,
   deleteDoc,
@@ -15,11 +16,18 @@ import type { Unsubscribe, FieldValue } from 'firebase/firestore';
 import { firestore } from './firebase';
 import type { ShapeType, Shape } from '../types';
 
-// Collection reference for the global board
-const BOARD_ID = 'global';
-const shapesCollection = collection(firestore, 'boards', BOARD_ID, 'shapes');
-const layersCollection = collection(firestore, 'boards', BOARD_ID, 'layers');
-const boardDoc = doc(firestore, 'boards', BOARD_ID);
+// Helper functions to get project-scoped collection references
+function getShapesCollection(projectId: string) {
+  return collection(firestore, 'projects', projectId, 'shapes');
+}
+
+function getLayersCollection(projectId: string) {
+  return collection(firestore, 'projects', projectId, 'layers');
+}
+
+function getBoardDoc(projectId: string) {
+  return doc(firestore, 'projects', projectId, 'board', 'data');
+}
 
 /**
 * Shape data structure for Firestore
@@ -112,6 +120,7 @@ export interface FirestoreBoardState {
  * Create a new shape in Firestore
  */
 export const createShape = async (
+  projectId: string,
   shapeId: string,
   shapeType: ShapeType,
   x: number,
@@ -120,7 +129,7 @@ export const createShape = async (
   layerId?: string,
   additionalProps?: Partial<Shape>
 ): Promise<void> => {
-  const shapeRef = doc(shapesCollection, shapeId);
+  const shapeRef = doc(getShapesCollection(projectId), shapeId);
   
   const baseShapeData = {
     type: shapeType,
@@ -182,7 +191,21 @@ export const createShape = async (
       break;
   }
 
-  console.log('🔥 Saving shape to Firestore:', { shapeId, shapeData });
+  console.log('🔥 Saving shape to Firestore:', { shapeId, shapeType, shapeData });
+  console.log('📋 Shape data details:', {
+    type: shapeData.type,
+    hasPoints: 'points' in shapeData,
+    points: shapeData.points,
+    pointsType: typeof shapeData.points,
+    isArray: Array.isArray(shapeData.points),
+    strokeWidth: 'strokeWidth' in shapeData ? shapeData.strokeWidth : 'missing',
+    x: shapeData.x,
+    y: shapeData.y,
+    w: shapeData.w,
+    h: shapeData.h,
+    createdAt: shapeData.createdAt,
+    updatedAt: shapeData.updatedAt,
+  });
   await setDoc(shapeRef, shapeData);
 };
 
@@ -191,13 +214,14 @@ export const createShape = async (
  * Only updates x, y coordinates and metadata
  */
 export const updateShapePosition = async (
+  projectId: string,
   shapeId: string,
   x: number,
   y: number,
   userId: string,
   clientTimestamp: number
 ): Promise<void> => {
-  const shapeRef = doc(shapesCollection, shapeId);
+  const shapeRef = doc(getShapesCollection(projectId), shapeId);
   
   await updateDoc(shapeRef, {
     x,
@@ -213,13 +237,14 @@ export const updateShapePosition = async (
  * Updates any property of a shape (color, size, text, etc.)
  */
 export const updateShapeProperty = async (
+  projectId: string,
   shapeId: string,
   property: keyof FirestoreShape,
   value: unknown,
   userId: string,
   clientTimestamp: number
 ): Promise<void> => {
-  const shapeRef = doc(shapesCollection, shapeId);
+  const shapeRef = doc(getShapesCollection(projectId), shapeId);
   
   await updateDoc(shapeRef, {
     [property]: value,
@@ -233,20 +258,22 @@ export const updateShapeProperty = async (
  * Delete a shape from Firestore
  */
 export const deleteShape = async (
+  projectId: string,
   shapeId: string
 ): Promise<void> => {
-  const shapeRef = doc(shapesCollection, shapeId);
+  const shapeRef = doc(getShapesCollection(projectId), shapeId);
   await deleteDoc(shapeRef);
 };
 
 /**
- * Subscribe to all shapes in the board
+ * Subscribe to all shapes in the project
  * Returns an unsubscribe function
  */
 export const subscribeToShapes = (
+  projectId: string,
   callback: (shapes: FirestoreShape[]) => void
 ): Unsubscribe => {
-  const q = query(shapesCollection);
+  const q = query(getShapesCollection(projectId));
   
   return onSnapshot(q, (snapshot) => {
     const shapes: FirestoreShape[] = [];
@@ -268,9 +295,10 @@ export const subscribeToShapes = (
  * Emits only added/modified/removed items per snapshot to minimize churn
  */
 export const subscribeToShapesChanges = (
+  projectId: string,
   onChanges: (changes: FirestoreShapeChange[]) => void
 ): Unsubscribe => {
-  const q = query(shapesCollection);
+  const q = query(getShapesCollection(projectId));
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
     const changes: FirestoreShapeChange[] = snapshot.docChanges().map((change) => {
       const data = change.doc.data() as DocumentData;
@@ -292,12 +320,13 @@ export const subscribeToShapesChanges = (
  * Create a new layer in Firestore
  */
 export const createLayer = async (
+  projectId: string,
   layerId: string,
   name: string,
   userId: string,
   order: number = 0
 ): Promise<void> => {
-  const layerRef = doc(layersCollection, layerId);
+  const layerRef = doc(getLayersCollection(projectId), layerId);
   
   const layerData: Omit<FirestoreLayer, 'id'> = {
     name,
@@ -320,11 +349,12 @@ export const createLayer = async (
  * Update a layer in Firestore
  */
 export const updateLayer = async (
+  projectId: string,
   layerId: string,
   updates: Partial<Omit<FirestoreLayer, 'id' | 'createdAt' | 'createdBy'>>,
   userId: string
 ): Promise<void> => {
-  const layerRef = doc(layersCollection, layerId);
+  const layerRef = doc(getLayersCollection(projectId), layerId);
   
   const updateData = {
     ...updates,
@@ -339,19 +369,20 @@ export const updateLayer = async (
 /**
  * Delete a layer from Firestore
  */
-export const deleteLayer = async (layerId: string): Promise<void> => {
-  const layerRef = doc(layersCollection, layerId);
+export const deleteLayer = async (projectId: string, layerId: string): Promise<void> => {
+  const layerRef = doc(getLayersCollection(projectId), layerId);
   await deleteDoc(layerRef);
 };
 
 /**
- * Subscribe to all layers in the board
+ * Subscribe to all layers in the project
  * Returns an unsubscribe function
  */
 export const subscribeToLayers = (
+  projectId: string,
   callback: (layers: FirestoreLayer[]) => void
 ): Unsubscribe => {
-  const q = query(layersCollection);
+  const q = query(getLayersCollection(projectId));
   
   return onSnapshot(q, (snapshot) => {
     const layers: FirestoreLayer[] = [];
@@ -373,9 +404,10 @@ export const subscribeToLayers = (
  * Emits only added/modified/removed items per snapshot to minimize churn
  */
 export const subscribeToLayersChanges = (
+  projectId: string,
   onChanges: (changes: FirestoreLayerChange[]) => void
 ): Unsubscribe => {
-  const q = query(layersCollection);
+  const q = query(getLayersCollection(projectId));
   return onSnapshot(q, (snapshot: QuerySnapshot<DocumentData>) => {
     const changes: FirestoreLayerChange[] = snapshot.docChanges().map((change) => {
       const data = change.doc.data() as DocumentData;
@@ -391,17 +423,40 @@ export const subscribeToLayersChanges = (
 
 /**
  * Initialize the board document if it doesn't exist
+ * This function is idempotent and will never overwrite existing data
  */
-export const initializeBoard = async (userId: string): Promise<void> => {
+export const initializeBoard = async (projectId: string, userId: string): Promise<void> => {
   try {
-    const boardState: FirestoreBoardState = {
-      activeLayerId: 'default-layer',
-      updatedAt: serverTimestamp(),
-      updatedBy: userId,
-    };
+    const boardDocRef = getBoardDoc(projectId);
     
-    await setDoc(boardDoc, boardState, { merge: true });
-    console.log('🎯 Board document initialized in Firestore');
+    // Check if document already exists
+    const docSnapshot = await getDoc(boardDocRef);
+    
+    if (docSnapshot.exists()) {
+      // Document exists, only update activeLayerId if it's missing
+      // Never overwrite scaleLine, backgroundImage, or other fields
+      const existingData = docSnapshot.data() as FirestoreBoardState;
+      if (!existingData.activeLayerId) {
+        await updateDoc(boardDocRef, {
+          activeLayerId: 'default-layer',
+          updatedAt: serverTimestamp(),
+          updatedBy: userId,
+        });
+        console.log('🎯 Board document updated with activeLayerId (preserving existing data)');
+      } else {
+        console.log('🎯 Board document already exists with all required fields, skipping initialization');
+      }
+    } else {
+      // Document doesn't exist, create it with minimal required fields
+      const boardState: FirestoreBoardState = {
+        activeLayerId: 'default-layer',
+        updatedAt: serverTimestamp(),
+        updatedBy: userId,
+      };
+      
+      await setDoc(boardDocRef, boardState, { merge: true });
+      console.log('🎯 Board document initialized in Firestore (new document)');
+    }
   } catch (error) {
     console.error('❌ Failed to initialize board:', error);
     throw error;
@@ -412,6 +467,7 @@ export const initializeBoard = async (userId: string): Promise<void> => {
  * Update the active layer ID in Firestore
  */
 export const updateActiveLayerId = async (
+  projectId: string,
   activeLayerId: string,
   userId: string
 ): Promise<void> => {
@@ -422,7 +478,7 @@ export const updateActiveLayerId = async (
       updatedBy: userId,
     };
     
-    await setDoc(boardDoc, boardState, { merge: true });
+    await setDoc(getBoardDoc(projectId), boardState, { merge: true });
     console.log('🎯 Updated active layer ID in Firestore:', activeLayerId);
   } catch (error) {
     console.error('❌ Failed to update active layer ID:', error);
@@ -434,15 +490,29 @@ export const updateActiveLayerId = async (
  * Subscribe to board state changes (including activeLayerId)
  */
 export const subscribeToBoardState = (
+  projectId: string,
   onStateChange: (state: FirestoreBoardState | null) => void
 ): Unsubscribe => {
-  return onSnapshot(boardDoc, (doc) => {
+  const boardDocRef = getBoardDoc(projectId);
+  console.log('📡 Subscribing to board state:', { projectId, path: boardDocRef.path });
+  
+  return onSnapshot(boardDocRef, (doc) => {
     if (doc.exists()) {
       const state = doc.data() as FirestoreBoardState;
+      console.log('📥 Board state received from Firestore:', { 
+        projectId, 
+        hasScaleLine: !!state.scaleLine,
+        scaleLine: state.scaleLine,
+        hasBackgroundImage: !!state.backgroundImage 
+      });
       onStateChange(state);
     } else {
+      console.log('📥 Board document does not exist yet:', { projectId });
       onStateChange(null);
     }
+  }, (error) => {
+    console.error('❌ Error subscribing to board state:', error);
+    onStateChange(null);
   });
 };
 
@@ -459,7 +529,8 @@ export const saveBackgroundImage = async (
     width: number;
     height: number;
   },
-  userId: string
+  userId: string,
+  projectId: string
 ): Promise<void> => {
   try {
     const boardState: Partial<FirestoreBoardState> = {
@@ -472,7 +543,7 @@ export const saveBackgroundImage = async (
       updatedBy: userId,
     };
     
-    await setDoc(boardDoc, boardState, { merge: true });
+    await setDoc(getBoardDoc(projectId), boardState, { merge: true });
     console.log('🎯 Background image saved to Firestore');
   } catch (error) {
     console.error('❌ Failed to save background image:', error);
@@ -494,10 +565,15 @@ export const saveScaleLine = async (
     unit: string;
     isVisible: boolean;
   },
-  userId: string
+  userId: string,
+  projectId: string
 ): Promise<void> => {
   try {
-    const boardState: Partial<FirestoreBoardState> = {
+    const boardDocRef = getBoardDoc(projectId);
+    console.log('💾 saveScaleLine called:', { projectId, scaleLine, userId, path: boardDocRef.path });
+    
+    // Use setDoc with merge to ensure document exists and preserve other fields
+    await setDoc(boardDocRef, {
       scaleLine: {
         ...scaleLine,
         createdAt: serverTimestamp(),
@@ -507,9 +583,7 @@ export const saveScaleLine = async (
       },
       updatedAt: serverTimestamp(),
       updatedBy: userId,
-    };
-    
-    await setDoc(boardDoc, boardState, { merge: true });
+    }, { merge: true });
     console.log('🎯 Scale line saved to Firestore');
   } catch (error) {
     console.error('❌ Failed to save scale line:', error);
@@ -520,10 +594,12 @@ export const saveScaleLine = async (
 /**
  * Delete scale line from Firestore
  */
-export const deleteScaleLineFromFirestore = async (userId: string): Promise<void> => {
+export const deleteScaleLineFromFirestore = async (userId: string, projectId: string): Promise<void> => {
   try {
+    const boardDocRef = getBoardDoc(projectId);
+    console.log('🗑️ deleteScaleLineFromFirestore called:', { projectId, userId, path: boardDocRef.path, stackTrace: new Error().stack });
     // Use updateDoc with deleteField() to properly remove the field from Firestore
-    await updateDoc(boardDoc, {
+    await updateDoc(boardDocRef, {
       scaleLine: deleteField(),
       updatedAt: serverTimestamp(),
       updatedBy: userId,
@@ -538,10 +614,10 @@ export const deleteScaleLineFromFirestore = async (userId: string): Promise<void
 /**
  * Delete background image from Firestore
  */
-export const deleteBackgroundImageFromFirestore = async (userId: string): Promise<void> => {
+export const deleteBackgroundImageFromFirestore = async (userId: string, projectId: string): Promise<void> => {
   try {
     // Use updateDoc with deleteField() to properly remove the field from Firestore
-    await updateDoc(boardDoc, {
+    await updateDoc(getBoardDoc(projectId), {
       backgroundImage: deleteField(),
       updatedAt: serverTimestamp(),
       updatedBy: userId,

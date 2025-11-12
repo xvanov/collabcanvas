@@ -4,8 +4,7 @@
  */
 
 import { Text } from 'react-konva';
-import type { Shape } from '../types';
-import { useCanvasStore } from '../store/canvasStore';
+import type { Shape, CanvasScale } from '../types';
 import {
   calculatePolylineLength,
   calculatePolygonArea,
@@ -17,6 +16,7 @@ import { flatPointsToPoints } from '../services/shapeService';
 
 interface MeasurementDisplayProps {
   shape: Shape;
+  canvasScale: CanvasScale;
   opacity?: number;
 }
 
@@ -24,8 +24,7 @@ interface MeasurementDisplayProps {
  * Display measurements for polylines and polygons
  * Uses fixed font size for performance (avoids re-renders on zoom)
  */
-export function MeasurementDisplay({ shape, opacity = 1 }: MeasurementDisplayProps) {
-  const canvasScale = useCanvasStore((state) => state.canvasScale);
+export function MeasurementDisplay({ shape, canvasScale, opacity = 1 }: MeasurementDisplayProps) {
   
   // Only show measurements for polylines and polygons
   if (shape.type !== 'polyline' && shape.type !== 'polygon') {

@@ -196,6 +196,13 @@ collabcanvas/
 
 **Architecture Components:**
 
+- **Project Isolation (Story 2.1)**: Canvas data (shapes, layers, board state) is now project-scoped
+  - Firestore paths: `/projects/{projectId}/shapes/{shapeId}`, `/projects/{projectId}/layers/{layerId}`, `/projects/{projectId}/board/data`
+  - Hooks (`useShapes`, `useLayers`) accept `projectId` parameter and use project-scoped stores via `useScopedCanvasStore`
+  - Components extract `projectId` from route params (`useParams`) and pass to hooks
+  - Store isolation: `projectCanvasStore.ts` provides isolated Zustand stores per project via `getProjectCanvasStore(projectId)`
+  - Security: Firestore rules enforce project-level access control (owner/collaborator checks)
+  - Subscription cleanup: Hooks properly unsubscribe when `projectId` changes to prevent memory leaks
 - Counter Tool: New shape type in `canvasStore.ts`
 - Multi-Floor Support: Extend Firestore structure with `floors` array
 

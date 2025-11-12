@@ -31,7 +31,9 @@ interface User {
 
 **Collections**:
 
-#### `/boards/{boardId}/shapes/{shapeId}`
+#### `/projects/{projectId}/shapes/{shapeId}`
+
+**Note**: As of Story 2.1, shapes are project-scoped. The previous global board path `/boards/global/shapes` is no longer used.
 
 **Document Structure**: `FirestoreShape`
 ```typescript
@@ -60,14 +62,16 @@ interface FirestoreShape {
 ```
 
 **Operations**:
-- `createShape(shapeId, shapeType, x, y, userId, layerId?, additionalProps?)` - Create new shape
-- `updateShapePosition(shapeId, x, y, userId, clientTimestamp)` - Update position
-- `updateShapeProperty(shapeId, property, value, userId, clientTimestamp)` - Update any property
-- `deleteShape(shapeId)` - Delete shape
-- `subscribeToShapes(callback)` - Real-time subscription to all shapes
-- `subscribeToShapesChanges(onChanges)` - Incremental change subscription
+- `createShape(projectId, shapeId, shapeType, x, y, userId, layerId?, additionalProps?)` - Create new shape (project-scoped)
+- `updateShapePosition(projectId, shapeId, x, y, userId, clientTimestamp)` - Update position (project-scoped)
+- `updateShapeProperty(projectId, shapeId, property, value, userId, clientTimestamp)` - Update any property (project-scoped)
+- `deleteShape(projectId, shapeId)` - Delete shape (project-scoped)
+- `subscribeToShapes(projectId, callback)` - Real-time subscription to all shapes (project-scoped)
+- `subscribeToShapesChanges(projectId, onChanges)` - Incremental change subscription (project-scoped)
 
-#### `/boards/{boardId}/layers/{layerId}`
+#### `/projects/{projectId}/layers/{layerId}`
+
+**Note**: As of Story 2.1, layers are project-scoped. The previous global board path `/boards/global/layers` is no longer used.
 
 **Document Structure**: `FirestoreLayer`
 ```typescript
@@ -88,13 +92,15 @@ interface FirestoreLayer {
 ```
 
 **Operations**:
-- `createLayer(layerId, name, userId, order)` - Create new layer
-- `updateLayer(layerId, updates, userId)` - Update layer properties
-- `deleteLayer(layerId)` - Delete layer
-- `subscribeToLayers(callback)` - Real-time subscription to all layers
-- `subscribeToLayersChanges(onChanges)` - Incremental change subscription
+- `createLayer(projectId, layerId, name, userId, order)` - Create new layer (project-scoped)
+- `updateLayer(projectId, layerId, updates, userId)` - Update layer properties (project-scoped)
+- `deleteLayer(projectId, layerId)` - Delete layer (project-scoped)
+- `subscribeToLayers(projectId, callback)` - Real-time subscription to all layers (project-scoped)
+- `subscribeToLayersChanges(projectId, onChanges)` - Incremental change subscription (project-scoped)
 
-#### `/boards/{boardId}`
+#### `/projects/{projectId}/board/data`
+
+**Note**: As of Story 2.1, board state is project-scoped. The previous global board path `/boards/global` is no longer used. The board document is stored in a `board` collection with a fixed `data` document ID, following the same pattern as `scope/data` and `bom/data`.
 
 **Document Structure**: `FirestoreBoardState`
 ```typescript
@@ -127,13 +133,13 @@ interface FirestoreBoardState {
 ```
 
 **Operations**:
-- `initializeBoard(userId)` - Initialize board document
-- `updateActiveLayerId(activeLayerId, userId)` - Update active layer
-- `saveBackgroundImage(image, userId)` - Save background image metadata
-- `saveScaleLine(scaleLine, userId)` - Save scale line configuration
-- `deleteBackgroundImageFromFirestore(userId)` - Remove background image
-- `deleteScaleLineFromFirestore(userId)` - Remove scale line
-- `subscribeToBoardState(onStateChange)` - Real-time board state subscription
+- `initializeBoard(projectId, userId)` - Initialize board document (project-scoped)
+- `updateActiveLayerId(projectId, activeLayerId, userId)` - Update active layer (project-scoped)
+- `saveBackgroundImage(projectId, image, userId)` - Save background image metadata (project-scoped)
+- `saveScaleLine(projectId, scaleLine, userId)` - Save scale line configuration (project-scoped)
+- `deleteBackgroundImageFromFirestore(projectId, userId)` - Remove background image (project-scoped)
+- `deleteScaleLineFromFirestore(projectId, userId)` - Remove scale line (project-scoped)
+- `subscribeToBoardState(projectId, onStateChange)` - Real-time board state subscription (project-scoped)
 
 ### Realtime Database (Ephemeral Data)
 

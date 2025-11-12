@@ -1,8 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
+import { useParams } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import Canvas from '../components/Canvas';
 import { ShapePropertiesPanel } from '../components/ShapePropertiesPanel';
 import { useCanvasStore } from '../store/canvasStore';
+import { getProjectCanvasStoreApi } from '../store/projectCanvasStore';
 import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
 import { useLayers } from '../hooks/useLayers';
@@ -20,6 +22,7 @@ import Konva from 'konva';
  * Contains the Konva canvas with pan/zoom support
  */
 export function Board() {
+  const { projectId } = useParams<{ projectId: string }>();
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
@@ -30,11 +33,10 @@ export function Board() {
   const clearSelection = useCanvasStore((state) => state.clearSelection);
   const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const rotateSelectedShapes = useCanvasStore((state) => state.rotateSelectedShapes);
-  const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes();
-  useLayers(); // Initialize layer synchronization
+  const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes(projectId);
+  useLayers(projectId); // Initialize layer synchronization
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
-  const initializeBoardStateSubscription = useCanvasStore((state) => state.initializeBoardStateSubscription);
   const canvasRef = useRef<{ 
     getViewportCenter: () => { x: number; y: number }; 
     getStage: () => Konva.Stage | null;
@@ -58,7 +60,26 @@ export function Board() {
   // Update current user in store when user changes
   useEffect(() => {
     setCurrentUser(user);
-  }, [user, setCurrentUser]);
+    
+    // Also sync currentUser to project-scoped store if projectId exists
+    if (projectId && user) {
+      const projectStore = getProjectCanvasStoreApi(projectId);
+      projectStore.getState().setCurrentUser(user);
+      console.log('✅ Synced currentUser to project-scoped store:', { projectId, userId: user.uid });
+    }
+  }, [user, setCurrentUser, projectId]);
+
+  // Initialize board state subscription (background image, scale line) when projectId is available
+  useEffect(() => {
+    if (!projectId || !user) return;
+    
+    const projectStore = getProjectCanvasStoreApi(projectId);
+    const unsubscribe = projectStore.getState().initializeBoardStateSubscription(projectId);
+    
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [projectId, user]);
 
   // Handle reconnection and reload shapes with debounce
   useEffect(() => {
@@ -70,14 +91,11 @@ export function Board() {
         
         // Clear stale locks on reconnection
         clearStaleLocks();
-        
-        // Initialize board state subscription (background image, scale line)
-        initializeBoardStateSubscription();
       }, 1000); // 1 second debounce
       
       return () => clearTimeout(timeoutId);
     }
-  }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks, initializeBoardStateSubscription]);
+  }, [user, isOnline, reloadShapesFromFirestore, clearStaleLocks]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -216,6 +234,7 @@ export function Board() {
         onToggleGrid={() => {}}
         onActivatePolylineTool={() => canvasRef.current?.activatePolylineTool()}
         onActivatePolygonTool={() => canvasRef.current?.activatePolygonTool()}
+        projectId={projectId}
       >
         {/* Additional toolbar controls will be added in future PRs */}
       </Toolbar>
@@ -223,6 +242,7 @@ export function Board() {
         <div className="flex-1">
           <Canvas 
             ref={canvasRef}
+            projectId={projectId}
             onFpsUpdate={setFps} 
             onZoomChange={setZoom}
             showLayersPanel={showLayersPanel}
@@ -231,7 +251,7 @@ export function Board() {
             onCloseAlignmentToolbar={() => setShowAlignmentToolbar(false)}
           />
         </div>
-        <ShapePropertiesPanel className="w-80" />
+        <ShapePropertiesPanel className="w-80" projectId={projectId} />
       </div>
       <DiagnosticsHud fps={fps} visible={showDiagnostics} />
       <FloatingAIChat />
