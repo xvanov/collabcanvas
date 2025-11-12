@@ -8,7 +8,7 @@ import type { Shape, Lock, Presence, User, SelectionBox, TransformControls, Hist
 import type { ConnectionState } from '../services/offline';
 import { isHarnessEnabled, registerHarnessApi } from '../utils/harness';
 import { createHistoryService, createAction, type HistoryService } from '../services/historyService';
-import { deleteShape as deleteShapeInFirestore, createShape as createShapeInFirestore, saveBackgroundImage, saveScaleLine, deleteScaleLineFromFirestore, deleteBackgroundImageFromFirestore, subscribeToBoardState } from '../services/firestore';
+import { subscribeToBoardState } from '../services/firestore';
 import { deleteConstructionPlanImage } from '../services/storage';
 import { AIService } from '../services/aiService';
 import { AICommandExecutor } from '../services/aiCommandExecutor';
@@ -192,7 +192,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           // Also sync the restored shape to Firestore so other clients know about it
           try {
             // Pass additional properties for polyline/polygon shapes
-            const additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
+            const _additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
               points: shape.points,
               strokeWidth: shape.strokeWidth,
               w: shape.w,
@@ -440,10 +440,10 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
 
     // Also save to Firestore
     if (currentState.currentUser) {
-      import('../services/firestore').then(({ createShape: createShapeInFirestore }) => {
-        const layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
+      import('../services/firestore').then(({ createShape: _createShapeInFirestore }) => {
+        const _layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
         // Always persist color; include type-specific props where applicable
-        const additionalProps: Partial<Shape> = {
+        const _additionalProps: Partial<Shape> = {
           color: shape.color,
           ...(shape.type === 'polyline' || shape.type === 'polygon' ? {
             points: shape.points,
@@ -910,8 +910,8 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       });
       // Persist color propagation to Firestore so other clients see updated colors
       if (isColorChange && currentUser && (updates as Partial<Layer>).color && updatedShapeIds.length > 0) {
-        const layerColor = (updates as Partial<Layer>).color as string;
-        const clientTimestamp = Date.now();
+        const _layerColor = (updates as Partial<Layer>).color as string;
+        const _clientTimestamp = Date.now();
         // Note: Global store is deprecated - use project-scoped store instead
         // Firestore sync requires projectId which is not available in global store
         // import('../services/firestore').then(({ updateShapeProperty }) => {
@@ -1459,7 +1459,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
     isImageUploadMode: false,
   },
 
-  setBackgroundImage: (image: BackgroundImage | null, skipFirestoreSync = false) =>
+  setBackgroundImage: (image: BackgroundImage | null, _skipFirestoreSync = false) =>
     set((state) => {
       const newState = {
         canvasScale: {
@@ -1509,7 +1509,7 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       return newState;
     }),
 
-  setScaleLine: (scaleLine: ScaleLine | null, skipFirestoreSync = false) =>
+  setScaleLine: (scaleLine: ScaleLine | null, _skipFirestoreSync = false) =>
     set((state) => {
       const newState = {
         canvasScale: {

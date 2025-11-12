@@ -1127,6 +1127,20 @@ export function useProjectCanvasStore<T>(
   selector: (state: CanvasState) => T,
   _equalityFn?: (a: T, b: T) => boolean
 ): T {
+  // Always call hooks in the same order - get store first
+  const store = useMemo<StoreApi<CanvasState>>(
+    () => {
+      if (!projectId) {
+        return canvasStoreApi;
+      }
+      return getProjectCanvasStore(projectId);
+    },
+    [projectId]
+  );
+  
+  // Always call useStore hook - never conditionally
+  const storeValue = useStore(store, selector);
+  
   // If no projectId, return cached default value to prevent infinite loops
   if (!projectId) {
     // Check cache first
@@ -1142,12 +1156,9 @@ export function useProjectCanvasStore<T>(
     return result;
   }
   
-  // Use project-specific store
-  const store = getProjectCanvasStore(projectId);
-  
   // Note: Zustand's useStore doesn't support custom equality functions in this version
   // We rely on Zustand's default reference equality comparison
-  return useStore(store, selector);
+  return storeValue;
 }
 
 /**
