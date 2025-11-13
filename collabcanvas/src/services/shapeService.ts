@@ -194,3 +194,44 @@ export function pointsToFlatPoints(points: Point[]): number[] {
   return flatPoints;
 }
 
+/**
+ * Create a bounding box shape
+ */
+export function createBoundingBoxShape(
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  itemType: string,
+  color: string,
+  userId: string,
+  layerId: string,
+  source: 'ai' | 'manual' = 'manual',
+  confidence?: number,
+  isAIGenerated?: boolean
+): Shape {
+  const id = `shape-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+  const now = Date.now();
+  
+  return {
+    id,
+    type: 'boundingbox',
+    x,
+    y,
+    w: width,
+    h: height,
+    color,
+    itemType,
+    source,
+    confidence,
+    isAIGenerated: isAIGenerated ?? (source === 'ai'),
+    strokeWidth: 2,
+    createdAt: now,
+    createdBy: userId,
+    updatedAt: now,
+    updatedBy: userId,
+    clientUpdatedAt: now,
+    layerId,
+  };
+}
+

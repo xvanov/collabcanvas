@@ -100,13 +100,14 @@ describe('Offline Handling & Resync', () => {
 
   describe('Queued Updates', () => {
     it('should queue shape creation when offline', () => {
+      const projectId = 'test-project-1';
       const shapeId = 'test-shape-1';
       const shapeType = 'rect';
       const x = 100;
       const y = 200;
       const userId = 'user-123';
 
-      offlineManager.queueCreateShape(shapeId, shapeType, x, y, userId);
+      offlineManager.queueCreateShape(projectId, shapeId, shapeType, x, y, userId);
 
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
       
@@ -114,6 +115,7 @@ describe('Offline Handling & Resync', () => {
       expect(updates).toHaveLength(1);
       expect(updates[0]).toEqual({
         type: 'createShape',
+        projectId,
         shapeId,
         shapeType,
         x,
@@ -124,12 +126,13 @@ describe('Offline Handling & Resync', () => {
     });
 
     it('should queue position updates when offline', () => {
+      const projectId = 'test-project-1';
       const shapeId = 'test-shape-1';
       const x = 150;
       const y = 250;
       const userId = 'user-123';
 
-      offlineManager.queueUpdatePosition(shapeId, x, y, userId, Date.now());
+      offlineManager.queueUpdatePosition(projectId, shapeId, x, y, userId, Date.now());
 
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
       
@@ -137,6 +140,7 @@ describe('Offline Handling & Resync', () => {
       expect(updates).toHaveLength(1);
       expect(updates[0]).toEqual({
         type: 'updatePosition',
+        projectId,
         shapeId,
         x,
         y,
@@ -146,20 +150,22 @@ describe('Offline Handling & Resync', () => {
     });
 
     it('should replace existing position updates for same shape', () => {
+      const projectId = 'test-project-1';
       const shapeId = 'test-shape-1';
       const userId = 'user-123';
 
       // Queue first position update
-      offlineManager.queueUpdatePosition(shapeId, 100, 200, userId, Date.now());
+      offlineManager.queueUpdatePosition(projectId, shapeId, 100, 200, userId, Date.now());
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
 
       // Queue second position update for same shape
-      offlineManager.queueUpdatePosition(shapeId, 150, 250, userId, Date.now());
+      offlineManager.queueUpdatePosition(projectId, shapeId, 150, 250, userId, Date.now());
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1); // Should still be 1
 
       const updates = offlineManager.getQueuedUpdates();
       expect(updates[0]).toEqual({
         type: 'updatePosition',
+        projectId,
         shapeId,
         x: 150,
         y: 250,
@@ -243,8 +249,9 @@ describe('Offline Handling & Resync', () => {
   describe('Queue Management', () => {
     it('should clear all queued updates', () => {
       // Add some updates
-      offlineManager.queueCreateShape('shape-1', 'rect', 100, 200, 'user-1');
-      offlineManager.queueUpdatePosition('shape-2', 150, 250, 'user-1', Date.now());
+      const projectId = 'test-project-1';
+      offlineManager.queueCreateShape(projectId, 'shape-1', 'rect', 100, 200, 'user-1');
+      offlineManager.queueUpdatePosition(projectId, 'shape-2', 150, 250, 'user-1', Date.now());
       offlineManager.queueLockOperation('acquireLock', 'shape-3', 'user-1', 'User');
 
       expect(offlineManager.getQueuedUpdatesCount()).toBe(3);
@@ -257,12 +264,13 @@ describe('Offline Handling & Resync', () => {
     });
 
     it('should track queued updates count correctly', () => {
+      const projectId = 'test-project-1';
       expect(offlineManager.getQueuedUpdatesCount()).toBe(0);
 
-      offlineManager.queueCreateShape('shape-1', 'rect', 100, 200, 'user-1');
+      offlineManager.queueCreateShape(projectId, 'shape-1', 'rect', 100, 200, 'user-1');
       expect(offlineManager.getQueuedUpdatesCount()).toBe(1);
 
-      offlineManager.queueUpdatePosition('shape-2', 150, 250, 'user-1', Date.now());
+      offlineManager.queueUpdatePosition(projectId, 'shape-2', 150, 250, 'user-1', Date.now());
       expect(offlineManager.getQueuedUpdatesCount()).toBe(2);
 
       offlineManager.queueLockOperation('acquireLock', 'shape-3', 'user-1', 'User');
@@ -277,12 +285,13 @@ describe('Offline Handling & Resync', () => {
     });
 
     it('should handle multiple rapid updates', () => {
+      const projectId = 'test-project-1';
       const shapeId = 'test-shape';
       const userId = 'user-123';
 
       // Add multiple rapid position updates
       for (let i = 0; i < 10; i++) {
-        offlineManager.queueUpdatePosition(shapeId, i * 10, i * 20, userId, Date.now());
+        offlineManager.queueUpdatePosition(projectId, shapeId, i * 10, i * 20, userId, Date.now());
       }
 
       // Should only have 1 update (latest position)
@@ -291,6 +300,7 @@ describe('Offline Handling & Resync', () => {
       const updates = offlineManager.getQueuedUpdates();
       expect(updates[0]).toEqual({
         type: 'updatePosition',
+        projectId,
         shapeId,
         x: 90, // Last update
         y: 180,

@@ -15,6 +15,11 @@ import { AIService } from '../services/aiService';
 import { saveBOM } from '../services/bomService';
 import { saveCPM } from '../services/cpmService';
 import { formatErrorForDisplay } from '../utils/errorHandler';
+import { invokeAnnotationEndpoint } from '../services/sagemakerService';
+import { useScopedCanvasStore } from '../store/projectCanvasStore';
+import { useShapes } from '../hooks/useShapes';
+import { useLayers } from '../hooks/useLayers';
+import { createBoundingBoxShape } from '../services/shapeService';
 
 interface UnifiedAIChatProps {
   isVisible: boolean;
@@ -73,10 +78,35 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   // Canvas AI state
   const processAICommand = useCanvasStore(state => state.processAICommand);
   const aiCommandHistory = useCanvasStore(state => state.aiCommandHistory);
-  const layers = useCanvasStore(state => state.layers);
-  const shapes = useCanvasStore(state => state.shapes);
-  const scaleLine = useCanvasStore(state => state.canvasScale?.scaleLine);
-  const backgroundImage = useCanvasStore(state => state.canvasScale?.backgroundImage);
+  
+  // Normalize projectId to ensure consistent hook calls
+  const normalizedProjectId: string | undefined = projectId || undefined;
+  
+  // Use project-scoped store for project-specific data - ALWAYS call with normalizedProjectId
+  const projectLayers = useScopedCanvasStore(normalizedProjectId, (state) => state.layers);
+  const projectShapes = useScopedCanvasStore(normalizedProjectId, (state) => state.shapes);
+  const projectScaleLine = useScopedCanvasStore(normalizedProjectId, (state) => state.canvasScale?.scaleLine);
+  const projectBackgroundImage = useScopedCanvasStore(normalizedProjectId, (state) => state.canvasScale?.backgroundImage);
+  // Unused but kept for potential future use
+  // const projectActiveLayerId = useScopedCanvasStore(normalizedProjectId, (state) => state.activeLayerId);
+  // const createLayer = useScopedCanvasStore(normalizedProjectId, (state) => state.createLayer);
+  
+  // Fallback to global store for backward compatibility - ALWAYS call hooks, then use conditional logic
+  const globalLayers = useCanvasStore(state => state.layers);
+  const globalShapes = useCanvasStore(state => state.shapes);
+  const globalScaleLine = useCanvasStore(state => state.canvasScale?.scaleLine);
+  const globalBackgroundImage = useCanvasStore(state => state.canvasScale?.backgroundImage);
+  
+  // Use project-scoped data if available, otherwise fall back to global
+  const layers = projectLayers.length > 0 ? projectLayers : globalLayers;
+  const shapes = projectShapes.size > 0 ? projectShapes : globalShapes;
+  const scaleLine = projectScaleLine || globalScaleLine;
+  const backgroundImage = projectBackgroundImage || globalBackgroundImage;
+  
+  // Get shape and layer hooks for project-scoped operations
+  // Always call hooks unconditionally - projectId can be undefined but hooks must be called
+  const { createShape } = useShapes(normalizedProjectId);
+  const { layers: hookLayers, createLayer: hookCreateLayer, updateLayer: hookUpdateLayer } = useLayers(normalizedProjectId);
 
   // Scope state for pre-flight validation
   const scope = useScopeStore(state => state.scope);
@@ -140,7 +170,14 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
         return;
       }
 
-      // PRIORITY 2: Check if this is a vision query
+      // PRIORITY 2: Check if this is an annotation command
+      const isAnnotationCommand = detectAnnotationCommand(messageText);
+      if (isAnnotationCommand) {
+        await handleAnnotationCommand();
+        return;
+      }
+
+      // PRIORITY 3: Check if this is a vision query
       const isVisionQuery = needsVisionAnalysis(messageText);
       
       if (isVisionQuery && backgroundImage?.url) {
@@ -149,7 +186,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
         return;
       }
       
-      // PRIORITY 3: Material estimation or canvas command
+      // PRIORITY 4: Material estimation or canvas command
       const hasActiveDialogue = dialogue && dialogue.stage !== 'complete';
       const hasCompletedDialogue = dialogue && dialogue.stage === 'complete';
       const isMaterialQuery = detectMaterialQuery(messageText);
@@ -400,6 +437,283 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   };
 
   /**
+   * Detect if query is requesting automatic annotation
+   */
+  const detectAnnotationCommand = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+    const annotationKeywords = [
+      'annotate plan',
+      'automatically annotate',
+      'detect windows',
+      'detect doors',
+      'auto annotate',
+      'automatic annotation',
+      'detect fixtures',
+      'find windows and doors',
+      'identify windows',
+      'identify doors',
+    ];
+    
+    return annotationKeywords.some(kw => lowerQuery.includes(kw));
+  };
+
+  /**
+   * Convert image URL to base64 PNG
+   */
+  const imageUrlToBase64 = async (imageUrl: string): Promise<string> => {
+    try {
+      const response = await fetch(imageUrl);
+      const blob = await response.blob();
+      
+      // Convert blob to base64
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onloadend = () => {
+          const base64String = reader.result as string;
+          // Remove data URL prefix (e.g., "data:image/png;base64,")
+          const base64Data = base64String.split(',')[1] || base64String;
+          resolve(base64Data);
+        };
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    } catch (error) {
+      console.error('Error converting image to base64:', error);
+      throw new Error('Failed to process image. Please ensure the image is accessible.');
+    }
+  };
+
+  /**
+   * Handle automatic annotation command
+   */
+  const handleAnnotationCommand = async () => {
+    if (!projectId || !user) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: 'error',
+        content: 'Error: Project ID or user not available',
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMsg]);
+      return;
+    }
+
+    // Check if background image exists
+    if (!backgroundImage?.url) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: 'error',
+        content: '❌ No plan image found. Please upload a plan image first before requesting automatic annotation.',
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMsg]);
+      return;
+    }
+
+    // Show loading message
+    const loadingMessage: ChatMessage = {
+      id: `msg-loading-${Date.now()}`,
+      type: 'system',
+      content: '⏳ Processing plan image and invoking AI annotation endpoint... This may take 30-60 seconds.',
+      timestamp: Date.now(),
+    };
+    setChatMessages(prev => [...prev, loadingMessage]);
+
+    try {
+      // Convert image to base64 PNG
+      const imageBase64 = await imageUrlToBase64(backgroundImage.url);
+
+      // Invoke SageMaker endpoint
+      const detections = await invokeAnnotationEndpoint(imageBase64, projectId);
+
+      // Remove loading message
+      setChatMessages(prev => prev.filter(m => m.id !== loadingMessage.id));
+
+      // Handle no detections
+      if (detections.length === 0) {
+        const noDetectionsMessage: ChatMessage = {
+          id: `msg-no-detections-${Date.now()}`,
+          type: 'assistant',
+          content: 'ℹ️ No items were detected in the plan image. The AI model did not find any windows, doors, or fixtures.',
+          timestamp: Date.now(),
+        };
+        setChatMessages(prev => [...prev, noDetectionsMessage]);
+        return;
+      }
+
+      // Group detections by item type (door, window, etc.)
+      const detectionsByType = new Map<string, typeof detections>();
+      for (const detection of detections) {
+        const itemType = detection.name_hint.toLowerCase();
+        if (!detectionsByType.has(itemType)) {
+          detectionsByType.set(itemType, []);
+        }
+        detectionsByType.get(itemType)!.push(detection);
+      }
+
+      // Helper function to capitalize first letter and pluralize
+      const formatLayerName = (itemType: string): string => {
+        const capitalized = itemType.charAt(0).toUpperCase() + itemType.slice(1);
+        // Simple pluralization - add 's' if not already plural
+        return itemType.endsWith('s') ? capitalized : `${capitalized}s`;
+      };
+
+      // Helper function to get color for item type
+      const getColorForItemType = (itemType: string): string => {
+        const colors: Record<string, string> = {
+          door: '#EF4444',    // Red for doors
+          window: '#3B82F6',  // Blue for windows
+          sink: '#10B981',    // Green for sinks
+          stove: '#F59E0B',   // Amber for stoves
+          toilet: '#8B5CF6',  // Purple for toilets
+        };
+        return colors[itemType.toLowerCase()] || '#10B981'; // Default green
+      };
+
+      // Create layers for each item type and assign detections
+      const layerMap = new Map<string, { id: string; name: string; color: string }>();
+      let createdCount = 0;
+
+      for (const [itemType, typeDetections] of detectionsByType) {
+        // Find or create layer for this item type
+        const layerName = formatLayerName(itemType);
+        const itemLayer = hookLayers.find(l => l.name === layerName);
+        let layerId: string;
+        let layerColor: string;
+
+        if (!itemLayer) {
+          try {
+            // Create layer for this item type
+            layerId = `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+            layerColor = getColorForItemType(itemType);
+            
+            // Create layer with name and our specified ID
+            await hookCreateLayer(layerName, layerId);
+            
+            // Wait a moment for the layer to be created in Firestore before updating
+            // This ensures the layer exists before we try to update it or assign shapes to it
+            await new Promise(resolve => setTimeout(resolve, 300));
+            
+            // Update layer with color and other properties
+            // We use the layerId directly since we created it with this ID
+            try {
+              await hookUpdateLayer(layerId, {
+                color: layerColor,
+                visible: true,
+                locked: false,
+                order: hookLayers.length + layerMap.size,
+              });
+            } catch (updateError) {
+              console.warn(`⚠️ Failed to update layer ${layerId} properties, but layer exists:`, updateError);
+              // Continue anyway - the layer exists, we just couldn't update its properties
+            }
+            
+            // Store layer info using the layerId we created
+            // This ensures we use the correct layerId when creating shapes
+            layerMap.set(itemType, {
+              id: layerId,
+              name: layerName,
+              color: layerColor,
+            });
+            
+            console.log(`✅ Layer "${layerName}" created with ID: ${layerId}`);
+          } catch (layerError) {
+            console.error(`Failed to create ${layerName} layer:`, layerError);
+            // Fallback: use default layer if creation fails
+            const defaultLayer = hookLayers.find(l => l.id === 'default-layer') || hookLayers[0];
+            if (!defaultLayer) {
+              throw new Error(`Failed to create ${layerName} layer and no default layer available.`);
+            }
+            layerId = defaultLayer.id;
+            layerColor = defaultLayer.color || getColorForItemType(itemType);
+            layerMap.set(itemType, {
+              id: layerId,
+              name: defaultLayer.name,
+              color: layerColor,
+            });
+          }
+        } else {
+          // Layer already exists, use it
+          layerId = itemLayer.id;
+          layerColor = itemLayer.color || getColorForItemType(itemType);
+          layerMap.set(itemType, {
+            id: layerId,
+            name: itemLayer.name,
+            color: layerColor,
+          });
+        }
+
+        // Create bounding box shapes for this item type
+        const layerInfo = layerMap.get(itemType)!;
+        console.log(`🎯 Creating ${typeDetections.length} ${itemType} detection(s) on layer: ${layerInfo.name} (${layerInfo.id})`);
+        
+        for (const detection of typeDetections) {
+          const [xMin, yMin, xMax, yMax] = detection.bbox;
+          const width = xMax - xMin;
+          const height = yMax - yMin;
+
+          const shape = createBoundingBoxShape(
+            xMin,
+            yMin,
+            width,
+            height,
+            detection.name_hint,
+            layerInfo.color,
+            user.uid,
+            layerInfo.id, // Use the layerId we stored
+            'ai',
+            detection.confidence,
+            true
+          );
+
+          console.log(`📦 Creating shape for ${detection.name_hint} on layer ${layerInfo.id}:`, { 
+            shapeId: shape.id, 
+            layerId: shape.layerId,
+            expectedLayerId: layerInfo.id,
+            match: shape.layerId === layerInfo.id
+          });
+          
+          // Verify the shape has the correct layerId before creating
+          if (shape.layerId !== layerInfo.id) {
+            console.error(`❌ Shape layerId mismatch! Expected ${layerInfo.id}, got ${shape.layerId}`);
+            // Fix it
+            shape.layerId = layerInfo.id;
+          }
+          
+          await createShape(shape);
+          createdCount++;
+        }
+      }
+
+      // Show success message with layer information
+      const layerNames = Array.from(layerMap.values()).map(l => l.name);
+      const layerSummary = layerNames.length > 0 
+        ? `\n\nCreated layers: ${layerNames.join(', ')}`
+        : '';
+      const successMessage: ChatMessage = {
+        id: `msg-success-${Date.now()}`,
+        type: 'success',
+        content: `✅ Successfully created ${createdCount} AI annotation${createdCount !== 1 ? 's' : ''}${layerSummary}.\n\nDetected items: ${detections.map(d => `${d.name_hint} (${(d.confidence * 100).toFixed(0)}%)`).join(', ')}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, successMessage]);
+    } catch (error) {
+      // Remove loading message
+      setChatMessages(prev => prev.filter(m => m.id !== loadingMessage.id));
+
+      // Handle errors with user-friendly messages
+      const errorInfo = formatErrorForDisplay(error);
+      const errorMessage: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: 'error',
+        content: `❌ **Annotation Error**\n\n${errorInfo.title}: ${errorInfo.message}${errorInfo.canRetry ? '\n\n💡 **Tip:** You can try again - this error may be temporary.' : ''}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages(prev => [...prev, errorMessage]);
+    }
+  };
+
+  /**
    * Detect if query is about material estimation or plan analysis
    */
   const detectMaterialQuery = (query: string): boolean => {
@@ -409,6 +723,8 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
       'framing', 'drywall', 'paint', 'stud',
       'epoxy', 'tile', 'carpet', 'flooring',
       'lumber', 'metal', 'wall', 'floor',
+      'door', 'doors', 'window', 'windows',
+      'hardware', 'hinges', 'lockset', 'flashing', 'caulk', 'sealant',
       // Refinement keywords
       'change', 'add', 'remove', 'switch', 'use',
       'height', 'insulation', 'frp', 'panel',
@@ -524,6 +840,32 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   };
 
   /**
+   * Check if query is a simple door/window estimation that doesn't need OpenAI
+   */
+  const isSimpleDoorWindowQuery = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase().trim();
+    // More flexible matching - just check if it contains estimate/calculate + door/window
+    const hasEstimate = lowerQuery.includes('estimate') || lowerQuery.includes('calculate');
+    const hasDoor = lowerQuery.includes('door');
+    const hasWindow = lowerQuery.includes('window');
+    const hasMaterial = lowerQuery.includes('material') || lowerQuery.includes('hardware') || lowerQuery.includes('trim') || lowerQuery.includes('flashing') || lowerQuery.includes('caulk');
+    
+    // Simple query: estimate/calculate + (door OR window) + optional material keywords
+    const isSimple = hasEstimate && (hasDoor || hasWindow);
+    
+    console.log('🔍 Simple query check:', {
+      query: lowerQuery,
+      hasEstimate,
+      hasDoor,
+      hasWindow,
+      hasMaterial,
+      isSimple,
+    });
+    
+    return isSimple;
+  };
+
+  /**
    * Handle material estimation queries
    */
   const handleMaterialEstimation = async (messageText: string) => {
@@ -533,33 +875,80 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
       startDialogue(messageText);
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Parse initial request with OpenAI
+      // For simple door/window queries, skip OpenAI and use local parsing
       const currentDialogue = useCanvasStore.getState().materialDialogue;
       if (currentDialogue && currentDialogue.currentRequest) {
-        let aiSpecs = await materialAI.parseInitialRequest(messageText);
+        const isSimpleQuery = isSimpleDoorWindowQuery(messageText);
         
-        // Fallback: If OpenAI didn't parse, use keywords
-        if (Object.keys(aiSpecs).length === 0) {
-          aiSpecs = parseSimpleKeywords(messageText);
-          console.log('🔄 Fallback parsing (initial):', aiSpecs);
-        } else {
-          console.log('🤖 OpenAI parsed specifications:', aiSpecs);
-        }
-        
-        if (Object.keys(aiSpecs).length > 0) {
-          updateDialogue({
-            currentRequest: {
-              originalQuery: currentDialogue.currentRequest.originalQuery,
-              targetType: currentDialogue.currentRequest.targetType,
-              targetLayer: currentDialogue.currentRequest.targetLayer,
-              measurements: currentDialogue.currentRequest.measurements,
-              specifications: {
-                ...currentDialogue.currentRequest.specifications,
-                ...aiSpecs,
+        if (isSimpleQuery) {
+          console.log('✅ Simple door/window query - skipping OpenAI, using local parsing');
+          // Use simple keyword parsing instead of OpenAI
+          const aiSpecs = parseSimpleKeywords(messageText);
+          console.log('🔄 Local parsing (simple query):', aiSpecs);
+          
+          if (Object.keys(aiSpecs).length > 0) {
+            updateDialogue({
+              currentRequest: {
+                originalQuery: currentDialogue.currentRequest.originalQuery,
+                targetType: currentDialogue.currentRequest.targetType,
+                targetLayer: currentDialogue.currentRequest.targetLayer,
+                measurements: currentDialogue.currentRequest.measurements,
+                specifications: {
+                  ...currentDialogue.currentRequest.specifications,
+                  ...aiSpecs,
+                },
               },
-            },
-          });
-          await new Promise(resolve => setTimeout(resolve, 50));
+            });
+            await new Promise(resolve => setTimeout(resolve, 50));
+          }
+        } else {
+          // Complex query - try OpenAI parsing with fallback
+          try {
+            let aiSpecs = await materialAI.parseInitialRequest(messageText);
+            
+            // Fallback: If OpenAI didn't parse, use keywords
+            if (Object.keys(aiSpecs).length === 0) {
+              aiSpecs = parseSimpleKeywords(messageText);
+              console.log('🔄 Fallback parsing (initial):', aiSpecs);
+            } else {
+              console.log('🤖 OpenAI parsed specifications:', aiSpecs);
+            }
+            
+            if (Object.keys(aiSpecs).length > 0) {
+              updateDialogue({
+                currentRequest: {
+                  originalQuery: currentDialogue.currentRequest.originalQuery,
+                  targetType: currentDialogue.currentRequest.targetType,
+                  targetLayer: currentDialogue.currentRequest.targetLayer,
+                  measurements: currentDialogue.currentRequest.measurements,
+                  specifications: {
+                    ...currentDialogue.currentRequest.specifications,
+                    ...aiSpecs,
+                  },
+                },
+              });
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          } catch (openAIError) {
+            console.warn('⚠️ OpenAI parsing failed, using local parsing:', openAIError);
+            // Fallback to local parsing if OpenAI fails
+            const aiSpecs = parseSimpleKeywords(messageText);
+            if (Object.keys(aiSpecs).length > 0) {
+              updateDialogue({
+                currentRequest: {
+                  originalQuery: currentDialogue.currentRequest.originalQuery,
+                  targetType: currentDialogue.currentRequest.targetType,
+                  targetLayer: currentDialogue.currentRequest.targetLayer,
+                  measurements: currentDialogue.currentRequest.measurements,
+                  specifications: {
+                    ...currentDialogue.currentRequest.specifications,
+                    ...aiSpecs,
+                  },
+                },
+              });
+              await new Promise(resolve => setTimeout(resolve, 50));
+            }
+          }
         }
       }
     } else {
@@ -741,6 +1130,18 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
     // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const specs: Record<string, any> = {};
     
+    // Door/Window detection - these don't need specs, just need to be detected
+    // The actual counting happens in extractMeasurementsFromLayers
+    if (lower.includes('door') && (lower.includes('hardware') || lower.includes('material') || lower.includes('estimate') || lower.includes('calculate'))) {
+      // Door query detected - no specs needed, will be counted from layer
+      console.log('🚪 Door query detected in parseSimpleKeywords');
+    }
+    
+    if (lower.includes('window') && (lower.includes('material') || lower.includes('flashing') || lower.includes('caulk') || lower.includes('estimate') || lower.includes('calculate'))) {
+      // Window query detected - no specs needed, will be counted from layer
+      console.log('🪟 Window query detected in parseSimpleKeywords');
+    }
+    
     // Floor types
     if (lower.includes('epoxy') || lower.includes('epixy')) {
       specs.type = 'epoxy';
@@ -872,6 +1273,8 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
                   <p className="text-xs font-semibold text-blue-700">Material Estimation</p>
                   <p className="text-xs text-gray-600">"calculate materials for walls"</p>
                   <p className="text-xs text-gray-600">"estimate floor materials"</p>
+                  <p className="text-xs text-gray-600">"estimate doors hardware"</p>
+                  <p className="text-xs text-gray-600">"estimate windows materials"</p>
                 </div>
               </div>
             </div>

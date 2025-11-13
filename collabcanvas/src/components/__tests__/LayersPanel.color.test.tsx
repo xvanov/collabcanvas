@@ -2,13 +2,16 @@ import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
 import React from 'react';
 import { LayersPanel } from '../../components/LayersPanel';
-import { useCanvasStore } from '../../store/canvasStore';
+import { getProjectCanvasStoreApi, releaseProjectCanvasStore } from '../../store/projectCanvasStore';
 
 describe('LayersPanel - Color control (PR-3)', () => {
+  const projectId = 'test-project-1';
+
   beforeEach(() => {
-    const initial = useCanvasStore.getState();
-    useCanvasStore.setState({
-      ...initial,
+    // Clean up store between tests
+    releaseProjectCanvasStore(projectId);
+    const store = getProjectCanvasStoreApi(projectId);
+    store.setState({
       layers: [],
       shapes: new Map(),
       activeLayerId: 'default-layer',
@@ -17,9 +20,10 @@ describe('LayersPanel - Color control (PR-3)', () => {
 
   it('renders and allows changing a layer color via color button/picker', async () => {
     // Seed one layer
-    useCanvasStore.getState().createLayer('Layer A');
+    const store = getProjectCanvasStoreApi(projectId);
+    store.getState().createLayer('Layer A');
 
-    render(<LayersPanel isVisible={true} onClose={() => {}} />);
+    render(<LayersPanel isVisible={true} onClose={() => {}} projectId={projectId} />);
 
     // Expect the Layers panel title
     expect(await screen.findByText('Layers')).toBeTruthy();
@@ -37,7 +41,7 @@ describe('LayersPanel - Color control (PR-3)', () => {
     fireEvent.click(preset);
 
     // Verify store updated
-    const layer = useCanvasStore.getState().layers[0];
+    const layer = store.getState().layers[0];
     expect(layer.color).toBe('#EF4444');
   });
 });

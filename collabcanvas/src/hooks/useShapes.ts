@@ -141,6 +141,13 @@ export function useShapes(projectId: string | undefined) {
           text: shape.text,
           fontSize: shape.fontSize,
         } : {}),
+        ...(shape.type === 'boundingbox' ? {
+          itemType: shape.itemType,
+          confidence: shape.confidence,
+          isAIGenerated: shape.isAIGenerated,
+          source: shape.source,
+          strokeWidth: shape.strokeWidth,
+        } : {}),
       };
       
       await createShapeInFirestore(projectId, shape.id, shape.type, shape.x, shape.y, user.uid, layerId, additionalProps);

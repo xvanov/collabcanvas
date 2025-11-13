@@ -69,8 +69,10 @@ export function useLayers(projectId: string | undefined) {
 
   /**
    * Create a new layer with optimistic updates and offline handling
+   * @param name - Layer name
+   * @param id - Optional layer ID (if not provided, will be generated)
    */
-  const createLayer = useCallback(async (name: string) => {
+  const createLayer = useCallback(async (name: string, id?: string) => {
     if (!user || !projectId) {
       console.warn('Cannot create layer: user not authenticated or projectId missing');
       return;
@@ -79,8 +81,8 @@ export function useLayers(projectId: string | undefined) {
     console.log('🏗️ Creating layer:', name);
     console.log('📋 Current layers before creation:', layersRef.current.map(l => ({ id: l.id, name: l.name })));
 
-    // Generate unique ID before creating layer
-    const layerId = `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+    // Use provided ID or generate unique ID before creating layer
+    const layerId = id || `layer-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
     const order = layersRef.current.length;
     
     console.log('🆕 Generated layer ID:', layerId);

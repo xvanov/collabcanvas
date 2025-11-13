@@ -7,13 +7,17 @@ import type {
   MaterialCalculation,
   WallAssumptions,
   FloorAssumptions,
+  DoorAssumptions,
+  WindowAssumptions,
   MaterialSpec,
   BOMExportData,
   BillOfMaterials,
 } from '../types/material';
 import { calculateWallMaterials } from './calculators/wallCalculator';
 import { calculateFloorMaterials } from './calculators/floorCalculator';
-import { DEFAULT_WALL_ASSUMPTIONS, DEFAULT_FLOOR_ASSUMPTIONS } from '../data/defaultAssumptions';
+import { calculateDoorMaterials } from './calculators/doorCalculator';
+import { calculateWindowMaterials } from './calculators/windowCalculator';
+import { DEFAULT_WALL_ASSUMPTIONS, DEFAULT_FLOOR_ASSUMPTIONS, DEFAULT_DOOR_ASSUMPTIONS, DEFAULT_WINDOW_ASSUMPTIONS } from '../data/defaultAssumptions';
 
 /**
  * Calculate wall materials with measurements
@@ -57,6 +61,56 @@ export function calculateFloorEstimate(
 
   return {
     totalArea: areaSquareFeet,
+    materials: result.materials,
+    assumptions: fullAssumptions,
+    calculatedAt: Date.now(),
+    calculatedBy: userId,
+  };
+}
+
+/**
+ * Calculate door hardware materials
+ */
+export function calculateDoorEstimate(
+  doorCount: number,
+  assumptions: Partial<DoorAssumptions> = {},
+  userId: string
+): MaterialCalculation {
+  const fullAssumptions: DoorAssumptions = {
+    ...DEFAULT_DOOR_ASSUMPTIONS,
+    ...assumptions,
+    doorCount,
+  };
+
+  const result = calculateDoorMaterials(doorCount, fullAssumptions);
+
+  return {
+    totalCount: doorCount,
+    materials: result.materials,
+    assumptions: fullAssumptions,
+    calculatedAt: Date.now(),
+    calculatedBy: userId,
+  };
+}
+
+/**
+ * Calculate window installation materials
+ */
+export function calculateWindowEstimate(
+  windowCount: number,
+  assumptions: Partial<WindowAssumptions> = {},
+  userId: string
+): MaterialCalculation {
+  const fullAssumptions: WindowAssumptions = {
+    ...DEFAULT_WINDOW_ASSUMPTIONS,
+    ...assumptions,
+    windowCount,
+  };
+
+  const result = calculateWindowMaterials(windowCount, fullAssumptions);
+
+  return {
+    totalCount: windowCount,
     materials: result.materials,
     assumptions: fullAssumptions,
     calculatedAt: Date.now(),

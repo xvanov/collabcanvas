@@ -31,7 +31,7 @@ export function Login({ onAuthenticated }: LoginProps) {
       <div className="w-full max-w-md rounded-lg bg-white p-8 shadow-lg">
         <div className="mb-8 text-center">
           <h1 className="mb-2 text-3xl font-bold text-gray-900">
-            CollabCanvas
+            Projective
           </h1>
           <p className="text-gray-600">
             Real-time collaborative canvas for teams

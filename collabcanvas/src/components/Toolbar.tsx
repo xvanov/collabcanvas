@@ -4,6 +4,7 @@ import ZoomIndicator from './ZoomIndicator';
 import { useCanvasStore } from '../store/canvasStore';
 import { usePresence } from '../hooks/usePresence';
 import { useOffline } from '../hooks/useOffline';
+import { useShapes } from '../hooks/useShapes';
 import type { Shape, ShapeType, ExportOptions } from '../types';
 import { useState, useEffect, useRef } from 'react';
 import { ExportDialog } from './ExportDialog';
@@ -28,6 +29,7 @@ interface ToolbarProps {
   onToggleGrid?: () => void;
   onActivatePolylineTool?: () => void;
   onActivatePolygonTool?: () => void;
+  onActivateBoundingBoxTool?: () => void;
   projectId?: string;
 }
 
@@ -35,7 +37,7 @@ interface ToolbarProps {
  * Toolbar component
  * Top navigation bar with user authentication info, FPS counter, zoom level, and shape creation controls
  */
-export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid, onActivatePolylineTool, onActivatePolygonTool, projectId }: ToolbarProps) {
+export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggleLayers, onToggleAlignment, onToggleGrid, onActivatePolylineTool, onActivatePolygonTool, onActivateBoundingBoxTool, projectId }: ToolbarProps) {
   const createShape = useCanvasStore((state) => state.createShape);
   const currentUser = useCanvasStore((state) => state.currentUser);
   const selectedShapeIds = useCanvasStore((state) => state.selectedShapeIds);
@@ -44,7 +46,19 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
   const redo = useCanvasStore((state) => state.redo);
   const canUndo = useCanvasStore((state) => state.canUndo);
   const canRedo = useCanvasStore((state) => state.canRedo);
-  const deleteSelectedShapes = useCanvasStore((state) => state.deleteSelectedShapes);
+  // Use project-scoped deleteShapes if projectId is available, otherwise fall back to global store
+  const { deleteShapes: deleteShapesFromHook } = useShapes(projectId);
+  const deleteSelectedShapesGlobal = useCanvasStore((state) => state.deleteSelectedShapes);
+  const deleteSelectedShapes = projectId && deleteShapesFromHook 
+    ? () => {
+        const ids = selectedShapeIds;
+        if (ids.length > 0) {
+          deleteShapesFromHook(ids);
+          // Clear selection after deletion
+          clearSelection();
+        }
+      }
+    : deleteSelectedShapesGlobal;
   const duplicateSelectedShapes = useCanvasStore((state) => state.duplicateSelectedShapes);
   const clearSelection = useCanvasStore((state) => state.clearSelection);
   const selectShapes = useCanvasStore((state) => state.selectShapes);
@@ -266,12 +280,22 @@ export function Toolbar({ children, fps, zoom, onCreateShape, stageRef, onToggle
       ),
       onClick: onActivatePolygonTool,
     },
+    {
+      id: 'boundingbox',
+      label: 'Bounding Box (Annotation)',
+      icon: (
+        <svg className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <rect x="4" y="4" width="16" height="16" strokeWidth="2" rx="1" />
+        </svg>
+      ),
+      onClick: onActivateBoundingBoxTool,
+    },
   ];
 
   return (
     <div className="flex h-16 items-center justify-between border-b border-gray-200 bg-white px-6 shadow-sm">
       <div className="flex items-center gap-4">
-        <h1 className="text-xl font-bold text-gray-900">CollabCanvas</h1>
+        <h1 className="text-xl font-bold text-gray-900">Projective</h1>
         
         {/* Four Dropdown Menus - Always Visible */}
         <div className="flex items-center gap-2">

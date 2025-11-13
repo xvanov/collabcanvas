@@ -41,6 +41,41 @@ vi.mock('../../services/materialAIService', () => ({
   })),
 }));
 
+// Mock project-scoped store
+vi.mock('../store/projectCanvasStore', () => ({
+  useScopedCanvasStore: vi.fn((projectId, selector) => {
+    const mockState = {
+      layers: [],
+      shapes: new Map(),
+      canvasScale: { scaleLine: null, backgroundImage: null, isScaleMode: false, isImageUploadMode: false },
+      activeLayerId: 'default-layer',
+      createLayer: vi.fn(),
+    };
+    return selector(mockState);
+  }),
+}));
+
+// Mock useShapes and useLayers hooks
+vi.mock('../hooks/useShapes', () => ({
+  useShapes: vi.fn(() => ({
+    shapes: new Map(),
+    createShape: vi.fn(),
+    updateShapeProperty: vi.fn(),
+  })),
+}));
+
+vi.mock('../hooks/useLayers', () => ({
+  useLayers: vi.fn(() => ({
+    layers: [],
+    createLayer: vi.fn(),
+  })),
+}));
+
+// Mock sagemakerService
+vi.mock('../services/sagemakerService', () => ({
+  invokeAnnotationEndpoint: vi.fn(() => Promise.resolve([])),
+}));
+
 describe('UnifiedAIChat - View Context Tracking', () => {
   beforeEach(() => {
     vi.clearAllMocks();

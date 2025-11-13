@@ -1,0 +1,151 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>2</epicId>
+    <storyId>2</storyId>
+    <title>AI-Powered Automatic Annotation with Bounding Box Tool</title>
+    <status>drafted</status>
+    <generatedAt>2025-11-06</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/stories/2-2-ai-powered-automatic-annotation-with-bounding-box-tool.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>contractor</asA>
+    <iWant>automatically annotate plans using AI detection and manually create labeled bounding boxes</iWant>
+    <soThat>I can quickly identify windows, doors, and other fixtures without manual drawing, and have full control to edit or add custom annotations</soThat>
+    <tasks>
+      <task id="1" ac="1,17,18,19">SageMaker Endpoint Integration Service</task>
+      <task id="2" ac="3,5,6,7,8,9,10,11,12,13">Bounding Box Shape Type and Data Structure</task>
+      <task id="3" ac="8,9,10,11,12,13">Bounding Box Tool Component</task>
+      <task id="4" ac="1,17,18,19">AI Chat Integration for Automatic Annotation</task>
+      <task id="5" ac="2,3,14,15">AI Annotations Layer Management</task>
+      <task id="6" ac="2,3,4">AI Detection Processing and Rendering</task>
+      <task id="7" ac="12">Shape Properties Panel Integration</task>
+      <task id="8" ac="17,18,19">Error Handling and User Feedback</task>
+      <task id="9" ac="all">Testing and Validation</task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <ac id="1">AI invokes SageMaker endpoint with plan image (base64-encoded PNG) when user requests automatic annotation</ac>
+    <ac id="2">System automatically creates "AI Annotations" layer when detections are received</ac>
+    <ac id="3">Each detection rendered as editable bounding box with bbox coordinates, name_hint label, confidence score, and distinct styling</ac>
+    <ac id="4">AI annotations are superimposed on plan image and clearly visible</ac>
+    <ac id="5">AI-generated bounding boxes can be resized by dragging corner/edge handles</ac>
+    <ac id="6">AI-generated bounding boxes can be deleted and removed from canvas and layer</ac>
+    <ac id="7">AI-generated bounding boxes can be moved and position updates persist</ac>
+    <ac id="8">Bounding box tool can be selected from toolbar and used to create bounding box rectangles by clicking and dragging</ac>
+    <ac id="9">Dialog appears asking for item type when creating bounding box</ac>
+    <ac id="10">Bounding box created with selected item type label and stored on active layer</ac>
+    <ac id="11">Multiple bounding boxes can have different item type labels</ac>
+    <ac id="12">Manually created bounding boxes can have item type label edited through properties panel</ac>
+    <ac id="13">Manually created bounding boxes can be resized, moved, and deleted like other shapes</ac>
+    <ac id="14">Layers panel shows "AI Annotations" layer with count of AI-detected items</ac>
+    <ac id="15">Toggling "AI Annotations" layer visibility shows/hides all AI-generated bounding boxes together</ac>
+    <ac id="16">Manually created bounding boxes stored on currently active layer (not necessarily AI Annotations layer)</ac>
+    <ac id="17">Clear error message in AI chat with retry option when SageMaker endpoint unavailable or returns error</ac>
+    <ac id="18">AI chat informs user when endpoint returns no detections</ac>
+    <ac id="19">Error message and retry option when image processing fails</ac>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/epics.md" section="Story 2.2" snippet="AI-powered automatic annotation with SageMaker endpoint integration for detecting windows, doors, and fixtures. Manual bounding box tool for creating labeled annotations." />
+      <doc path="docs/tech-spec-epic-2.md" section="Story 2.2" snippet="Counter Tool implementation details (note: Story 2.2 details primarily in epics.md). Epic 2 focuses on advanced annotation tools and multi-floor support." />
+      <doc path="docs/PRD.md" section="Epic 2" snippet="Phase 2 - Advanced Annotation Tools & Multi-Floor Support. Adds AI-powered automatic annotation, bounding box tool, counter tool, and multi-floor project support." />
+      <doc path="docs/architecture.md" section="Epic 2" snippet="React 19 SPA with Firebase BaaS. Project-scoped Firestore collections. All external APIs route through Firebase Cloud Functions for security." />
+      <doc path="docs/sagemaker-endpoint-api.md" section="Input Format" snippet="Endpoint expects JSON with image_data field containing base64-encoded PNG image. Output format: JSON with detections array containing bbox, confidence, name_hint." />
+      <doc path="docs/sagemaker-endpoint-api.md" section="Output Format" snippet="Response structure: detections array with bbox [x_min, y_min, x_max, y_max] in pixel coordinates, confidence float (0.0-1.0), name_hint string." />
+      <doc path="scripts/test_endpoint.py" section="test_endpoint function" snippet="Test script demonstrates endpoint invocation using boto3 sagemaker-runtime client. Input format: JSON with image_data field containing base64-encoded PNG." />
+      <doc path="docs/stories/2-1-project-isolation-canvas-bom-per-project.md" section="Dev Notes" snippet="Project-scoped Firestore collections at /projects/{projectId}/shapes and /projects/{projectId}/layers. All shape operations require projectId parameter." />
+      <doc path="docs/stories/1-4-money-view-bom-pricing-margin-calculation-ai-chat-integration.md" section="Dev Notes" snippet="AI chat is context-aware and available in all views. AI commands processed through aiService.ts. Service layer pattern with project scoping." />
+    </docs>
+    <code>
+      <artifact path="collabcanvas/src/types.ts" kind="type definition" symbol="ShapeType" lines="8" reason="Shape type definition - needs to be extended with 'boundingbox' type" />
+      <artifact path="collabcanvas/src/types.ts" kind="type definition" symbol="Shape" lines="10-33" reason="Shape interface - needs bounding box properties: itemType, confidence, isAIGenerated, source" />
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="createShape" lines="122-210" reason="Shape creation function - needs to handle boundingbox type with itemType, confidence, isAIGenerated, source properties" />
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="type definition" symbol="FirestoreShape" lines="35-58" reason="Firestore shape data structure - needs bounding box properties for storage" />
+      <artifact path="collabcanvas/src/components/PolylineTool.tsx" kind="component" symbol="PolylineTool" lines="1-123" reason="Reference implementation for bounding box tool - similar structure with click/drag interaction" />
+      <artifact path="collabcanvas/src/components/PolygonTool.tsx" kind="component" symbol="PolygonTool" lines="1-23" reason="Reference implementation for bounding box tool - similar structure for tool component pattern" />
+      <artifact path="collabcanvas/src/components/Canvas.tsx" kind="component" symbol="Canvas" lines="488-537" reason="Canvas component handles drawing tool completion - needs bounding box tool integration" />
+      <artifact path="collabcanvas/src/components/Toolbar.tsx" kind="component" symbol="Toolbar" lines="248-269" reason="Toolbar component with annotation buttons - needs bounding box tool button added" />
+      <artifact path="collabcanvas/src/services/aiService.ts" kind="service" symbol="AIService.processCommand" lines="28-58" reason="AI command processing - needs annotation command parsing for 'annotate plan', 'detect windows', 'detect doors'" />
+      <artifact path="collabcanvas/src/store/projectCanvasStore.ts" kind="store" symbol="processAICommand" lines="730-745" reason="AI command processing in store - needs integration with SageMaker service for annotation commands" />
+      <artifact path="collabcanvas/src/components/UnifiedAIChat.tsx" kind="component" symbol="UnifiedAIChat" lines="119-177" reason="AI chat interface - needs annotation command handling and error display" />
+      <artifact path="collabcanvas/src/hooks/useShapes.ts" kind="hook" symbol="useShapes" lines="67-719" reason="Shapes hook with project scoping - bounding boxes will use same subscription pattern" />
+      <artifact path="collabcanvas/src/services/firestore.ts" kind="service" symbol="subscribeToShapes" reason="Shape subscription - bounding boxes will use same real-time sync pattern" />
+    </code>
+    <dependencies>
+      <ecosystem name="node">
+        <package name="react" version="^19.2.0" />
+        <package name="react-dom" version="^19.2.0" />
+        <package name="react-konva" version="^19.0.10" />
+        <package name="konva" version="^10.0.2" />
+        <package name="firebase" version="^12.4.0" />
+        <package name="zustand" version="^5.0.8" />
+        <package name="react-router-dom" version="^7.9.5" />
+      </ecosystem>
+      <ecosystem name="python">
+        <package name="boto3" reason="Required for SageMaker endpoint invocation (server-side Cloud Function)" />
+      </ecosystem>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint>All external API calls must route through Firebase Cloud Functions for security - SageMaker endpoint invocation cannot be done directly from client</constraint>
+    <constraint>AWS credentials must not be exposed to client - endpoint invocation must be server-side only</constraint>
+    <constraint>All shape operations require projectId parameter - bounding boxes must use project-scoped Firestore collections at /projects/{projectId}/shapes</constraint>
+    <constraint>Bounding boxes must use same subscription pattern as other shapes - real-time sync via Firestore listeners with proper cleanup</constraint>
+    <constraint>Layer management is project-scoped - "AI Annotations" layer must be created per project</constraint>
+    <constraint>Canvas performance must maintain 60 FPS with 100+ objects - bounding box rendering must be optimized</constraint>
+    <constraint>Shape type must be extended in types.ts - add 'boundingbox' to ShapeType union type</constraint>
+    <constraint>Bounding box tool must follow same pattern as PolylineTool and PolygonTool - click and drag interaction, tool selection, completion callback</constraint>
+    <constraint>AI chat commands must be context-aware - annotation commands should work in Space view context</constraint>
+    <constraint>Error handling must be comprehensive - all SageMaker endpoint errors must be handled gracefully with user-friendly messages</constraint>
+    <constraint>Endpoint name and region must be configurable via environment variables - locatrix-blueprint-endpoint, us-east-2</constraint>
+    <constraint>Timeout handling required - 60 second timeout for endpoint invocation with retry logic and exponential backoff</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="SageMaker Endpoint API" kind="REST endpoint" signature="POST /endpoints/{endpoint-name}/invocations" path="docs/sagemaker-endpoint-api.md">
+      <input>JSON with image_data field (base64-encoded PNG)</input>
+      <output>JSON with detections array: [{bbox: [x_min, y_min, x_max, y_max], confidence: float, name_hint: string}]</output>
+    </interface>
+    <interface name="createShape" kind="function signature" signature="createShape(projectId: string, shapeId: string, shapeType: ShapeType, x: number, y: number, userId: string, layerId?: string, additionalProps?: Partial&lt;Shape&gt;): Promise&lt;void&gt;" path="collabcanvas/src/services/firestore.ts:122">
+      <note>Needs to handle boundingbox type with itemType, confidence, isAIGenerated, source in additionalProps</note>
+    </interface>
+    <interface name="AIService.processCommand" kind="function signature" signature="processCommand(commandText: string, userId?: string, currentView?: 'scope' | 'time' | 'space' | 'money'): Promise&lt;AICommandResult&gt;" path="collabcanvas/src/services/aiService.ts:28">
+      <note>Needs to parse annotation commands: 'annotate plan', 'detect windows', 'detect doors'</note>
+    </interface>
+    <interface name="useShapes" kind="hook signature" signature="useShapes(projectId: string | undefined): { shapes: Map&lt;string, Shape&gt;, createShape: ..., updateShape: ..., deleteShape: ... }" path="collabcanvas/src/hooks/useShapes.ts:67">
+      <note>Bounding boxes will use same hook pattern with project scoping</note>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing uses Vitest for unit tests, Playwright for E2E tests. Unit tests should cover service functions, components, and hooks. Integration tests should cover workflows (endpoint invocation → detection processing → shape creation). E2E tests should cover complete user workflows. All tests must use project-scoped data patterns. Performance tests should verify 60 FPS with 100+ bounding boxes.
+    </standards>
+    <locations>
+      <location>collabcanvas/src/**/*.test.ts</location>
+      <location>collabcanvas/src/**/*.test.tsx</location>
+      <location>collabcanvas/tests/e2e/**/*.spec.ts</location>
+    </locations>
+    <ideas>
+      <test ac="1">Unit test: sagemakerService.invokeAnnotationEndpoint() with mock endpoint response</test>
+      <test ac="1">Integration test: AI chat command 'annotate plan' invokes SageMaker endpoint</test>
+      <test ac="2">Unit test: Auto-create 'AI Annotations' layer when first detection received</test>
+      <test ac="3">Integration test: Detection processing converts bbox coordinates to shape format and creates bounding box shapes</test>
+      <test ac="5,6,7">Unit test: Bounding box shape operations (resize, move, delete) work correctly</test>
+      <test ac="8,9,10">E2E test: Select bounding box tool, click and drag to create, select item type from dialog</test>
+      <test ac="12">Unit test: Properties panel allows editing itemType for bounding boxes</test>
+      <test ac="14,15">Integration test: Layers panel shows AI Annotations layer with count, visibility toggle works</test>
+      <test ac="17,18,19">Integration test: Error handling for endpoint unavailable, no detections, image processing failure</test>
+      <test ac="all">E2E test: Complete workflow - AI annotation request → endpoint invocation → detection processing → bounding box creation → layer management</test>
+      <test ac="all">Performance test: 100+ bounding boxes render at 60 FPS</test>
+      <test ac="all">Integration test: Real-time collaboration with bounding boxes (multiple users)</test>
+    </ideas>
+  </tests>
+</story-context>
+
+

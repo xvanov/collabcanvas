@@ -5,7 +5,7 @@
 /**
  * Shape types
  */
-export type ShapeType = 'rect' | 'circle' | 'text' | 'line' | 'polyline' | 'polygon' | 'arrow-text';
+export type ShapeType = 'rect' | 'circle' | 'text' | 'line' | 'polyline' | 'polygon' | 'arrow-text' | 'boundingbox';
 
 export interface Shape {
   id: string;
@@ -30,6 +30,11 @@ export interface Shape {
   points?: number[];
   // Transform properties
   rotation?: number;
+  // Bounding box properties
+  itemType?: string; // For manual bounding boxes (e.g., "window", "door", "stove")
+  confidence?: number; // For AI-generated bounding boxes (0.0-1.0)
+  isAIGenerated?: boolean; // Flag to indicate AI-generated bounding box
+  source?: 'ai' | 'manual'; // Source of the bounding box annotation
 }
 
 /**

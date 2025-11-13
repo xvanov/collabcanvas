@@ -35,7 +35,7 @@ export function ScaleTool({ projectId, disabled = false }: ScaleToolProps) {
       );
       if (!shouldReplace) return;
       
-      deleteScaleLine(projectId);
+      (deleteScaleLine as (projectId?: string) => void)(projectId);
     }
     
     setIsScaleMode(true);
@@ -47,7 +47,7 @@ export function ScaleTool({ projectId, disabled = false }: ScaleToolProps) {
   };
 
   const handleEditSubmit = (value: number, unit: UnitType) => {
-    updateScaleLine({ 
+    (updateScaleLine as (updates: Partial<ScaleLine>, projectId?: string) => void)({ 
       realWorldLength: value,
       unit: unit
     }, projectId);
@@ -63,7 +63,7 @@ export function ScaleTool({ projectId, disabled = false }: ScaleToolProps) {
     
     const shouldDelete = window.confirm('Are you sure you want to delete the scale line?');
     if (shouldDelete) {
-      deleteScaleLine(projectId);
+      (deleteScaleLine as (projectId?: string) => void)(projectId);
     }
   };
 

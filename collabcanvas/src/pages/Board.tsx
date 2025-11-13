@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
-import Canvas from '../components/Canvas';
+import Canvas, { type CanvasHandle } from '../components/Canvas';
 import { ShapePropertiesPanel } from '../components/ShapePropertiesPanel';
 import { useCanvasStore } from '../store/canvasStore';
 import { getProjectCanvasStoreApi } from '../store/projectCanvasStore';
@@ -14,7 +14,7 @@ import { DiagnosticsHud } from '../components/DiagnosticsHud';
 import { FloatingAIChat } from '../components/shared/FloatingAIChat';
 import type { Shape, ShapeType } from '../types';
 import { perfMetrics } from '../utils/harness';
-import Konva from 'konva';
+// Konva types imported via Canvas component
 
 /**
  * Board page (main canvas view)
@@ -37,13 +37,7 @@ export function Board() {
   useLayers(projectId); // Initialize layer synchronization
   const { clearStaleLocks } = useLocks();
   const { isOnline } = useOffline();
-  const canvasRef = useRef<{ 
-    getViewportCenter: () => { x: number; y: number }; 
-    getStage: () => Konva.Stage | null;
-    activatePolylineTool: () => void;
-    activatePolygonTool: () => void;
-    deactivateDrawingTools: () => void;
-  } | null>(null);
+  const canvasRef = useRef<CanvasHandle | null>(null);
   const showDiagnosticsDefault = useMemo(() => {
     if (typeof window === 'undefined') return perfMetrics.enabled;
     const params = new URLSearchParams(window.location.search);
@@ -74,7 +68,7 @@ export function Board() {
     if (!projectId || !user) return;
     
     const projectStore = getProjectCanvasStoreApi(projectId);
-    const unsubscribe = projectStore.getState().initializeBoardStateSubscription(projectId);
+    const unsubscribe = (projectStore.getState().initializeBoardStateSubscription as (projectId: string) => (() => void) | undefined)(projectId);
     
     return () => {
       if (unsubscribe) unsubscribe();
@@ -234,6 +228,7 @@ export function Board() {
         onToggleGrid={() => {}}
         onActivatePolylineTool={() => canvasRef.current?.activatePolylineTool()}
         onActivatePolygonTool={() => canvasRef.current?.activatePolygonTool()}
+        onActivateBoundingBoxTool={() => canvasRef.current?.activateBoundingBoxTool()}
         projectId={projectId}
       >
         {/* Additional toolbar controls will be added in future PRs */}

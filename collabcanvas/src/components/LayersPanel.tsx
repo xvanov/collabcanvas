@@ -306,7 +306,14 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
                             }
                           }}
                         />
-                        <span className="text-xs text-gray-500">({shapesInLayer.length})</span>
+                        <span className="text-xs text-gray-500">
+                          ({shapesInLayer.length}
+                          {layer.name === 'AI Annotations' && (() => {
+                            const boundingBoxCount = shapesInLayer.filter(s => s.type === 'boundingbox').length;
+                            return boundingBoxCount > 0 ? `, ${boundingBoxCount} box${boundingBoxCount !== 1 ? 'es' : ''}` : '';
+                          })()}
+                          )
+                        </span>
                       </div>
                       {/* Layer totals */}
                       {(() => {

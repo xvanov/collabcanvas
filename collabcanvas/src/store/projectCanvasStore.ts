@@ -105,7 +105,7 @@ function getDefaultState(): CanvasState {
     aiCommands: [],
     aiStatus: {
       isProcessing: false,
-      currentCommand: null,
+      commandQueue: [],
       error: undefined,
     },
     aiCommandHistory: [],
@@ -173,13 +173,13 @@ function getDefaultState(): CanvasState {
     toggleSnap: () => {},
     updateGridSize: () => {},
     setSnapIndicators: () => {},
-    processAICommand: async () => ({ success: false, message: 'No projectId' }),
-    executeAICommand: async () => ({ success: false, message: 'No projectId' }),
+    processAICommand: async () => ({ success: false, message: 'No projectId', executedCommands: [] }),
+    executeAICommand: async () => ({ success: false, message: 'No projectId', executedCommands: [] }),
     clearAIHistory: () => {},
     getAIStatus: () => ({
       isProcessing: false,
-      currentCommand: null,
-      error: null,
+      commandQueue: [],
+      error: undefined,
     }),
     addToCommandQueue: () => {},
     processCommandQueue: async () => {},
@@ -500,11 +500,13 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
       
       // Transform Controls
       transformControls: {
-        visible: false,
+        isVisible: false,
         x: 0,
         y: 0,
         width: 0,
         height: 0,
+        rotation: 0,
+        resizeHandles: [],
       },
       updateTransformControls: (controls: Partial<TransformControls>) =>
         set((state: CanvasState) => ({
@@ -512,7 +514,7 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
         })),
       hideTransformControls: () =>
         set((state: CanvasState) => ({
-          transformControls: { ...state.transformControls, visible: false },
+          transformControls: { ...state.transformControls, isVisible: false },
         })),
       
       // Selection Box
@@ -721,7 +723,7 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
       aiCommands: [],
     aiStatus: {
       isProcessing: false,
-      currentCommand: null,
+      commandQueue: [],
       error: undefined,
     },
       aiCommandHistory: [],
@@ -753,7 +755,11 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
           deleteShapes: state.deleteShapes,
           duplicateShapes: state.duplicateShapes,
           alignShapes: () => {}, // Not implemented in store
-          createLayer: state.createLayer,
+          createLayer: (name: string) => {
+            const layerId = `layer_${Date.now()}`;
+            state.createLayer(name, layerId);
+            return layerId;
+          },
           moveShapeToLayer: state.moveShapeToLayer,
           exportCanvas: async () => {}, // Not implemented in store
           exportSelectedShapes: async () => {}, // Not implemented in store
@@ -786,12 +792,12 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
         isScaleMode: false,
         isImageUploadMode: false,
       },
-      setBackgroundImage: (image: BackgroundImage | null, projectIdParam?: string, skipFirestoreSync = false) => {
+      setBackgroundImage: ((image: BackgroundImage | null, skipFirestoreSync?: boolean) => {
         const state = get();
         set({ canvasScale: { ...state.canvasScale, backgroundImage: image } });
         
-        // Use projectIdParam if provided, otherwise use projectId from closure
-        const effectiveProjectId = projectIdParam || projectId;
+        // Use projectId from closure
+        const effectiveProjectId = projectId;
         if (state.currentUser && effectiveProjectId && !skipFirestoreSync) {
           if (image) {
             saveBackgroundImage(image, state.currentUser.uid, effectiveProjectId).catch((error) => {
@@ -803,15 +809,15 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
             });
           }
         }
-      },
-      setScaleLine: (scaleLine: ScaleLine | null, projectIdParam?: string, skipFirestoreSync = false) => {
+      }) as (image: BackgroundImage | null, skipFirestoreSync?: boolean) => void,
+      setScaleLine: ((scaleLine: ScaleLine | null, skipFirestoreSync?: boolean) => {
         const state = get();
-        console.log('🔄 setScaleLine called:', { scaleLine, projectIdParam, skipFirestoreSync, hasUser: !!state.currentUser });
+        console.log('🔄 setScaleLine called:', { scaleLine, skipFirestoreSync, hasUser: !!state.currentUser });
         set({ canvasScale: { ...state.canvasScale, scaleLine } });
         console.log('✅ Scale line set in store:', scaleLine);
         
-        // Use projectIdParam if provided, otherwise use projectId from closure
-        const effectiveProjectId = projectIdParam || projectId;
+        // Use projectId from closure
+        const effectiveProjectId = projectId;
         
         // Skip Firestore sync if requested (e.g., when syncing from Firestore)
         if (skipFirestoreSync) {
@@ -851,7 +857,7 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
             skipFirestoreSync 
           });
         }
-      },
+      }) as (scaleLine: ScaleLine | null, skipFirestoreSync?: boolean) => void,
       updateScaleLine: (updates: Partial<ScaleLine>, projectIdParam?: string) => {
         const state = get();
         const currentScaleLine = state.canvasScale.scaleLine;
@@ -922,7 +928,10 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
         set((state: CanvasState) => ({
           canvasScale: { ...state.canvasScale, isImageUploadMode },
         })),
-      initializeBoardStateSubscription: (projectIdParam: string) => {
+      initializeBoardStateSubscription: (() => {
+        // Use projectId from closure
+        const projectIdParam = projectId;
+        return () => {
         const unsubscribe = subscribeToBoardState(projectIdParam, (boardState) => {
           const state = get();
           
@@ -949,9 +958,9 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
                 uploadedAt,
                 uploadedBy: boardState.backgroundImage.uploadedBy || '',
               };
-              state.setBackgroundImage(bgImage, projectIdParam, true);
+              (state.setBackgroundImage as (image: BackgroundImage | null, projectId?: string, skipFirestoreSync?: boolean) => void)(bgImage, projectIdParam, true);
             } else {
-              state.setBackgroundImage(null, projectIdParam, true);
+              (state.setBackgroundImage as (image: BackgroundImage | null, projectId?: string, skipFirestoreSync?: boolean) => void)(null, projectIdParam, true);
             }
             
             // Update scale line
@@ -977,13 +986,13 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
                 updatedBy: boardState.scaleLine.updatedBy || '',
               };
               console.log('📥 Board state subscription: Setting scale line from Firestore:', scaleLine);
-              state.setScaleLine(scaleLine, projectIdParam, true);
+              (state.setScaleLine as (scaleLine: ScaleLine | null, projectId?: string, skipFirestoreSync?: boolean) => void)(scaleLine, projectIdParam, true);
             } else {
               // Only clear scale line if it doesn't exist locally either
               // This prevents clearing a scale line that was just created but not yet saved to Firestore
               if (!state.canvasScale.scaleLine) {
                 console.log('📥 Board state subscription: Clearing scale line (no scale line in Firestore or locally)');
-                state.setScaleLine(null, projectIdParam, true);
+                (state.setScaleLine as (scaleLine: ScaleLine | null, projectId?: string, skipFirestoreSync?: boolean) => void)(null, projectIdParam, true);
               } else {
                 console.log('📥 Board state subscription: Keeping local scale line (not in Firestore yet):', state.canvasScale.scaleLine);
               }
@@ -992,7 +1001,8 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
         });
         
         return unsubscribe;
-      },
+        };
+      }) as () => (() => void),
       
       // Material Estimation State
       materialDialogue: null,
@@ -1032,7 +1042,7 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
       setIsAccumulatingBOM: (isAccumulating: boolean) =>
         set({ isAccumulatingBOM: isAccumulating }),
     };
-  });
+  }) as StoreApi<CanvasState>;
 
   // Register with harness if enabled
   if (isHarnessEnabled()) {

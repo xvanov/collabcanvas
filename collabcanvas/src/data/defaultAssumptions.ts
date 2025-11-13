@@ -3,7 +3,7 @@
  * PR-4: Standard construction specifications
  */
 
-import type { WallAssumptions, FloorAssumptions } from '../types/material';
+import type { WallAssumptions, FloorAssumptions, DoorAssumptions, WindowAssumptions } from '../types/material';
 
 /**
  * Default wall construction assumptions
@@ -44,6 +44,34 @@ export const DEFAULT_FLOOR_ASSUMPTIONS: FloorAssumptions = {
     coats: 2,
     includeTopCoat: true,
   },
+};
+
+/**
+ * Default door hardware assumptions
+ */
+export const DEFAULT_DOOR_ASSUMPTIONS: DoorAssumptions = {
+  hardwareType: 'standard',
+  includeHinges: true,
+  includeLockset: true,
+  includeDoorCloser: false,
+  includeStrikePlate: true,
+  includeDoorStop: true,
+  includeWeatherstripping: true,
+  doorCount: 1,
+};
+
+/**
+ * Default window installation assumptions
+ */
+export const DEFAULT_WINDOW_ASSUMPTIONS: WindowAssumptions = {
+  windowType: 'standard',
+  includeFlashing: true,
+  includeCaulk: true,
+  includeSealant: true,
+  includeTrim: true,
+  includeInsulation: true,
+  windowCount: 1,
+  averageWindowPerimeter: 12, // ~12 linear feet for standard window
 };
 
 /**

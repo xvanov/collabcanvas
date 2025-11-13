@@ -58,6 +58,7 @@ describe('PolygonTool Component', () => {
       visible: true,
       locked: false,
       order: 0,
+      color: '#10B981',
     },
   ];
 
@@ -88,6 +89,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       expect(container.firstChild).toBeNull();
@@ -100,6 +104,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       expect(container.firstChild).not.toBeNull();
@@ -128,6 +135,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={{ ...mockCanvasScale, scaleLine: null }}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       
@@ -151,6 +161,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -171,6 +184,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -192,6 +208,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -209,6 +228,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={previewPoint}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -234,6 +256,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -250,6 +275,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -271,6 +299,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -289,6 +320,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -309,6 +343,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={previewPoint}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -331,6 +368,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={previewPoint}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -347,6 +387,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -366,6 +409,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -385,6 +431,9 @@ describe('PolygonTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 

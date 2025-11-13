@@ -47,8 +47,9 @@ development_status:
   # Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support
   epic-2: contexted
   2-1-project-isolation-canvas-bom-per-project: done
-  2-2-counter-tool-fixture-counting: backlog
-  2-3-multi-floor-project-support: backlog
+  2-2-ai-powered-automatic-annotation-with-bounding-box-tool: done
+  2-3-counter-tool-fixture-counting: backlog
+  2-4-multi-floor-project-support: backlog
   epic-2-retrospective: optional
 
   # Epic 3: Phase 3 - Construction Project Bidding Engine

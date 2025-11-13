@@ -34,16 +34,20 @@ export class AIService {
       });
 
               const data = result.data as AICommandResult;
-      const command = data.executedCommands[0];
-      const historyEntry: AICommandHistory = {
-        commandId: command.commandId,
-        command: commandText,
-        result: data,
-        timestamp: Date.now(),
-        userId: command.userId
-      };
+      
+      // Only add to history if there are executed commands
+      if (data.executedCommands && data.executedCommands.length > 0) {
+        const command = data.executedCommands[0];
+        const historyEntry: AICommandHistory = {
+          commandId: command.commandId,
+          command: commandText,
+          result: data,
+          timestamp: Date.now(),
+          userId: command.userId
+        };
 
-      this.commandHistory.push(historyEntry);
+        this.commandHistory.push(historyEntry);
+      }
 
       return data;
     } catch (error) {

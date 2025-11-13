@@ -52,7 +52,7 @@ export function resetProjectStore(projectId: string): void {
     isProcessingAICommand: false,
     aiStatus: {
       isProcessing: false,
-      currentCommand: null,
+      commandQueue: [],
       error: undefined,
     },
   });

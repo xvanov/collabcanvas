@@ -191,15 +191,6 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
           
           // Also sync the restored shape to Firestore so other clients know about it
           try {
-            // Pass additional properties for polyline/polygon shapes
-            const _additionalProps = (shape.type === 'polyline' || shape.type === 'polygon') ? {
-              points: shape.points,
-              strokeWidth: shape.strokeWidth,
-              w: shape.w,
-              h: shape.h,
-              color: shape.color,
-            } : undefined;
-            
             // Note: Global store is deprecated - use project-scoped store instead
             // Firestore sync requires projectId which is not available in global store
             // await createShapeInFirestore(
@@ -440,22 +431,23 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
 
     // Also save to Firestore
     if (currentState.currentUser) {
-      import('../services/firestore').then(({ createShape: _createShapeInFirestore }) => {
-        const _layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
-        // Always persist color; include type-specific props where applicable
-        const _additionalProps: Partial<Shape> = {
-          color: shape.color,
-          ...(shape.type === 'polyline' || shape.type === 'polygon' ? {
-            points: shape.points,
-            strokeWidth: shape.strokeWidth,
-            w: shape.w,
-            h: shape.h,
-          } : {}),
-          ...(shape.type === 'line' ? {
-            points: shape.points,
-            strokeWidth: shape.strokeWidth,
-          } : {}),
-        };
+      import('../services/firestore').then(() => {
+        // Note: Global store is deprecated - Firestore sync disabled
+        // Layer ID and additional props would be used here if sync was enabled
+        // const _layerId = shape.layerId || currentState.activeLayerId || 'default-layer';
+        // const _additionalProps: Partial<Shape> = {
+        //   color: shape.color,
+        //   ...(shape.type === 'polyline' || shape.type === 'polygon' ? {
+        //     points: shape.points,
+        //     strokeWidth: shape.strokeWidth,
+        //     w: shape.w,
+        //     h: shape.h,
+        //   } : {}),
+        //   ...(shape.type === 'line' ? {
+        //     points: shape.points,
+        //     strokeWidth: shape.strokeWidth,
+        //   } : {}),
+        // };
         
         // Note: Global store is deprecated - use project-scoped store instead
         // Firestore sync requires projectId which is not available in global store
@@ -910,8 +902,9 @@ export const useCanvasStore = create<CanvasState>((set, get) => {
       });
       // Persist color propagation to Firestore so other clients see updated colors
       if (isColorChange && currentUser && (updates as Partial<Layer>).color && updatedShapeIds.length > 0) {
-        const _layerColor = (updates as Partial<Layer>).color as string;
-        const _clientTimestamp = Date.now();
+        // Layer color and timestamp would be used for Firestore sync if enabled
+        // const _layerColor = (updates as Partial<Layer>).color as string;
+        // const _clientTimestamp = Date.now();
         // Note: Global store is deprecated - use project-scoped store instead
         // Firestore sync requires projectId which is not available in global store
         // import('../services/firestore').then(({ updateShapeProperty }) => {

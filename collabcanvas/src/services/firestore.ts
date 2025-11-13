@@ -55,6 +55,11 @@ export interface FirestoreShape {
   points?: number[];
   // Transform properties
   rotation?: number;
+  // Bounding box properties
+  itemType?: string; // For manual bounding boxes (e.g., "window", "door", "stove")
+  confidence?: number; // For AI-generated bounding boxes (0.0-1.0)
+  isAIGenerated?: boolean; // Flag to indicate AI-generated bounding box
+  source?: 'ai' | 'manual'; // Source of the bounding box annotation
 }
 
 export interface FirestoreShapeChange {
@@ -184,6 +189,17 @@ export const createShape = async (
         ...baseShapeData,
         strokeWidth: additionalProps?.strokeWidth ?? 2,
         points: additionalProps?.points ?? [0, 0, 100, 0, 50, 100],
+      };
+      break;
+    case 'boundingbox':
+      shapeData = {
+        ...baseShapeData,
+        itemType: additionalProps?.itemType || '',
+        // Only include confidence if it's defined (for AI-generated boxes)
+        ...(additionalProps?.confidence !== undefined ? { confidence: additionalProps.confidence } : {}),
+        isAIGenerated: additionalProps?.isAIGenerated ?? false,
+        source: additionalProps?.source ?? 'manual',
+        strokeWidth: additionalProps?.strokeWidth ?? 2,
       };
       break;
     default: // rect

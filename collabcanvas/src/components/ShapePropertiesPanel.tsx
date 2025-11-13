@@ -61,6 +61,10 @@ export function ShapePropertiesPanel({ className = '', projectId }: ShapePropert
     await updateShapeProperty(selectedShape.id, 'radius', radius);
   };
 
+  const handleItemTypeChange = async (itemType: string) => {
+    await updateShapeProperty(selectedShape.id, 'itemType', itemType);
+  };
+
   return (
     <div className={`bg-white border-l border-gray-200 p-4 space-y-6 ${className}`}>
       <div className="flex items-center justify-between">
@@ -235,6 +239,52 @@ export function ShapePropertiesPanel({ className = '', projectId }: ShapePropert
               ))}
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Bounding Box Properties */}
+      {selectedShape.type === 'boundingbox' && (
+        <div className="space-y-3">
+          <div className="flex items-center justify-between">
+            <h3 className="text-sm font-medium text-gray-900">Bounding Box Properties</h3>
+          </div>
+          
+          <div className="space-y-2">
+            <label className="block text-xs font-medium text-gray-700">
+              Item Type
+            </label>
+            <input
+              type="text"
+              value={selectedShape.itemType || ''}
+              onChange={(e) => handleItemTypeChange(e.target.value)}
+              disabled={!currentUser}
+              placeholder="e.g., window, door, stove"
+              className="w-full rounded border border-gray-300 px-2 py-1 text-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 disabled:bg-gray-100"
+            />
+            <div className="text-xs text-gray-500">
+              Common types: window, door, stove, sink, toilet, outlet
+            </div>
+          </div>
+
+          {selectedShape.isAIGenerated && (
+            <div className="space-y-2">
+              <label className="block text-xs font-medium text-gray-700">
+                AI Detection Info
+              </label>
+              <div className="text-xs text-gray-600 space-y-1">
+                <div>Source: AI-generated</div>
+                {selectedShape.confidence !== undefined && (
+                  <div>Confidence: {(selectedShape.confidence * 100).toFixed(0)}%</div>
+                )}
+              </div>
+            </div>
+          )}
+
+          {selectedShape.source === 'manual' && (
+            <div className="text-xs text-gray-500">
+              Source: Manual annotation
+            </div>
+          )}
         </div>
       )}
 

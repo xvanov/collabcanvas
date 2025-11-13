@@ -58,6 +58,7 @@ describe('PolylineTool Component', () => {
       visible: true,
       locked: false,
       order: 0,
+      color: '#3B82F6',
     },
   ];
 
@@ -88,6 +89,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       expect(container.firstChild).toBeNull();
@@ -100,6 +104,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       expect(container.firstChild).not.toBeNull();
@@ -128,6 +135,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={[]}
           previewPoint={null}
+          canvasScale={{ ...mockCanvasScale, scaleLine: null }}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
       
@@ -150,6 +160,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -170,6 +183,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -188,6 +204,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={previewPoint}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -210,6 +229,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -226,6 +248,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -241,6 +266,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={[{ x: 0, y: 0 }, { x: 100, y: 0 }]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -253,6 +281,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={[{ x: 0, y: 0 }, { x: 100, y: 0 }, { x: 100, y: 100 }]}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -271,6 +302,9 @@ describe('PolylineTool Component', () => {
           onComplete={mockOnComplete}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -289,6 +323,9 @@ describe('PolylineTool Component', () => {
           stageScale={1}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 
@@ -299,6 +336,9 @@ describe('PolylineTool Component', () => {
           stageScale={2}
           points={points}
           previewPoint={null}
+          canvasScale={mockCanvasScale}
+          layers={mockLayers}
+          activeLayerId="layer-1"
         />
       );
 

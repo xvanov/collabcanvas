@@ -6,6 +6,8 @@ node_modules/
 .env.production
 .env.local
 .env.*.local
+.env.tmp
+*.env.tmp
 
 # Build output
 build/

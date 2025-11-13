@@ -154,13 +154,15 @@ This document provides the complete epic and story breakdown for CollabCanvas, d
 - **Value**: Production-ready MVP with complete workflow from project selection to accurate estimates, with modern UI/UX and four-view navigation (Scope | Time | Space | Money)
 
 **Epic 2: Phase 2 - Advanced Annotation Tools & Multi-Floor Support**
-- **Goal**: Add counter tool and multi-floor project support
+- **Goal**: Add AI-powered automatic annotation, bounding box tool, counter tool, and multi-floor project support
 - **Scope**: 
+  - AI-powered automatic annotation (SageMaker endpoint integration for automatic window/door detection)
+  - Bounding box tool (manual creation with item type labels: window, door, stove, etc.)
   - Counter tool (dot marker for counting fixtures, outlets, etc.)
   - Multi-floor projects (multiple floor plans per project, floor switching, aggregated BOMs)
   - Floor-specific layers and measurements
-  - UI/UX: Floor selector in Space view, floor switching interface
-- **Value**: Enhanced annotation capabilities for complex projects
+  - UI/UX: Floor selector in Space view, floor switching interface, AI annotations layer
+- **Value**: Enhanced annotation capabilities with AI automation and manual control for complex projects
 
 **Epic 3: Phase 3 - Construction Project Bidding Engine**
 - **Goal**: Comprehensive bidding system with labor hours, critical path enhancements, and customizable bid parameters
@@ -573,11 +575,151 @@ So that shapes, annotations, and estimates from one project don't appear in othe
 - Test project isolation thoroughly to prevent data leakage
 
 **Dependencies:**
-- Blocks: Story 2.2 (Counter Tool), Story 2.3 (Multi-Floor Support) - both need project isolation first
+- Blocks: Story 2.2 (AI-Powered Automatic Annotation), Story 2.3 (Counter Tool), Story 2.4 (Multi-Floor Support) - all need project isolation first
 
 ---
 
-### Story 2.2: Counter Tool for Fixture Counting
+### Story 2.2: AI-Powered Automatic Annotation with Bounding Box Tool
+
+**Covers:** New annotation capability (enhances FR-2 annotation capabilities with AI automation)
+
+As a contractor,
+I want to automatically annotate plans using AI detection and manually create labeled bounding boxes,
+So that I can quickly identify windows, doors, and other fixtures without manual drawing, and have full control to edit or add custom annotations.
+
+**Acceptance Criteria:**
+
+**AI-Powered Automatic Annotation:**
+**Given** I have uploaded a plan image in Space view
+**When** I use AI chat and ask to "automatically annotate the plan" or "detect windows and doors"
+**Then** AI invokes the SageMaker endpoint with the plan image (base64-encoded)
+
+**And** When the endpoint returns detections with bounding boxes
+**Then** System automatically creates a new layer named "AI Annotations" (or similar)
+
+**And** When detections are received
+**Then** Each detection is rendered as an editable bounding box on the "AI Annotations" layer with:
+  - Bounding box rectangle at coordinates from `bbox` [x_min, y_min, x_max, y_max]
+  - Label showing the `name_hint` (e.g., "door", "window") and `confidence` score
+  - Visual styling distinct from manually created annotations
+
+**And** When AI annotations are displayed
+**Then** They are superimposed on the plan image and clearly visible
+
+**Editable Bounding Boxes:**
+**And** When I select an AI-generated bounding box
+**Then** I can resize it by dragging corner/edge handles
+
+**And** When I delete an AI-generated bounding box
+**Then** It is removed from the canvas and layer
+
+**And** When I move an AI-generated bounding box
+**Then** Its position updates and persists
+
+**Manual Bounding Box Tool:**
+**And** When I select the bounding box tool from the toolbar
+**Then** I can click and drag on the canvas to create a bounding box rectangle
+
+**And** When I create a bounding box
+**Then** A dialog appears asking me to specify the item type (window, door, stove, etc.)
+
+**And** When I select an item type from the dialog
+**Then** The bounding box is created with that label and stored on the active layer
+
+**And** When I create multiple bounding boxes
+**Then** Each can have a different item type label
+
+**And** When I select a manually created bounding box
+**Then** I can edit its item type label through a properties panel
+
+**And** When I select a manually created bounding box
+**Then** I can resize, move, and delete it like other shapes
+
+**Layer Management:**
+**And** When AI annotations are created
+**Then** They appear on the automatically created "AI Annotations" layer
+
+**And** When I view the layers panel
+**Then** I can see the "AI Annotations" layer with a count of AI-detected items
+
+**And** When I toggle the "AI Annotations" layer visibility
+**Then** All AI-generated bounding boxes are shown or hidden together
+
+**And** When I manually create bounding boxes
+**Then** They are stored on the currently active layer (not necessarily the AI Annotations layer)
+
+**Error Handling:**
+**And** When the SageMaker endpoint is unavailable or returns an error
+**Then** I see a clear error message in the AI chat with retry option
+
+**And** When the endpoint returns no detections
+**Then** AI chat informs me that no items were detected
+
+**And** When image processing fails
+**Then** I see an error message and can retry the annotation request
+
+**Prerequisites:** Story 2.1 (Project Isolation - for layer and shape management), Story 1.4 (AI Chat Integration - for chatbot interface)
+
+**Technical Notes:**
+- **SageMaker Endpoint Integration:**
+  - Endpoint name: `locatrix-blueprint-endpoint` (or configurable via environment variable)
+  - AWS region: `us-east-2` (or configurable)
+  - Input format: JSON with `image_data` field containing base64-encoded PNG image
+  - Output format: JSON with `detections` array, each containing:
+    - `bbox`: [x_min, y_min, x_max, y_max] in pixel coordinates
+    - `confidence`: float (0.0-1.0)
+    - `name_hint`: string (e.g., "door", "window")
+  - Use boto3 `sagemaker-runtime` client to invoke endpoint
+  - Handle timeout (60 seconds) and retry logic
+  - Reference: `scripts/test_endpoint.py` for implementation example
+
+- **Bounding Box Tool Implementation:**
+  - New tool type: `boundingbox` (similar to `polyline` and `polygon` tools)
+  - Create `BoundingBoxTool.tsx` component similar to `PolylineTool.tsx` and `PolygonTool.tsx`
+  - Bounding box shape type: Store as rectangle with `itemType` property
+  - Drawing interaction: Click and drag to create rectangle
+  - Item type selection: Modal/dialog with dropdown or text input for item type
+  - Supported item types: window, door, stove, sink, toilet, outlet, etc. (extensible list)
+
+- **Shape Data Structure:**
+  - Add new shape type: `boundingbox` to shape types
+  - Store properties: `x`, `y`, `width`, `height`, `itemType` (string), `confidence` (optional, for AI-generated)
+  - Add `isAIGenerated` boolean flag to distinguish AI vs manual annotations
+  - Store `source` field: "ai" or "manual"
+
+- **Layer Management:**
+  - Auto-create "AI Annotations" layer when first AI detection occurs
+  - Layer should be created with distinct color (e.g., different from default layer colors)
+  - Layer should be visible by default
+  - Prevent deletion of "AI Annotations" layer if it contains AI-generated annotations (or warn user)
+
+- **Rendering:**
+  - Use Konva `Rect` component for bounding boxes
+  - Display label with item type and confidence (for AI-generated) near the box
+  - Use distinct styling for AI-generated vs manual bounding boxes (e.g., different border color or style)
+  - Make bounding boxes selectable, resizable, and movable like other shapes
+
+- **Integration Points:**
+  - AI chat integration: Add command parsing for "annotate plan", "detect windows", "detect doors", etc.
+  - Canvas integration: Add bounding box tool to toolbar (similar to polyline/polygon buttons)
+  - Shape properties panel: Add item type editor for selected bounding boxes
+  - Layer panel: Show count of bounding boxes per layer
+
+- **Error Handling:**
+  - Handle AWS credentials not configured
+  - Handle endpoint not found or not in-service
+  - Handle timeout errors (60 second timeout)
+  - Handle invalid response format from endpoint
+  - Handle image encoding/decoding errors
+  - Display user-friendly error messages in AI chat
+
+**Dependencies:**
+- Requires: Story 2.1 (Project Isolation)
+- Blocks: None (can be developed in parallel with other Epic 2 stories)
+
+---
+
+### Story 2.3: Counter Tool for Fixture Counting
 
 **Covers:** New annotation tool capability (enhances FR-2 annotation capabilities)
 
@@ -610,7 +752,7 @@ So that I can accurately count instances without manual tracking.
 
 ---
 
-### Story 2.3: Multi-Floor Project Support
+### Story 2.4: Multi-Floor Project Support
 
 **Covers:** FR-1.1 (enhanced with multi-floor support)
 
@@ -639,7 +781,7 @@ So that I can estimate multi-story projects accurately with floor-specific annot
 **And** When I view layer totals
 **Then** I can see totals per floor or aggregated across all floors
 
-**Prerequisites:** Story 2.1 (counter tool - for complete annotation toolset)
+**Prerequisites:** Story 2.1 (Project Isolation), Story 2.2 (AI-Powered Automatic Annotation), Story 2.3 (Counter Tool - for complete annotation toolset)
 
 **Technical Notes:**
 - Firebase structure: Add floors array to project document

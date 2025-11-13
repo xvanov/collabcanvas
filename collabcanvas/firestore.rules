@@ -132,20 +132,8 @@ service cloud.firestore {
       
       // Shapes subcollection - project-scoped shapes
       match /shapes/{shapeId} {
-        // Helper function to get project document safely
-        function getProject() {
-          return get(/databases/$(database)/documents/projects/$(projectId));
-        }
-        
         // Helper function to check if user is owner or collaborator
         function isOwnerOrCollaborator() {
-          return request.auth != null;
-        }
-        
-        // Helper function to check if user is owner or editor
-        // Note: We allow any authenticated user to create/edit shapes
-        // Application logic enforces that user is project owner or collaborator
-        function isOwnerOrEditor() {
           return request.auth != null;
         }
         
@@ -155,8 +143,8 @@ service cloud.firestore {
         // Create: Owner or editor collaborator
         // Temporarily allow any authenticated user to create shapes for debugging
         allow create: if request.auth != null
-          // Validate shape type
-          && request.resource.data.type in ['rect', 'circle', 'text', 'line', 'polyline', 'polygon']
+          // Validate shape type (checked in type-specific validation below)
+          && request.resource.data.type is string
           // Validate position fields are numbers
           && request.resource.data.x is number
           && request.resource.data.y is number
@@ -181,16 +169,18 @@ service cloud.firestore {
               || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
               || (request.resource.data.type == 'polyline' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
               || (request.resource.data.type == 'polygon' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (request.resource.data.type == 'boundingbox' && request.resource.data.itemType is string && request.resource.data.strokeWidth is number)
           );
         
         // Update: Owner or editor collaborator
         // Temporarily allow any authenticated user to update shapes for debugging
+        // Note: For partial updates, request.resource.data contains merged data (existing + update)
         allow update: if request.auth != null
           // Validate that core fields don't change
-          && request.resource.data.type == resource.data.type
+          && resource.data.type is string
           && request.resource.data.createdBy == resource.data.createdBy
           && request.resource.data.createdAt == resource.data.createdAt
-          // Validate position fields
+          // Validate position fields exist and are numbers (may use existing values from merge)
           && request.resource.data.x is number
           && request.resource.data.y is number
           && request.resource.data.w is number
@@ -200,13 +190,14 @@ service cloud.firestore {
           // Validate updatedAt timestamp
           && request.resource.data.updatedAt is timestamp
           && request.resource.data.clientUpdatedAt is number
-          // Validate type-specific properties remain valid
-          && (request.resource.data.type == 'rect' 
-              || (request.resource.data.type == 'circle' && request.resource.data.radius is number)
-              || (request.resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
-              || (request.resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
-              || (request.resource.data.type == 'polyline' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
-              || (request.resource.data.type == 'polygon' && request.resource.data.strokeWidth is number && request.resource.data.points is list));
+          // Validate type-specific properties remain valid (check based on existing type from resource.data)
+          && (resource.data.type == 'rect' 
+              || (resource.data.type == 'circle' && request.resource.data.radius is number)
+              || (resource.data.type == 'text' && request.resource.data.text is string && request.resource.data.fontSize is number)
+              || (resource.data.type == 'line' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (resource.data.type == 'polyline' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (resource.data.type == 'polygon' && request.resource.data.strokeWidth is number && request.resource.data.points is list)
+              || (resource.data.type == 'boundingbox' && request.resource.data.itemType is string && request.resource.data.strokeWidth is number));
         
         // Delete: Owner or editor collaborator
         // Temporarily allow any authenticated user to delete shapes for debugging
@@ -238,7 +229,8 @@ service cloud.firestore {
         allow read: if isOwnerOrCollaborator();
         
         // Create: Owner or editor collaborator
-        allow create: if isOwnerOrEditor()
+        // Temporarily allow any authenticated user to create layers for debugging
+        allow create: if request.auth != null
           && request.resource.data.name is string
           && request.resource.data.createdBy == request.auth.uid;
         

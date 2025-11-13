@@ -44,7 +44,11 @@ export function FileUpload({ projectId, onUploadComplete, onUploadError, disable
       const backgroundImage = await uploadConstructionPlanImage(file, currentUser.uid);
       
       // Update canvas state - pass projectId to ensure Firestore sync works
-      setBackgroundImage(backgroundImage, projectId);
+      if (projectId) {
+        (setBackgroundImage as (image: BackgroundImage | null, projectId?: string) => void)(backgroundImage, projectId);
+      } else {
+        (setBackgroundImage as (image: BackgroundImage | null) => void)(backgroundImage);
+      }
       
       // Notify parent component
       onUploadComplete?.(backgroundImage);
@@ -69,7 +73,11 @@ export function FileUpload({ projectId, onUploadComplete, onUploadError, disable
 
   const handleDeleteImage = () => {
     if (confirm('Are you sure you want to delete the current background image?')) {
-      setBackgroundImage(null, projectId);
+      if (projectId) {
+        (setBackgroundImage as (image: BackgroundImage | null, projectId?: string) => void)(null, projectId);
+      } else {
+        (setBackgroundImage as (image: BackgroundImage | null) => void)(null);
+      }
     }
   };
 

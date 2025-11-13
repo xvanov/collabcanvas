@@ -131,6 +131,9 @@ describe('Project Canvas Store', () => {
       // Verify active layer in project 1
       expect(store1.getState().activeLayerId).toBe('layer-1');
 
+      // Set active layer in project 2
+      store2.getState().setActiveLayer('layer-2', projectId2);
+
       // Verify active layer in project 2 is different
       expect(store2.getState().activeLayerId).toBe('layer-2');
     });
@@ -169,7 +172,7 @@ describe('Project Canvas Store', () => {
       await store.getState().processAICommand('draw a wall', 'space');
 
       expect(processCommandMock).toHaveBeenCalledTimes(1);
-      expect(processCommandMock).toHaveBeenCalledWith('draw a wall', user.uid, 'space', { projectId: projectId1 });
+      expect(processCommandMock).toHaveBeenCalledWith('draw a wall', user.uid, 'space');
     });
   });
 

@@ -14,17 +14,25 @@ import type {
 import type {
   WallAssumptions,
   FloorAssumptions,
+  DoorAssumptions,
+  WindowAssumptions,
   MaterialCalculation,
+} from '../types/material';
+import type {
   Layer,
   Shape,
 } from '../types';
 import {
   DEFAULT_WALL_ASSUMPTIONS,
+  DEFAULT_DOOR_ASSUMPTIONS,
+  DEFAULT_WINDOW_ASSUMPTIONS,
   mergeWithDefaults,
 } from '../data/defaultAssumptions';
 import {
   calculateWallEstimate,
   calculateFloorEstimate,
+  calculateDoorEstimate,
+  calculateWindowEstimate,
   compareMaterialCalculations,
 } from './materialService';
 
@@ -89,6 +97,14 @@ interface ExtractedMeasurements {
     areas: Array<{ area: number }>;
     layerName?: string;
   };
+  doors?: {
+    count: number;
+    layerName?: string;
+  };
+  windows?: {
+    count: number;
+    layerName?: string;
+  };
 }
 
 function extractMeasurementsFromLayers(
@@ -101,31 +117,49 @@ function extractMeasurementsFromLayers(
 
   console.log('📊 Extract Measurements Called:');
   console.log('  - Total layers:', layers.length);
+  console.log('  - Layer names:', layers.map(l => `${l.name} (${l.id})`));
   console.log('  - Total shapes:', shapes.size);
+  console.log('  - Shape layerIds:', Array.from(shapes.values()).map(s => `${s.id}: ${s.type} on layerId=${s.layerId || 'default'}`).slice(0, 10));
   console.log('  - Scale factor:', scaleFactor);
   console.log('  - Request:', request);
 
   // Determine target type (excluding 'ceiling' which isn't supported yet)
   const inferredType = request.targetType || inferTypeFromQuery(request.originalQuery);
-  const targetType: 'wall' | 'floor' | undefined = 
+  const targetType: 'wall' | 'floor' | 'door' | 'window' | undefined = 
     inferredType === 'ceiling' ? undefined : inferredType;
 
   console.log('🎯 Target type:', targetType);
 
-  // Find relevant layer
-  const targetLayer = request.targetLayer
-    ? layers.find(l => l.id === request.targetLayer || l.name === request.targetLayer)
-    : findRelevantLayer(layers, targetType);
+  // Check for door/window keywords early (before we need to use them)
+  const queryLower = request.originalQuery?.toLowerCase() || '';
+  const isDoorQuery = queryLower.includes('door') || queryLower.includes('hardware');
+  const isWindowQuery = queryLower.includes('window') || queryLower.includes('flashing') || queryLower.includes('caulk');
 
-  if (!targetLayer) {
-    console.log('❌ No target layer found!');
-    return measurements;
+  // For door/window queries, we don't need to find a target layer upfront
+  // We'll search for the layer by name and count bounding boxes directly
+  const isDoorWindowQuery = targetType === 'door' || targetType === 'window' || 
+                            isDoorQuery || isWindowQuery;
+  
+  // Find relevant layer (only needed for walls/floors)
+  let targetLayer = null;
+  if (!isDoorWindowQuery) {
+    targetLayer = request.targetLayer
+      ? layers.find(l => l.id === request.targetLayer || l.name === request.targetLayer)
+      : findRelevantLayer(layers, targetType);
+
+    if (!targetLayer) {
+      console.log('❌ No target layer found!');
+      // Don't return early - continue to check for doors/windows
+    } else {
+      console.log('✅ Target layer:', targetLayer.name, 'with', targetLayer.shapes.length, 'shapes');
+    }
+  } else {
+    console.log('✅ Door/window query - will search for layer by name');
   }
 
-  console.log('✅ Target layer:', targetLayer.name, 'with', targetLayer.shapes.length, 'shapes');
-
   // Extract measurements based on target type
-  if (targetType === 'wall' || targetType === undefined) {
+  // Only extract wall/floor measurements if we have a target layer
+  if (targetLayer && (targetType === 'wall' || targetType === undefined)) {
     // Look for polylines (wall measurements)
     // Filter by shape.layerId instead of layer.shapes array for better sync
     const polylines = Array.from(shapes.values()).filter(shape => {
@@ -159,7 +193,7 @@ function extractMeasurementsFromLayers(
     }
   }
 
-  if (targetType === 'floor' || targetType === undefined) {
+  if (targetLayer && (targetType === 'floor' || targetType === undefined)) {
     // Look for polygons (floor areas)
     // Filter by shape.layerId instead of layer.shapes array for better sync
     const polygons = Array.from(shapes.values()).filter(shape => {
@@ -187,21 +221,141 @@ function extractMeasurementsFromLayers(
     }
   }
 
+  // Extract doors and windows from bounding boxes
+  // Look for bounding boxes in "Doors" or "Windows" layers, or any layer if targetType is specified
+  // Note: isDoorQuery and isWindowQuery are already defined above
+
+  // Always check for doors and windows if explicitly requested
+  // This ensures BOM estimation works based on layer counts
+  // Check doors if explicitly requested OR if target type is 'door' OR if no specific target type (general material estimation)
+  if (isDoorQuery || targetType === 'door' || (targetType === undefined && !isWindowQuery)) {
+    console.log('🔍 Looking for Doors layer...');
+    const doorLayer = layers.find(l => {
+      const nameLower = l.name.toLowerCase();
+      const matches = nameLower.includes('door');
+      if (matches) {
+        console.log(`  ✅ Found potential door layer: "${l.name}" (ID: ${l.id})`);
+      }
+      return matches;
+    });
+    
+    if (doorLayer) {
+      console.log(`✅ Using Doors layer: "${doorLayer.name}" (ID: ${doorLayer.id})`);
+      const doorBoxes = Array.from(shapes.values()).filter(shape => {
+        const shapeLayerId = shape.layerId || 'default-layer';
+        const matches = shapeLayerId === doorLayer.id && shape.type === 'boundingbox';
+        if (matches) {
+          console.log(`  ✅ Door bounding box found: ${shape.id} on layer ${doorLayer.name} (${shapeLayerId})`);
+        }
+        return matches;
+      });
+      
+      if (doorBoxes.length > 0) {
+        measurements.doors = {
+          count: doorBoxes.length,
+          layerName: doorLayer.name,
+        };
+        console.log(`🚪 Found ${doorBoxes.length} doors in "${doorLayer.name}" layer (ID: ${doorLayer.id})`);
+      } else {
+        console.log(`⚠️ No door bounding boxes found in "${doorLayer.name}" layer (ID: ${doorLayer.id})`);
+        // Debug: show all shapes in this layer
+        const allShapesInLayer = Array.from(shapes.values()).filter(shape => {
+          const shapeLayerId = shape.layerId || 'default-layer';
+          return shapeLayerId === doorLayer.id;
+        });
+        console.log(`  📊 Total shapes in "${doorLayer.name}" layer: ${allShapesInLayer.length}`);
+        allShapesInLayer.forEach(shape => {
+          console.log(`    - Shape ${shape.id}: type=${shape.type}, layerId=${shape.layerId}`);
+        });
+      }
+    } else {
+      console.log('⚠️ No "Doors" layer found');
+    }
+  }
+
+  // Check windows if explicitly requested OR if target type is 'window' OR if no specific target type (general material estimation)
+  if (isWindowQuery || targetType === 'window' || (targetType === undefined && !isDoorQuery)) {
+    console.log('🔍 Looking for Windows layer...');
+    console.log('  - isWindowQuery:', isWindowQuery);
+    console.log('  - targetType:', targetType);
+    console.log('  - Available layers:', layers.map(l => l.name));
+    
+    const windowLayer = layers.find(l => {
+      const nameLower = l.name.toLowerCase();
+      const matches = nameLower.includes('window');
+      if (matches) {
+        console.log(`  ✅ Found potential window layer: "${l.name}" (ID: ${l.id})`);
+      }
+      return matches;
+    });
+    
+    if (windowLayer) {
+      console.log(`✅ Using Windows layer: "${windowLayer.name}" (ID: ${windowLayer.id})`);
+      console.log(`  🔍 Filtering shapes for window layer ${windowLayer.id}...`);
+      console.log(`  - Total shapes to check: ${shapes.size}`);
+      
+      const windowBoxes = Array.from(shapes.values()).filter(shape => {
+        const shapeLayerId = shape.layerId || 'default-layer';
+        const isBoundingBox = shape.type === 'boundingbox';
+        const matchesLayer = shapeLayerId === windowLayer.id;
+        const matches = matchesLayer && isBoundingBox;
+        
+        if (matches) {
+          console.log(`  ✅ Window bounding box found: ${shape.id} on layer ${windowLayer.name} (${shapeLayerId})`);
+        } else if (matchesLayer && !isBoundingBox) {
+          console.log(`  ⚠️ Shape ${shape.id} is on window layer but type is ${shape.type}, not boundingbox`);
+        } else if (isBoundingBox && !matchesLayer) {
+          console.log(`  ℹ️ Bounding box ${shape.id} is on layer ${shapeLayerId}, not ${windowLayer.id}`);
+        }
+        return matches;
+      });
+      
+      console.log(`  📊 Found ${windowBoxes.length} window bounding boxes`);
+      
+      if (windowBoxes.length > 0) {
+        measurements.windows = {
+          count: windowBoxes.length,
+          layerName: windowLayer.name,
+        };
+        console.log(`🪟 Found ${windowBoxes.length} windows in "${windowLayer.name}" layer (ID: ${windowLayer.id})`);
+      } else {
+        console.log(`⚠️ No window bounding boxes found in "${windowLayer.name}" layer (ID: ${windowLayer.id})`);
+        // Debug: show all shapes in this layer
+        const allShapesInLayer = Array.from(shapes.values()).filter(shape => {
+          const shapeLayerId = shape.layerId || 'default-layer';
+          return shapeLayerId === windowLayer.id;
+        });
+        console.log(`  📊 Total shapes in "${windowLayer.name}" layer: ${allShapesInLayer.length}`);
+        allShapesInLayer.forEach(shape => {
+          console.log(`    - Shape ${shape.id}: type=${shape.type}, layerId=${shape.layerId}`);
+        });
+      }
+    } else {
+      console.log('⚠️ No "Windows" layer found');
+    }
+  }
+
   return measurements;
 }
 
 /**
  * Infer target type from natural language query
  */
-function inferTypeFromQuery(query: string): 'wall' | 'floor' | undefined {
+function inferTypeFromQuery(query: string): 'wall' | 'floor' | 'door' | 'window' | undefined {
   const lowerQuery = query.toLowerCase();
 
   const wallKeywords = ['wall', 'framing', 'drywall', 'stud'];
   const floorKeywords = ['floor', 'epoxy', 'tile', 'carpet', 'hardwood'];
+  const doorKeywords = ['door', 'hardware', 'hinges', 'lockset'];
+  const windowKeywords = ['window', 'flashing', 'caulk', 'sealant'];
 
   const hasWallKeyword = wallKeywords.some(kw => lowerQuery.includes(kw));
   const hasFloorKeyword = floorKeywords.some(kw => lowerQuery.includes(kw));
+  const hasDoorKeyword = doorKeywords.some(kw => lowerQuery.includes(kw));
+  const hasWindowKeyword = windowKeywords.some(kw => lowerQuery.includes(kw));
 
+  if (hasDoorKeyword && !hasWallKeyword && !hasFloorKeyword && !hasWindowKeyword) return 'door';
+  if (hasWindowKeyword && !hasWallKeyword && !hasFloorKeyword && !hasDoorKeyword) return 'window';
   if (hasWallKeyword && !hasFloorKeyword) return 'wall';
   if (hasFloorKeyword && !hasWallKeyword) return 'floor';
   return undefined;
@@ -298,32 +452,31 @@ function identifyMissingInformation(
 ): MissingInformation[] {
   const missing: MissingInformation[] = [];
 
-  // Check if this is a trim-only request (has doors/windows but no wall/floor request)
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const specs = request.specifications as any;
-  const hasDoorWindowSpecs = (specs?.doors !== undefined || specs?.windows !== undefined);
-  const hasNoMeasurements = !measurements.walls && !measurements.floors;
-  const isTrimOnly = hasDoorWindowSpecs && hasNoMeasurements;
+  // Check if this is a door/window-only request (no walls/floors needed)
+  const hasDoorMeasurements = !!measurements.doors;
+  const hasWindowMeasurements = !!measurements.windows;
+  const hasDoorWindowMeasurements = hasDoorMeasurements || hasWindowMeasurements;
+  const hasWallFloorMeasurements = !!measurements.walls || !!measurements.floors;
   
-  console.log('🔍 Trim-only check:', {
-    hasDoorWindowSpecs,
-    doors: specs?.doors,
-    windows: specs?.windows,
-    hasNoMeasurements,
-    isTrimOnly,
+  console.log('🔍 Measurement check:', {
+    hasDoorMeasurements,
+    hasWindowMeasurements,
+    hasDoorWindowMeasurements,
+    hasWallFloorMeasurements,
+    doors: measurements.doors?.count,
+    windows: measurements.windows?.count,
   });
   
-  if (isTrimOnly) {
-    // Trim doesn't need wall/floor measurements, skip to calculation
-    console.log('✂️ Trim-only calculation - skipping wall/floor questions');
-    return missing;
-  }
-
-  // Check if we have any measurements
-  if (!measurements.walls && !measurements.floors) {
+  // If we have door/window measurements but no wall/floor measurements, that's fine
+  // We can proceed with door/window estimation
+  if (hasDoorWindowMeasurements && !hasWallFloorMeasurements) {
+    console.log('✅ Door/window-only calculation - checking for missing door/window assumptions');
+    // Continue to check for door/window-specific missing info below
+  } else if (!hasDoorWindowMeasurements && !hasWallFloorMeasurements) {
+    // No measurements at all - ask user to create layers or provide measurements
     missing.push({
       field: 'layer',
-      question: 'I couldn\'t find any measurements. Could you either:\n1. Create a layer named "Walls" or "Floor" and draw the areas\n2. Specify which layer contains the measurements\n3. Provide the measurements directly',
+      question: 'I couldn\'t find any measurements. Could you either:\n1. Create a layer named "Walls", "Floor", "Doors", or "Windows" and draw the areas\n2. Specify which layer contains the measurements\n3. Provide the measurements directly',
       type: 'text',
     });
     return missing;
@@ -390,6 +543,20 @@ function identifyMissingInformation(
         defaultValue: 'epoxy',
       });
     }
+  }
+
+  // For doors: Check if we have hardware type specified (optional - has defaults)
+  if (measurements.doors) {
+    // Door assumptions have good defaults, so we don't require clarification
+    // But we can ask if user wants to customize
+    console.log('🚪 Door measurements found, using default assumptions if not specified');
+  }
+
+  // For windows: Check if we have window type specified (optional - has defaults)
+  if (measurements.windows) {
+    // Window assumptions have good defaults, so we don't require clarification
+    // But we can ask if user wants to customize
+    console.log('🪟 Window measurements found, using default assumptions if not specified');
   }
 
   return missing;
@@ -540,6 +707,57 @@ async function generateEstimate(
     );
 
     message = `Based on the "${measurements.floors.layerName || 'selected'}" layer, I found ${measurements.floors.totalArea.toFixed(1)} square feet of floor area.\n\nCalculated materials for ${assumptions.type} flooring.`;
+  } else if (measurements.doors) {
+    const assumptions: DoorAssumptions = {
+      ...DEFAULT_DOOR_ASSUMPTIONS,
+      ...(request.specifications as Partial<DoorAssumptions>),
+      doorCount: measurements.doors.count,
+    };
+
+    calculation = calculateDoorEstimate(
+      measurements.doors.count,
+      assumptions,
+      userId
+    );
+
+    message = `Based on the "${measurements.doors.layerName || 'Doors'}" layer, I found ${measurements.doors.count} door${measurements.doors.count !== 1 ? 's' : ''}.\n\n📋 Door Hardware Assumptions:\n`;
+    message += `- Hardware type: ${assumptions.hardwareType}\n`;
+    message += `- Hinges: ${assumptions.includeHinges ? 'Yes (3 per door)' : 'No'}\n`;
+    message += `- Lockset: ${assumptions.includeLockset ? 'Yes' : 'No'}\n`;
+    message += `- Strike plate: ${assumptions.includeStrikePlate ? 'Yes' : 'No'}\n`;
+    message += `- Door stop: ${assumptions.includeDoorStop ? 'Yes' : 'No'}\n`;
+    message += `- Weatherstripping: ${assumptions.includeWeatherstripping ? 'Yes' : 'No'}\n`;
+    if (assumptions.hardwareType === 'commercial' || assumptions.hardwareType === 'heavy-duty') {
+      message += `- Door closer: ${assumptions.includeDoorCloser ? 'Yes' : 'No'}\n`;
+    }
+    message += `\n💡 You can refine by saying:\n`;
+    message += `- "Add door closers"\n`;
+    message += `- "Remove weatherstripping"\n`;
+    message += `- "Use commercial hardware"\n`;
+  } else if (measurements.windows) {
+    const assumptions: WindowAssumptions = {
+      ...DEFAULT_WINDOW_ASSUMPTIONS,
+      ...(request.specifications as Partial<WindowAssumptions>),
+      windowCount: measurements.windows.count,
+    };
+
+    calculation = calculateWindowEstimate(
+      measurements.windows.count,
+      assumptions,
+      userId
+    );
+
+    message = `Based on the "${measurements.windows.layerName || 'Windows'}" layer, I found ${measurements.windows.count} window${measurements.windows.count !== 1 ? 's' : ''}.\n\n📋 Window Installation Assumptions:\n`;
+    message += `- Window type: ${assumptions.windowType}\n`;
+    message += `- Flashing: ${assumptions.includeFlashing ? 'Yes' : 'No'}\n`;
+    message += `- Caulk: ${assumptions.includeCaulk ? 'Yes' : 'No'}\n`;
+    message += `- Sealant: ${assumptions.includeSealant ? 'Yes' : 'No'}\n`;
+    message += `- Trim: ${assumptions.includeTrim ? 'Yes (interior & exterior)' : 'No'}\n`;
+    message += `- Insulation: ${assumptions.includeInsulation ? 'Yes (expanding foam)' : 'No'}\n`;
+    message += `\n💡 You can refine by saying:\n`;
+    message += `- "Remove flashing"\n`;
+    message += `- "Add trim"\n`;
+    message += `- "Use impact-resistant windows"\n`;
   } else {
     return {
       type: 'error',

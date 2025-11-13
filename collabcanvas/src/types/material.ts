@@ -6,7 +6,7 @@
 /**
  * Material categories for construction
  */
-export type MaterialCategory = 'framing' | 'surface' | 'finish' | 'flooring' | 'trim' | 'insulation';
+export type MaterialCategory = 'framing' | 'surface' | 'finish' | 'flooring' | 'trim' | 'insulation' | 'hardware';
 
 /**
  * Wall framing types
@@ -26,7 +26,7 @@ export type FloorType = 'epoxy' | 'carpet' | 'hardwood' | 'tile';
 /**
  * Measurement units for materials
  */
-export type MaterialUnit = 'piece' | 'linear-feet' | 'square-feet' | 'gallon' | 'box' | 'roll' | 'bag';
+export type MaterialUnit = 'piece' | 'linear-feet' | 'square-feet' | 'gallon' | 'box' | 'roll' | 'bag' | 'tube' | 'can';
 
 /**
  * Framing spacing options (in inches)
@@ -119,13 +119,52 @@ export interface FloorAssumptions {
 }
 
 /**
+ * Door hardware types
+ */
+export type DoorHardwareType = 'standard' | 'commercial' | 'heavy-duty';
+
+/**
+ * Door material assumptions
+ */
+export interface DoorAssumptions {
+  hardwareType: DoorHardwareType;
+  includeHinges: boolean;
+  includeLockset: boolean;
+  includeDoorCloser: boolean;
+  includeStrikePlate: boolean;
+  includeDoorStop: boolean;
+  includeWeatherstripping: boolean;
+  doorCount: number;
+}
+
+/**
+ * Window types
+ */
+export type WindowType = 'standard' | 'commercial' | 'impact-resistant';
+
+/**
+ * Window material assumptions
+ */
+export interface WindowAssumptions {
+  windowType: WindowType;
+  includeFlashing: boolean;
+  includeCaulk: boolean;
+  includeSealant: boolean;
+  includeTrim: boolean;
+  includeInsulation: boolean;
+  windowCount: number;
+  averageWindowPerimeter?: number; // Linear feet per window
+}
+
+/**
  * Material calculation result
  */
 export interface MaterialCalculation {
   totalArea?: number; // Square feet
   totalLength?: number; // Linear feet
+  totalCount?: number; // Count of items (doors, windows, etc.)
   materials: MaterialSpec[];
-  assumptions: WallAssumptions | FloorAssumptions;
+  assumptions: WallAssumptions | FloorAssumptions | DoorAssumptions | WindowAssumptions;
   calculatedAt: number;
   calculatedBy: string;
 }

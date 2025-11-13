@@ -9,12 +9,14 @@ import { TransformControls } from './TransformControls';
 import { LayersPanel } from './LayersPanel';
 import { AlignmentToolbar } from './AlignmentToolbar';
 import { SnapIndicators } from './SnapIndicators';
-import { ScaleLine } from './ScaleLine';
+import { ScaleLine as ScaleLineComponent } from './ScaleLine';
 import { MeasurementInput } from './MeasurementInput';
 import { MeasurementDisplay } from './MeasurementDisplay';
 import { PolylineTool } from './PolylineTool';
 import { PolygonTool } from './PolygonTool';
-import { createPolylineShape, createPolygonShape } from '../services/shapeService';
+import { BoundingBoxTool } from './BoundingBoxTool';
+import { ItemTypeDialog, type ItemType } from './ItemTypeDialog';
+import { createPolylineShape, createPolygonShape, createBoundingBoxShape } from '../services/shapeService';
 import { useCanvasStore } from '../store/canvasStore';
 import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useShapes } from '../hooks/useShapes';
@@ -22,7 +24,7 @@ import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
 import { calculateViewportBounds, filterVisibleShapes } from '../utils/viewport';
-import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerType } from '../types';
+import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerType, ScaleLine } from '../types';
 
 interface CanvasProps {
   projectId?: string;
@@ -39,6 +41,7 @@ export interface CanvasHandle {
   getStage: () => Konva.Stage | null;
   activatePolylineTool: () => void;
   activatePolygonTool: () => void;
+  activateBoundingBoxTool: () => void;
   deactivateDrawingTools: () => void;
 }
 /**
@@ -58,9 +61,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
   const [showMeasurementInput, setShowMeasurementInput] = useState(false);
   const [pendingScaleLine, setPendingScaleLine] = useState<{ endX: number; endY: number } | null>(null);
   // Drawing tool states
-  const [activeDrawingTool, setActiveDrawingTool] = useState<'polyline' | 'polygon' | null>(null);
+  const [activeDrawingTool, setActiveDrawingTool] = useState<'polyline' | 'polygon' | 'boundingbox' | null>(null);
   const [drawingPoints, setDrawingPoints] = useState<Array<{ x: number; y: number }>>([]);
   const [drawingPreviewPoint, setDrawingPreviewPoint] = useState<{ x: number; y: number } | null>(null);
+  // Bounding box tool states
+  const [boundingBoxStart, setBoundingBoxStart] = useState<{ x: number; y: number } | null>(null);
+  const [boundingBoxEnd, setBoundingBoxEnd] = useState<{ x: number; y: number } | null>(null);
+  const [showItemTypeDialog, setShowItemTypeDialog] = useState(false);
+  const [pendingBoundingBox, setPendingBoundingBox] = useState<{ x: number; y: number; width: number; height: number } | null>(null);
   // Imperative current-user cursor to avoid React re-renders on mousemove
   const overlaysLayerRef = useRef<Konva.Layer>(null);
   const currentCursorRef = useRef<Konva.Circle>(null);
@@ -245,7 +253,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       if (e.key === 'Escape' && canvasScale.isScaleMode) {
         setIsScaleMode(false);
         if (canvasScale.scaleLine) {
-          deleteScaleLine(projectId);
+          if (projectId) {
+            (deleteScaleLine as (projectId?: string) => void)(projectId);
+          } else {
+            (deleteScaleLine as () => void)();
+          }
         }
         return;
       }
@@ -303,6 +315,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
     
     if (clickedOnEmpty) {
+      // Handle bounding box tool (click and drag)
+      if (activeDrawingTool === 'boundingbox') {
+        setBoundingBoxStart({ x: stageX, y: stageY });
+        setBoundingBoxEnd({ x: stageX, y: stageY });
+        isDragging.current = true; // Use drag state to track bounding box drawing
+        return;
+      }
+      
       // Check if Shift key is held for multi-select
       if (e.evt.shiftKey) {
         // Start drag selection
@@ -366,13 +386,19 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     }
 
     // Update drawing preview point - only if changed significantly
-    if (activeDrawingTool) {
+    if (activeDrawingTool && activeDrawingTool !== 'boundingbox') {
       setDrawingPreviewPoint(prev => {
         if (!prev || Math.abs(prev.x - stageX) > 2 || Math.abs(prev.y - stageY) > 2) {
           return { x: stageX, y: stageY };
         }
         return prev;
       });
+    }
+
+    // Handle bounding box drawing
+    if (activeDrawingTool === 'boundingbox' && boundingBoxStart && isDragging.current) {
+      setBoundingBoxEnd({ x: stageX, y: stageY });
+      return; // Don't pan when drawing bounding box
     }
 
     // Handle drag selection
@@ -392,7 +418,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     }
 
     // Pan the canvas if dragging - imperative updates for performance
-    if (isDragging.current) {
+    // Don't pan if drawing bounding box
+    if (isDragging.current && activeDrawingTool !== 'boundingbox') {
       const newPos = {
         x: stagePosRef.current.x + e.evt.movementX,
         y: stagePosRef.current.y + e.evt.movementY,
@@ -410,6 +437,31 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
 
   // Handle mouse up - stop panning and selection
   const handleMouseUp = () => {
+    // Handle bounding box completion
+    if (activeDrawingTool === 'boundingbox' && boundingBoxStart && boundingBoxEnd) {
+      const x = Math.min(boundingBoxStart.x, boundingBoxEnd.x);
+      const y = Math.min(boundingBoxStart.y, boundingBoxEnd.y);
+      const width = Math.abs(boundingBoxEnd.x - boundingBoxStart.x);
+      const height = Math.abs(boundingBoxEnd.y - boundingBoxStart.y);
+      
+      console.log('📦 Bounding box completed:', { x, y, width, height, minSize: width > 10 && height > 10 });
+      
+      // Only show dialog if box has minimum size (reduced from 10 to 5 pixels for better UX)
+      if (width > 5 && height > 5) {
+        console.log('✅ Showing item type dialog');
+        setPendingBoundingBox({ x, y, width, height });
+        setShowItemTypeDialog(true);
+      } else {
+        console.warn('⚠️ Bounding box too small, not showing dialog:', { width, height });
+      }
+      
+      // Reset bounding box drawing state
+      setBoundingBoxStart(null);
+      setBoundingBoxEnd(null);
+      isDragging.current = false;
+      return;
+    }
+    
     if (isSelecting.current && selectionBox) {
       // Find shapes that intersect with the selection box
       const shapesArray = Array.from(shapes.values());
@@ -483,6 +535,59 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       deselectShape();
     }
   };
+
+  // Handle item type selection for bounding box
+  const handleItemTypeSelect = useCallback(async (itemType: ItemType, customType?: string) => {
+    if (!currentUser || !pendingBoundingBox) {
+      console.warn('⚠️ Cannot create bounding box: missing user or pending box', { currentUser: !!currentUser, pendingBoundingBox: !!pendingBoundingBox });
+      return;
+    }
+
+    const activeLayer = layers.find((l: LayerType) => l.id === activeLayerId);
+    const shapeColor = activeLayer?.color || '#3B82F6';
+    const finalItemType = itemType === 'other' && customType ? customType : itemType;
+
+    console.log('🎯 Creating bounding box shape:', {
+      x: pendingBoundingBox.x,
+      y: pendingBoundingBox.y,
+      width: pendingBoundingBox.width,
+      height: pendingBoundingBox.height,
+      itemType: finalItemType,
+      layerId: activeLayerId,
+    });
+
+    const shape = createBoundingBoxShape(
+      pendingBoundingBox.x,
+      pendingBoundingBox.y,
+      pendingBoundingBox.width,
+      pendingBoundingBox.height,
+      finalItemType,
+      shapeColor,
+      currentUser.uid,
+      activeLayerId,
+      'manual'
+    );
+
+    console.log('✅ Bounding box shape created:', shape);
+
+    try {
+      await createShape(shape);
+      console.log('✅ Bounding box shape saved to Firestore');
+    } catch (error) {
+      console.error('❌ Failed to create bounding box shape:', error);
+    }
+
+    // Reset state
+    setPendingBoundingBox(null);
+    setShowItemTypeDialog(false);
+    setActiveDrawingTool(null);
+  }, [currentUser, pendingBoundingBox, layers, activeLayerId, createShape]);
+
+  const handleItemTypeCancel = useCallback(() => {
+    setPendingBoundingBox(null);
+    setShowItemTypeDialog(false);
+    setActiveDrawingTool(null);
+  }, []);
 
   // Complete the current drawing
   const completeDrawing = useCallback(() => {
@@ -582,7 +687,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
         createdBy: currentUser.uid,
         updatedBy: currentUser.uid,
       };
-      setScaleLine(scaleLine, projectId);
+      if (projectId) {
+        (setScaleLine as (scaleLine: ScaleLine | null, projectId?: string) => void)(scaleLine, projectId);
+      } else {
+        (setScaleLine as (scaleLine: ScaleLine | null) => void)(scaleLine);
+      }
     } else {
       // Second click - set end point and show measurement input modal
       setPendingScaleLine({ endX: x, endY: y });
@@ -625,7 +734,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       unit: unit,
     };
     console.log('🔄 Calling updateScaleLine with:', updates);
-    updateScaleLine(updates, projectId);
+    if (projectId) {
+      (updateScaleLine as (updates: Partial<ScaleLine>, projectId?: string) => void)(updates, projectId);
+    } else {
+      (updateScaleLine as (updates: Partial<ScaleLine>) => void)(updates);
+    }
     
     // Exit scale mode after successful creation
     setIsScaleMode(false);
@@ -636,7 +749,11 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
   // Handle measurement input cancellation
   const handleMeasurementCancel = () => {
     // Remove the temporary line and exit scale mode - pass projectId explicitly
-    deleteScaleLine(projectId);
+    if (projectId) {
+      (deleteScaleLine as (projectId?: string) => void)(projectId);
+    } else {
+      (deleteScaleLine as () => void)();
+    }
     setIsScaleMode(false);
     setShowMeasurementInput(false);
     setPendingScaleLine(null);
@@ -694,10 +811,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       setDrawingPoints([]);
       setDrawingPreviewPoint(null);
     },
+    activateBoundingBoxTool: () => {
+      setActiveDrawingTool('boundingbox');
+      setBoundingBoxStart(null);
+      setBoundingBoxEnd(null);
+    },
     deactivateDrawingTools: () => {
       setActiveDrawingTool(null);
       setDrawingPoints([]);
       setDrawingPreviewPoint(null);
+      setBoundingBoxStart(null);
+      setBoundingBoxEnd(null);
     },
   }));
   return (
@@ -744,7 +868,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
           {/* Scale Line Layer - non-interactive */}
           <Layer listening={false}>
             {canvasScale.scaleLine && (
-           <ScaleLine
+           <ScaleLineComponent
              scaleLine={canvasScale.scaleLine}
              scale={stageScaleRef.current}
            />
@@ -821,6 +945,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
               points={drawingPoints}
               previewPoint={drawingPreviewPoint}
               canvasScale={canvasScale}
+              layers={layers}
+              activeLayerId={activeLayerId}
+            />
+          )}
+          {activeDrawingTool === 'boundingbox' && (
+            <BoundingBoxTool
+              isActive={true}
+              startPoint={boundingBoxStart}
+              endPoint={boundingBoxEnd}
               layers={layers}
               activeLayerId={activeLayerId}
             />
@@ -1036,6 +1169,13 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
         onCancel={handleMeasurementCancel}
         onSubmit={handleMeasurementSubmit}
         title="Set Scale Measurement"
+      />
+
+      {/* Item Type Dialog for Bounding Box */}
+      <ItemTypeDialog
+        isOpen={showItemTypeDialog}
+        onSelect={handleItemTypeSelect}
+        onCancel={handleItemTypeCancel}
       />
     </div>
   );
