@@ -12,7 +12,6 @@
 
 - [Quick Reference](#quick-reference) - Commands and files
 - [Common Scenarios](#common-scenarios) - Real-world examples
-- [Troubleshooting](#troubleshooting) - Problem solutions
 - [Best Practices](#best-practices) - Success tips
 
 ---
@@ -292,9 +291,10 @@ See the [Workflows section in BMM README](../README.md) for details.
 
 **BMad Method/Enterprise:** Use `prd` workflow
 
-- Creates PRD.md + epic breakdown
+- Creates PRD.md with FRs/NFRs only
 - References existing architecture
 - Plans integration points
+- Epics+Stories created AFTER architecture phase
 
 **Brownfield-specific:** See [Scale Adaptive System](./scale-adaptive-system.md) for complete workflow paths by track.
 
@@ -310,7 +310,8 @@ See the [Workflows section in BMM README](../README.md) for details.
 **Workflows:**
 
 - `create-architecture` - Extend architecture docs (BMad Method/Enterprise)
-- `solutioning-gate-check` - Validate before implementation (BMad Method/Enterprise)
+- `create-epics-and-stories` - Create epics and stories AFTER architecture
+- `implementation-readiness` - Validate before implementation (BMad Method/Enterprise)
 
 ### Phase 4: Implementation (All Tracks)
 
@@ -336,8 +337,8 @@ flowchart TD
     CHECK -->|Yes| CREATE
     CHECK -->|No| RETRO
 
-    style SPRINT fill:#bfb,stroke:#333,stroke-width:2px
-    style RETRO fill:#fbf,stroke:#333,stroke-width:2px
+    style SPRINT fill:#bfb,stroke:#333,stroke-width:2px,color:#000
+    style RETRO fill:#fbf,stroke:#333,stroke-width:2px,color:#000
 ```
 
 **Status Progression:**
@@ -474,8 +475,8 @@ Document in tech-spec/architecture:
 
 1. **Document:** Run `document-project` (Deep scan) - Critical for understanding existing UI patterns
 2. **Analyze:** Load Analyst → `research` (if evaluating analytics libraries)
-3. **Plan:** Load PM → `prd`
-4. **Solution:** Load Architect → `create-architecture` → `solutioning-gate-check`
+3. **Plan:** Load PM → `prd` (creates FRs/NFRs)
+4. **Solution:** Load Architect → `create-architecture` → `create-epics-and-stories` → `implementation-readiness`
 5. **Implement:** Sprint-based (10-15 stories)
    - Load SM → `sprint-planning`
    - Per epic: `epic-tech-context` → stories
@@ -496,10 +497,11 @@ Document in tech-spec/architecture:
 
 1. **Document:** Run `document-project` (Exhaustive if not documented) - **Mandatory**
 2. **Analyze:** Load Analyst → `research` (WebSocket vs WebRTC vs CRDT)
-3. **Plan:** Load PM → `prd`
+3. **Plan:** Load PM → `prd` (creates FRs/NFRs)
 4. **Solution:**
    - Load Architect → `create-architecture` (extend for real-time layer)
-   - Load Architect → `solutioning-gate-check`
+   - Load Architect → `create-epics-and-stories`
+   - Load Architect → `implementation-readiness`
 5. **Implement:** Sprint-based (20-30 stories)
 
 **Time:** 3-6 weeks
@@ -519,13 +521,14 @@ Document in tech-spec/architecture:
    - `brainstorm-project` - Explore multi-tenancy approaches
    - `research` - Database sharding, tenant isolation, pricing
    - `product-brief` - Strategic document
-3. **Plan:** Load PM → `prd` (comprehensive)
+3. **Plan:** Load PM → `prd` (comprehensive FRs/NFRs)
 4. **Solution:**
    - `create-architecture` - Full system architecture
    - `integration-planning` - Phased migration strategy
    - `create-architecture` - Multi-tenancy architecture
    - `validate-architecture` - External review
-   - `solutioning-gate-check` - Executive approval
+   - `create-epics-and-stories` - Create epics and stories
+   - `implementation-readiness` - Executive approval
 5. **Implement:** Phased sprint-based (50+ stories)
 
 **Time:** 3-6 months
@@ -533,8 +536,6 @@ Document in tech-spec/architecture:
 ---
 
 ## Troubleshooting
-
-For complete troubleshooting, see [Troubleshooting Guide](./troubleshooting.md).
 
 ### AI Agents Lack Codebase Understanding
 
@@ -637,7 +638,8 @@ prd                     # BMad Method/Enterprise tracks
 # Phase 3: Solutioning (BMad Method/Enterprise)
 # Architect agent:
 create-architecture          # Extend architecture
-solutioning-gate-check       # Final validation
+create-epics-and-stories     # Create epics and stories (after architecture)
+implementation-readiness       # Final validation
 
 # Phase 4: Implementation (All Tracks)
 # SM agent:
@@ -671,8 +673,11 @@ correct-course               # If issues
 **Phase 2 Planning:**
 
 - `docs/tech-spec.md` (Quick Flow track)
-- `docs/PRD.md` (BMad Method/Enterprise tracks)
-- Epic breakdown
+- `docs/PRD.md` (BMad Method/Enterprise tracks - FRs/NFRs only)
+
+**Phase 3 Solutioning:**
+
+- Epic breakdown (created after architecture)
 
 **Phase 3 Architecture:**
 
@@ -706,9 +711,9 @@ flowchart TD
     PRD --> IMPL
     PRD2 --> IMPL
 
-    style START fill:#f9f,stroke:#333,stroke-width:2px
-    style DOC fill:#ffb,stroke:#333,stroke-width:2px
-    style IMPL fill:#bfb,stroke:#333,stroke-width:2px
+    style START fill:#f9f,stroke:#333,stroke-width:2px,color:#000
+    style DOC fill:#ffb,stroke:#333,stroke-width:2px,color:#000
+    style IMPL fill:#bfb,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ---
@@ -735,7 +740,6 @@ flowchart TD
 - **[Quick Start Guide](./quick-start.md)** - Getting started with BMM
 - **[Glossary](./glossary.md)** - Key terminology
 - **[FAQ](./faq.md)** - Common questions
-- **[Troubleshooting](./troubleshooting.md)** - Problem resolution
 - **[Workflow Documentation](./README.md#-workflow-guides)** - Complete workflow reference
 
 ---

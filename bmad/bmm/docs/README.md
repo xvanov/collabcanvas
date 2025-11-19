@@ -16,6 +16,10 @@ Complete guides for the BMad Method Module (BMM) - AI-powered agile development 
 
 **Quick Path:** Install → workflow-init → Follow agent guidance
 
+### 📊 Visual Overview
+
+**[Complete Workflow Diagram](./images/workflow-method-greenfield.svg)** - Visual flowchart showing all phases, agents (color-coded), and decision points for the BMad Method standard greenfield track.
+
 ---
 
 ## 📖 Core Concepts
@@ -52,7 +56,7 @@ Complete guide to BMM's AI agent team:
   - Example party compositions
   - Multi-module integration (BMM + CIS + BMB + custom)
   - Agent customization in party mode
-  - Best practices and troubleshooting
+  - Best practices
 
 ---
 
@@ -65,7 +69,7 @@ Comprehensive guide for brownfield development:
   - Track selection for brownfield
   - Integration with existing patterns
   - Phase-by-phase workflow guidance
-  - Common scenarios and troubleshooting
+  - Common scenarios
 
 ---
 
@@ -75,7 +79,6 @@ Essential reference materials:
 
 - **[Glossary](./glossary.md)** - Key terminology and concepts
 - **[FAQ](./faq.md)** - Frequently asked questions across all topics
-- **[Troubleshooting](./troubleshooting.md)** - Common issues and solutions
 - **[Enterprise Agentic Development](./enterprise-agentic-development.md)** - Team collaboration strategies
 
 ---
@@ -99,7 +102,7 @@ Essential reference materials:
 → See [Scale Adaptive System](./scale-adaptive-system.md)
 
 **Find specific commands or answers**
-→ Check [FAQ](./faq.md) or [Troubleshooting](./troubleshooting.md)
+→ Check [FAQ](./faq.md)
 
 ---
 
@@ -118,7 +121,8 @@ Comprehensive documentation for all BMM workflows organized by phase:
   - Which planning workflow to use
 
 - **[Phase 3: Solutioning Workflows](./workflows-solutioning.md)** - Architecture and validation (638 lines)
-  - architecture, solutioning-gate-check
+  - architecture, create-epics-and-stories, implementation-readiness
+  - V6: Epics created AFTER architecture for better quality
   - Required for BMad Method and Enterprise Method tracks
   - Preventing agent conflicts
 
@@ -213,12 +217,12 @@ flowchart TD
     SAS --> IMPL
     BF --> IMPL
 
-    IMPL --> REF[Quick References<br/>Glossary, FAQ, Troubleshooting]
+    IMPL --> REF[Quick References<br/>Glossary, FAQ]
 
-    style START fill:#bfb,stroke:#333,stroke-width:2px
-    style QS fill:#bbf,stroke:#333,stroke-width:2px
-    style DECIDE fill:#ffb,stroke:#333,stroke-width:2px
-    style IMPL fill:#f9f,stroke:#333,stroke-width:2px
+    style START fill:#bfb,stroke:#333,stroke-width:2px,color:#000
+    style QS fill:#bbf,stroke:#333,stroke-width:2px,color:#000
+    style DECIDE fill:#ffb,stroke:#333,stroke-width:2px,color:#000
+    style IMPL fill:#f9f,stroke:#333,stroke-width:2px,color:#000
 ```
 
 ---
