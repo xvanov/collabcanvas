@@ -1,0 +1,11 @@
+[
+  {
+    "origin": [
+      "https://collabcanvas-dev.web.app",
+      "https://collabcanvas-dev.firebaseapp.com"
+    ],
+    "method": ["GET", "HEAD", "OPTIONS"],
+    "responseHeader": ["Content-Type"],
+    "maxAgeSeconds": 3600
+  }
+]

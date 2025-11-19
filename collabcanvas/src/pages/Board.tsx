@@ -63,17 +63,35 @@ export function Board() {
     }
   }, [user, setCurrentUser, projectId]);
 
-  // Initialize board state subscription (background image, scale line) when projectId is available
+  // Initialize board state subscription (background image, scale line) when projectId is available.
+  // Note: This should NOT depend on `user` being loaded; board state is project-scoped and can be
+  // safely hydrated as soon as we know the projectId. Writes still guard on currentUser inside the store.
   useEffect(() => {
-    if (!projectId || !user) return;
+    if (!projectId) {
+      console.log('⏸️ Skipping board state subscription setup:', { hasProjectId: !!projectId });
+      return;
+    }
     
+    console.log('🔧 Setting up board state subscription in Board.tsx:', { projectId });
     const projectStore = getProjectCanvasStoreApi(projectId);
-    const unsubscribe = (projectStore.getState().initializeBoardStateSubscription as (projectId: string) => (() => void) | undefined)(projectId);
+    // initializeBoardStateSubscription is already a function that returns the unsubscribe function
+    // It doesn't take any arguments - projectId comes from the store closure
+    const setupSubscription = projectStore.getState().initializeBoardStateSubscription;
+    if (!setupSubscription) {
+      console.error('❌ initializeBoardStateSubscription is not a function!');
+      return;
+    }
+    console.log('🔧 Calling initializeBoardStateSubscription...');
+    const unsubscribe = setupSubscription();
+    console.log('✅ Board state subscription setup complete, unsubscribe function:', typeof unsubscribe);
     
     return () => {
-      if (unsubscribe) unsubscribe();
+      if (unsubscribe) {
+        console.log('🔌 Unsubscribing from board state in Board.tsx');
+        unsubscribe();
+      }
     };
-  }, [projectId, user]);
+  }, [projectId]);
 
   // Handle reconnection and reload shapes with debounce
   useEffect(() => {

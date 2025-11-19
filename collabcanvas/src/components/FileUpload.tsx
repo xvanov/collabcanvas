@@ -5,7 +5,7 @@
 
 import React, { useRef, useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
-import { useScopedCanvasStore } from '../store/projectCanvasStore';
+import { useScopedCanvasStore, getProjectCanvasStoreApi } from '../store/projectCanvasStore';
 import { uploadConstructionPlanImage, validateImageFile } from '../services/storage';
 import type { BackgroundImage } from '../types';
 
@@ -40,15 +40,22 @@ export function FileUpload({ projectId, onUploadComplete, onUploadError, disable
     setIsImageUploadMode(true);
 
     try {
+      // Ensure currentUser is set in project-scoped store before saving
+      // This is needed because setBackgroundImage checks for currentUser in the project-scoped store
+      if (projectId && currentUser) {
+        const projectStore = getProjectCanvasStoreApi(projectId);
+        if (!projectStore.getState().currentUser) {
+          projectStore.getState().setCurrentUser(currentUser);
+          console.log('✅ Synced currentUser to project-scoped store before upload:', { projectId, userId: currentUser.uid });
+        }
+      }
+      
       // Upload to Firebase Storage
       const backgroundImage = await uploadConstructionPlanImage(file, currentUser.uid);
       
-      // Update canvas state - pass projectId to ensure Firestore sync works
-      if (projectId) {
-        (setBackgroundImage as (image: BackgroundImage | null, projectId?: string) => void)(backgroundImage, projectId);
-      } else {
-        (setBackgroundImage as (image: BackgroundImage | null) => void)(backgroundImage);
-      }
+      // Update canvas state - setBackgroundImage already has projectId from the store closure
+      // Don't pass projectId as second param - that would be interpreted as skipFirestoreSync=true
+      setBackgroundImage(backgroundImage);
       
       // Notify parent component
       onUploadComplete?.(backgroundImage);
@@ -73,11 +80,9 @@ export function FileUpload({ projectId, onUploadComplete, onUploadError, disable
 
   const handleDeleteImage = () => {
     if (confirm('Are you sure you want to delete the current background image?')) {
-      if (projectId) {
-        (setBackgroundImage as (image: BackgroundImage | null, projectId?: string) => void)(null, projectId);
-      } else {
-        (setBackgroundImage as (image: BackgroundImage | null) => void)(null);
-      }
+      // setBackgroundImage already has projectId from the store closure
+      // Don't pass projectId as second param - that would be interpreted as skipFirestoreSync=true
+      setBackgroundImage(null);
     }
   };
 

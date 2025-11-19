@@ -54,44 +54,49 @@ export function DiagnosticsHud({ fps, visible }: DiagnosticsHudProps) {
     if (!visible) return undefined;
 
     const updateMetrics = () => {
-      const summary = perfMetrics.exportSummary();
-      console.log('Diagnostics HUD - PerfMetrics Summary:', summary);
-      if (!summary) {
-        console.log('Diagnostics HUD - No summary available, using default metrics');
-        setMetrics(DEFAULT_METRICS);
-        return;
-      }
+      // Use requestIdleCallback to avoid blocking main thread during pan/zoom
+      const doUpdate = () => {
+        const summary = perfMetrics.exportSummary();
+        if (!summary) {
+          setMetrics(DEFAULT_METRICS);
+          return;
+        }
 
-      const nextMetrics: AggregatedMetrics = {
-        medianFps: median(summary.fpsSamples),
-        fpsSamples: summary.fpsSamples.length,
-        shapeLatencyP95: percentile(summary.shapeLatencySamples, 95),
-        cursorLatencyP95: percentile(summary.cursorLatencySamples, 95),
-        shapeSamples: summary.shapeLatencySamples.length,
-        cursorSamples: summary.cursorLatencySamples.length,
-        eventCounts: summary.metadata.eventCounts,
+        // Limit sample sizes to prevent expensive sorting operations
+        const maxSamples = 100;
+        const fpsSamples = summary.fpsSamples.slice(-maxSamples);
+        const shapeSamples = summary.shapeLatencySamples.slice(-maxSamples);
+        const cursorSamples = summary.cursorLatencySamples.slice(-maxSamples);
+
+        const nextMetrics: AggregatedMetrics = {
+          medianFps: median(fpsSamples),
+          fpsSamples: fpsSamples.length,
+          shapeLatencyP95: percentile(shapeSamples, 95),
+          cursorLatencyP95: percentile(cursorSamples, 95),
+          shapeSamples: shapeSamples.length,
+          cursorSamples: cursorSamples.length,
+          eventCounts: summary.metadata.eventCounts,
+        };
+
+        setMetrics(nextMetrics);
       };
 
-      console.log('Diagnostics HUD - Raw latency samples:', {
-        shapeLatencySamples: summary.shapeLatencySamples.slice(0, 10), // First 10 samples
-        cursorLatencySamples: summary.cursorLatencySamples.slice(0, 10), // First 10 samples
-        shapeP95: percentile(summary.shapeLatencySamples, 95),
-        cursorP95: percentile(summary.cursorLatencySamples, 95),
-      });
-      setMetrics(nextMetrics);
+      // Always use requestIdleCallback to avoid blocking
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(doUpdate, { timeout: 1000 });
+      } else {
+        // Fallback: use double requestAnimationFrame for better deferral
+        requestAnimationFrame(() => {
+          requestAnimationFrame(doUpdate);
+        });
+      }
     };
 
     updateMetrics();
-    // Use longer interval to reduce violations (2 seconds instead of 1)
+    // Use longer interval (5 seconds) and always defer with requestIdleCallback
     const interval = window.setInterval(() => {
-      // Use requestIdleCallback if available to avoid blocking main thread
-      if (window.requestIdleCallback) {
-        window.requestIdleCallback(updateMetrics, { timeout: 1000 });
-      } else {
-        // Fallback: use setTimeout to defer execution
-        setTimeout(updateMetrics, 0);
-      }
-    }, 2000);
+      updateMetrics();
+    }, 5000);
     return () => window.clearInterval(interval);
   }, [visible]);
 

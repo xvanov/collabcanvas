@@ -7,6 +7,7 @@ import React, { useState } from 'react';
 import { useCanvasStore } from '../store/canvasStore';
 import { useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useLayers } from '../hooks/useLayers';
+import { useShapes } from '../hooks/useShapes';
 import { ColorPicker } from './ColorPicker';
 import { 
   calculatePolylineLength, 
@@ -41,8 +42,11 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
     updateLayer,
     deleteLayer,
   } = useLayers(projectId);
+  
+  const { updateShapeProperty } = useShapes(projectId);
 
   const [draggedLayerId, setDraggedLayerId] = useState<string | null>(null);
+  const [draggedShapeId, setDraggedShapeId] = useState<string | null>(null);
   const [newLayerName, setNewLayerName] = useState('');
   const [isCreatingLayer, setIsCreatingLayer] = useState(false);
 
@@ -125,9 +129,21 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: React.DragEvent, targetLayerId: string) => {
+  const handleDrop = async (e: React.DragEvent, targetLayerId: string) => {
     e.preventDefault();
+    e.stopPropagation();
     
+    // Handle shape drop (moving shape to different layer)
+    if (draggedShapeId && draggedShapeId !== null) {
+      const shape = Array.from(shapes.values()).find(s => s.id === draggedShapeId);
+      if (shape && shape.layerId !== targetLayerId) {
+        await updateShapeProperty(draggedShapeId, 'layerId', targetLayerId);
+      }
+      setDraggedShapeId(null);
+      return;
+    }
+    
+    // Handle layer reorder (existing functionality)
     if (draggedLayerId && draggedLayerId !== targetLayerId) {
       const draggedLayer = layers.find(l => l.id === draggedLayerId);
       const targetLayer = layers.find(l => l.id === targetLayerId);
@@ -148,12 +164,23 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
     
     setDraggedLayerId(null);
   };
+  
+  const handleShapeDragStart = (e: React.DragEvent, shapeId: string) => {
+    setDraggedShapeId(shapeId);
+    e.dataTransfer.effectAllowed = 'move';
+    // Add visual feedback
+    e.dataTransfer.setData('text/plain', shapeId);
+  };
+  
+  const handleShapeDragEnd = () => {
+    setDraggedShapeId(null);
+  };
 
   const sortedLayers = [...layers].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="fixed right-4 top-20 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50">
-      <div className="flex items-center justify-between p-4 border-b border-gray-200">
+    <div className="fixed right-4 top-20 w-80 bg-white border border-gray-200 rounded-lg shadow-lg z-50 flex flex-col max-h-[calc(100vh-6rem)]">
+      <div className="flex items-center justify-between p-4 border-b border-gray-200 flex-shrink-0">
         <h3 className="text-lg font-semibold text-gray-900">Layers</h3>
         <button
           onClick={onClose}
@@ -165,51 +192,54 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
         </button>
       </div>
 
-      <div className="p-4">
-        {/* Create Layer */}
-        <div className="mb-4">
-          {isCreatingLayer ? (
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={newLayerName}
-                onChange={(e) => setNewLayerName(e.target.value)}
-                placeholder="Layer name"
-                className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
-                autoFocus
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') handleCreateLayer();
-                  if (e.key === 'Escape') setIsCreatingLayer(false);
-                }}
-              />
+      <div className="flex flex-col flex-1 min-h-0">
+        <div className="p-4 flex-shrink-0 border-b border-gray-200">
+          {/* Create Layer */}
+          <div className="mb-4">
+            {isCreatingLayer ? (
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={newLayerName}
+                  onChange={(e) => setNewLayerName(e.target.value)}
+                  placeholder="Layer name"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-md text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  autoFocus
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') handleCreateLayer();
+                    if (e.key === 'Escape') setIsCreatingLayer(false);
+                  }}
+                />
+                <button
+                  onClick={handleCreateLayer}
+                  className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                >
+                  Create
+                </button>
+                <button
+                  onClick={() => setIsCreatingLayer(false)}
+                  className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400"
+                >
+                  Cancel
+                </button>
+              </div>
+            ) : (
               <button
-                onClick={handleCreateLayer}
-                className="px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700"
+                onClick={() => setIsCreatingLayer(true)}
+                className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 flex items-center justify-center gap-2"
               >
-                Create
+                <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
+                </svg>
+                Add Layer
               </button>
-              <button
-                onClick={() => setIsCreatingLayer(false)}
-                className="px-3 py-2 bg-gray-300 text-gray-700 rounded-md text-sm hover:bg-gray-400"
-              >
-                Cancel
-              </button>
-            </div>
-          ) : (
-            <button
-              onClick={() => setIsCreatingLayer(true)}
-              className="w-full px-3 py-2 bg-gray-100 text-gray-700 rounded-md text-sm hover:bg-gray-200 flex items-center justify-center gap-2"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-              </svg>
-              Add Layer
-            </button>
-          )}
+            )}
+          </div>
         </div>
 
-        {/* Layers List */}
-        <div className="space-y-2">
+        {/* Layers List - Scrollable */}
+        <div className="flex-1 overflow-y-auto p-4">
+          <div className="space-y-2">
           {sortedLayers.map((layer) => {
             // Handle shapes without layerId (created before layer system) - assign them to default layer
             const shapesInLayer = Array.from(shapes.values()).filter(shape => {
@@ -235,10 +265,23 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
                 key={layer.id}
                 draggable
                 onDragStart={(e) => handleDragStart(e, layer.id)}
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, layer.id)}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (draggedShapeId) {
+                    e.currentTarget.classList.add('border-blue-400', 'bg-blue-50');
+                  }
+                  handleDragOver(e);
+                }}
+                onDragLeave={(e) => {
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
+                }}
+                onDrop={(e) => {
+                  e.currentTarget.classList.remove('border-blue-400', 'bg-blue-50');
+                  handleDrop(e, layer.id);
+                }}
                 onClick={() => setActiveLayer(layer.id)}
-                className={`p-3 border rounded-md cursor-pointer ${
+                className={`p-3 border rounded-md cursor-pointer transition-colors ${
                   layer.id === activeLayerId 
                     ? 'border-blue-500 bg-blue-50' 
                     : isSelected 
@@ -360,22 +403,44 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
                   <div className="mt-2 ml-6 space-y-1">
                     {shapesInLayer.map((shape) => {
                       const measurement = getShapeMeasurement(shape);
+                      const isDragging = draggedShapeId === shape.id;
+                      
                       return (
                         <div
                           key={shape.id}
-                          className={`text-xs p-1 rounded ${
-                            selectedShapeIds.includes(shape.id) 
-                              ? 'bg-blue-100 text-blue-800' 
-                              : 'text-gray-600 hover:bg-gray-100'
+                          draggable
+                          onDragStart={(e) => {
+                            e.stopPropagation();
+                            handleShapeDragStart(e, shape.id);
+                          }}
+                          onDragEnd={handleShapeDragEnd}
+                          className={`text-xs p-2 rounded cursor-move transition-all ${
+                            isDragging
+                              ? 'opacity-50 bg-gray-200'
+                              : selectedShapeIds.includes(shape.id) 
+                                ? 'bg-blue-100 text-blue-800 hover:bg-blue-200' 
+                                : 'text-gray-600 hover:bg-gray-100 bg-white border border-gray-200'
                           }`}
+                          title="Drag to move to different layer"
                         >
-                          <div className="flex items-center justify-between">
-                            <span>{shape.type} ({shape.id.slice(-4)})</span>
-                            {measurement && (
-                              <span className="font-mono text-xs ml-2 text-gray-500">
-                                {measurement}
-                              </span>
-                            )}
+                          <div className="flex items-center justify-between gap-2">
+                            <div className="flex items-center gap-2 flex-1 min-w-0">
+                              <svg 
+                                className="w-3 h-3 text-gray-400 flex-shrink-0" 
+                                fill="none" 
+                                viewBox="0 0 24 24" 
+                                stroke="currentColor"
+                              >
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 8h16M4 12h16M4 16h16" />
+                              </svg>
+                              <span className="truncate font-medium">{shape.type}</span>
+                              <span className="text-gray-400 text-xs">({shape.id.slice(-4)})</span>
+                              {measurement && (
+                                <span className="font-mono text-xs text-gray-500 flex-shrink-0 ml-auto">
+                                  {measurement}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
                       );
@@ -385,6 +450,7 @@ export function LayersPanel({ isVisible, onClose, projectId }: LayersPanelProps)
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     </div>

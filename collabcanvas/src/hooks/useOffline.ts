@@ -36,12 +36,27 @@ export function useOffline() {
 
   /**
    * Update queued updates count periodically
+   * Uses requestIdleCallback to avoid blocking during pan/zoom operations
    */
   useEffect(() => {
-    const interval = setInterval(() => {
-      const count = offlineManager.getQueuedUpdatesCount();
-      setQueuedUpdatesCount(count);
-    }, 1000); // Update every second
+    const updateCount = () => {
+      // Use requestIdleCallback to avoid blocking main thread
+      const doUpdate = () => {
+        const count = offlineManager.getQueuedUpdatesCount();
+        setQueuedUpdatesCount(count);
+      };
+
+      if (window.requestIdleCallback) {
+        window.requestIdleCallback(doUpdate, { timeout: 500 });
+      } else {
+        // Fallback: use requestAnimationFrame
+        requestAnimationFrame(doUpdate);
+      }
+    };
+
+    updateCount(); // Initial update
+    // Increase interval to 2 seconds to reduce frequency
+    const interval = setInterval(updateCount, 2000);
 
     return () => clearInterval(interval);
   }, [setQueuedUpdatesCount]);

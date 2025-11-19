@@ -90,6 +90,7 @@ export function useShapes(projectId: string | undefined) {
   const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const latestShapesRef = useRef<Map<string, Shape> | null>(null);
   const shapesFrameRef = useRef<number | null>(null);
+  const firestoreUpdateFrameRef = useRef<number | null>(null);
   
   // Track if we're currently syncing to prevent loops
   const isSyncing = useRef(false);
@@ -241,13 +242,24 @@ export function useShapes(projectId: string | undefined) {
         latestShapesRef.current = null;
       });
     } else {
+      // Fallback: use requestAnimationFrame if available, otherwise setTimeout
+      // This should rarely be needed as all modern browsers support requestAnimationFrame
       if (shapesFrameRef.current !== null) return;
-      shapesFrameRef.current = window.setTimeout(() => {
-        shapesFrameRef.current = null;
-        if (!latestShapesRef.current) return;
-        setShapesFromMap(new Map(latestShapesRef.current));
-        latestShapesRef.current = null;
-      }, 16);
+      if (typeof window !== 'undefined' && typeof window.requestAnimationFrame === 'function') {
+        shapesFrameRef.current = window.requestAnimationFrame(() => {
+          shapesFrameRef.current = null;
+          if (!latestShapesRef.current) return;
+          setShapesFromMap(new Map(latestShapesRef.current));
+          latestShapesRef.current = null;
+        });
+      } else {
+        shapesFrameRef.current = window.setTimeout(() => {
+          shapesFrameRef.current = null;
+          if (!latestShapesRef.current) return;
+          setShapesFromMap(new Map(latestShapesRef.current));
+          latestShapesRef.current = null;
+        }, 16);
+      }
     }
   }, [setShapesFromMap]);
 
@@ -293,6 +305,13 @@ export function useShapes(projectId: string | undefined) {
           clearTimeout(shapesFrameRef.current);
         }
       }
+      if (firestoreUpdateFrameRef.current !== null) {
+        if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+          window.cancelAnimationFrame(firestoreUpdateFrameRef.current);
+        } else if (firestoreUpdateFrameRef.current) {
+          clearTimeout(firestoreUpdateFrameRef.current);
+        }
+      }
     };
   }, []);
 
@@ -329,61 +348,76 @@ export function useShapes(projectId: string | undefined) {
    * Handle incoming Firestore updates
    * Applies Last-Write-Wins conflict resolution
    * Ignores updates from the current user to prevent visual glitches
+   * Uses requestAnimationFrame to batch updates and prevent blocking
    */
   const handleFirestoreUpdate = useCallback((firestoreShapes: FirestoreShape[]) => {
     if (isSyncing.current || !userIdRef.current) return;
     console.log(`📥 Firestore update received: ${firestoreShapes.length} shapes`);
-    isSyncing.current = true;
-    try {
-      if (perfMetrics.enabled) {
-        firestoreShapes.forEach((rawShape) => {
-          const isRemoteUpdate = userIdRef.current ? rawShape.updatedBy !== userIdRef.current : true;
-          const clientTimestamp = typeof (rawShape as { clientUpdatedAt?: unknown }).clientUpdatedAt === 'number'
-            ? (rawShape as { clientUpdatedAt: number }).clientUpdatedAt
-            : timestampLikeToMillis(rawShape.updatedAt as never);
-          perfMetrics.trackShapeUpdate(rawShape.id, clientTimestamp ?? null, isRemoteUpdate);
-        });
+    
+    // Batch the update processing using requestAnimationFrame to avoid blocking
+    if (firestoreUpdateFrameRef.current !== null) {
+      // Cancel previous pending update
+      if (typeof window !== 'undefined' && typeof window.cancelAnimationFrame === 'function') {
+        window.cancelAnimationFrame(firestoreUpdateFrameRef.current);
+      } else if (firestoreUpdateFrameRef.current) {
+        clearTimeout(firestoreUpdateFrameRef.current);
       }
-      // Build layer color map - use project-scoped store if projectId is available
-      const storeApi = projectId 
-        ? getProjectCanvasStoreApi(projectId)
-        : useCanvasStore;
-      const layerColorById = storeApi.getState().layers.reduce((acc, l) => {
-        acc[l.id] = l.color || '#3B82F6';
-        return acc;
-      }, {} as Record<string, string>);
-      // Convert Firestore shapes to local format and enforce inheritance
-      const localShapes = firestoreShapes.map((fs) => {
-        let s = convertFirestoreShape(fs);
-        const lid = s.layerId || 'default-layer';
-        const lc = layerColorById[lid];
-        if (lc && s.color === '#3B82F6' && lc !== '#3B82F6') s = { ...s, color: lc };
-        return s;
-      });
-      const mergedShapes = new Map<string, Shape>();
-      shapesRef.current.forEach((shape, id) => { mergedShapes.set(id, shape); });
-      localShapes.forEach((firestoreShape) => {
-        const localShape = mergedShapes.get(firestoreShape.id);
-        if (locallyDeletedShapes.current.has(firestoreShape.id)) {
-          console.log(`🚫 Ignoring Firestore update for locally deleted shape: ${firestoreShape.id}`);
-          return;
-        }
-        if (!localShape) {
-          mergedShapes.set(firestoreShape.id, firestoreShape);
-        } else {
-          if (updatingShapes.current.has(firestoreShape.id)) return;
-          const localUpdatedAt = localShape.updatedAt || 0;
-          const firestoreUpdatedAt = firestoreShape.updatedAt || 0;
-          if (firestoreUpdatedAt > localUpdatedAt) {
-            mergedShapes.set(firestoreShape.id, firestoreShape);
-          }
-        }
-      });
-      latestShapesRef.current = mergedShapes;
-      scheduleShapesCommit();
-    } finally {
-      isSyncing.current = false;
     }
+    
+    firestoreUpdateFrameRef.current = requestAnimationFrame(() => {
+      firestoreUpdateFrameRef.current = null;
+      isSyncing.current = true;
+      try {
+        if (perfMetrics.enabled) {
+          firestoreShapes.forEach((rawShape) => {
+            const isRemoteUpdate = userIdRef.current ? rawShape.updatedBy !== userIdRef.current : true;
+            const clientTimestamp = typeof (rawShape as { clientUpdatedAt?: unknown }).clientUpdatedAt === 'number'
+              ? (rawShape as { clientUpdatedAt: number }).clientUpdatedAt
+              : timestampLikeToMillis(rawShape.updatedAt as never);
+            perfMetrics.trackShapeUpdate(rawShape.id, clientTimestamp ?? null, isRemoteUpdate);
+          });
+        }
+        // Build layer color map - use project-scoped store if projectId is available
+        const storeApi = projectId 
+          ? getProjectCanvasStoreApi(projectId)
+          : useCanvasStore;
+        const layerColorById = storeApi.getState().layers.reduce((acc, l) => {
+          acc[l.id] = l.color || '#3B82F6';
+          return acc;
+        }, {} as Record<string, string>);
+        // Convert Firestore shapes to local format and enforce inheritance
+        const localShapes = firestoreShapes.map((fs) => {
+          let s = convertFirestoreShape(fs);
+          const lid = s.layerId || 'default-layer';
+          const lc = layerColorById[lid];
+          if (lc && s.color === '#3B82F6' && lc !== '#3B82F6') s = { ...s, color: lc };
+          return s;
+        });
+        const mergedShapes = new Map<string, Shape>();
+        shapesRef.current.forEach((shape, id) => { mergedShapes.set(id, shape); });
+        localShapes.forEach((firestoreShape) => {
+          const localShape = mergedShapes.get(firestoreShape.id);
+          if (locallyDeletedShapes.current.has(firestoreShape.id)) {
+            console.log(`🚫 Ignoring Firestore update for locally deleted shape: ${firestoreShape.id}`);
+            return;
+          }
+          if (!localShape) {
+            mergedShapes.set(firestoreShape.id, firestoreShape);
+          } else {
+            if (updatingShapes.current.has(firestoreShape.id)) return;
+            const localUpdatedAt = localShape.updatedAt || 0;
+            const firestoreUpdatedAt = firestoreShape.updatedAt || 0;
+            if (firestoreUpdatedAt > localUpdatedAt) {
+              mergedShapes.set(firestoreShape.id, firestoreShape);
+            }
+          }
+        });
+        latestShapesRef.current = mergedShapes;
+        scheduleShapesCommit();
+      } finally {
+        isSyncing.current = false;
+      }
+    });
   }, [scheduleShapesCommit, projectId]);
 
   /**
@@ -432,6 +466,7 @@ export function useShapes(projectId: string | undefined) {
 
   /**
    * Reload all shapes from Firestore (useful for page refresh or reconnection)
+   * Uses requestAnimationFrame to batch the update and prevent blocking
    */
   const reloadShapesFromFirestore = useCallback(async () => {
     if (!userIdRef.current) return;
@@ -447,7 +482,10 @@ export function useShapes(projectId: string | undefined) {
       // Set up a one-time listener to get all current shapes
       const unsubscribe = subscribeToShapes(projectId, (firestoreShapes) => {
         console.log(`📥 Loaded ${firestoreShapes.length} shapes from Firestore`);
-        handleFirestoreUpdate(firestoreShapes);
+        // Use requestAnimationFrame to batch the update and prevent blocking
+        requestAnimationFrame(() => {
+          handleFirestoreUpdate(firestoreShapes);
+        });
         unsubscribe(); // Unsubscribe after first load
       });
     } catch (error) {

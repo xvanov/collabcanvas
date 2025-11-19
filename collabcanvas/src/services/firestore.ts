@@ -25,7 +25,7 @@ function getLayersCollection(projectId: string) {
   return collection(firestore, 'projects', projectId, 'layers');
 }
 
-function getBoardDoc(projectId: string) {
+export function getBoardDoc(projectId: string) {
   return doc(firestore, 'projects', projectId, 'board', 'data');
 }
 

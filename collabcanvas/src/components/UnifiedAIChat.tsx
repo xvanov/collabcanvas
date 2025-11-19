@@ -116,6 +116,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
   const startDialogue = useCanvasStore(state => state.startMaterialDialogue);
   const updateDialogue = useCanvasStore(state => state.updateMaterialDialogue);
   const addCalculation = useCanvasStore(state => state.addMaterialCalculation);
+  const setBillOfMaterials = useCanvasStore(state => state.setBillOfMaterials);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -337,6 +338,8 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
         // Save both to Firestore
         if (result.bom.bom) {
           await saveBOM(projectId, result.bom.bom, user.uid);
+          // Update store so Money view and MaterialEstimationPanel can see it
+          setBillOfMaterials(result.bom.bom);
         }
         if (result.cpm.cpm) {
           await saveCPM(projectId, result.cpm.cpm, user.uid);
@@ -354,6 +357,8 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
         let message = '⚠️ Partial generation completed:\n\n';
         if (result.bom.success && result.bom.bom) {
           await saveBOM(projectId, result.bom.bom, user.uid);
+          // Update store so Money view and MaterialEstimationPanel can see it
+          setBillOfMaterials(result.bom.bom);
           message += '✅ BOM generated successfully\n';
         } else {
           message += `❌ BOM generation failed: ${result.bom.error || 'Unknown error'}\n`;
@@ -459,24 +464,60 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({ isVisible, onClose
 
   /**
    * Convert image URL to base64 PNG
+   * Uses Firebase Storage SDK to avoid CORS issues
    */
   const imageUrlToBase64 = async (imageUrl: string): Promise<string> => {
     try {
-      const response = await fetch(imageUrl);
-      const blob = await response.blob();
+      // Import Firebase Storage functions dynamically to avoid circular dependencies
+      const { ref, getBytes } = await import('firebase/storage');
+      const { storage } = await import('../services/firebase');
       
-      // Convert blob to base64
-      return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onloadend = () => {
-          const base64String = reader.result as string;
-          // Remove data URL prefix (e.g., "data:image/png;base64,")
-          const base64Data = base64String.split(',')[1] || base64String;
-          resolve(base64Data);
-        };
-        reader.onerror = reject;
-        reader.readAsDataURL(blob);
-      });
+      // Extract storage path from Firebase Storage URL
+      // URL format: https://firebasestorage.googleapis.com/v0/b/{bucket}/o/{path}?alt=media&token={token}
+      const url = new URL(imageUrl);
+      const pathMatch = url.pathname.match(/\/o\/(.+?)(\?|$)/);
+      
+      if (!pathMatch) {
+        // Fallback: try direct fetch with CORS mode (may still fail but worth trying)
+        console.warn('Could not extract storage path from URL, attempting direct fetch');
+        const response = await fetch(imageUrl, { mode: 'cors' });
+        if (!response.ok) {
+          throw new Error(`Failed to fetch image: ${response.statusText}`);
+        }
+        const blob = await response.blob();
+        return new Promise((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onloadend = () => {
+            const base64String = reader.result as string;
+            const base64Data = base64String.split(',')[1] || base64String;
+            resolve(base64Data);
+          };
+          reader.onerror = reject;
+          reader.readAsDataURL(blob);
+        });
+      }
+      
+      // Decode the storage path (it's URL-encoded)
+      const storagePath = decodeURIComponent(pathMatch[1]);
+      const storageRef = ref(storage, storagePath);
+      
+      // Get image bytes using Firebase Storage SDK (no CORS issues)
+      const bytes = await getBytes(storageRef);
+      
+      // Convert Uint8Array to base64
+      // getBytes returns Uint8Array, handle it properly
+      const uint8Array = new Uint8Array(bytes);
+      
+      // Handle large arrays by chunking to avoid "Maximum call stack size exceeded"
+      const chunkSize = 8192;
+      let binaryString = '';
+      for (let i = 0; i < uint8Array.length; i += chunkSize) {
+        const chunk = uint8Array.slice(i, i + chunkSize);
+        binaryString += String.fromCharCode.apply(null, Array.from(chunk) as number[]);
+      }
+      const base64String = btoa(binaryString);
+      
+      return base64String;
     } catch (error) {
       console.error('Error converting image to base64:', error);
       throw new Error('Failed to process image. Please ensure the image is accessible.');

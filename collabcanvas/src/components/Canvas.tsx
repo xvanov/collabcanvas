@@ -24,7 +24,50 @@ import { usePresence } from '../hooks/usePresence';
 import { useLocks } from '../hooks/useLocks';
 import { perfMetrics } from '../utils/harness';
 import { calculateViewportBounds, filterVisibleShapes } from '../utils/viewport';
-import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerType, ScaleLine } from '../types';
+import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerType, ScaleLine, BackgroundImage } from '../types';
+
+// Component to properly load and display background image
+const BackgroundImageComponent = ({ backgroundImage }: { backgroundImage: BackgroundImage }) => {
+  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  
+  useEffect(() => {
+    // Reset image state when backgroundImage changes
+    setImage(null);
+    
+    const img = new window.Image();
+    img.crossOrigin = 'anonymous';
+    img.onload = () => {
+      console.log('✅ Background image loaded:', { url: backgroundImage.url, width: img.width, height: img.height });
+      setImage(img);
+    };
+    img.onerror = (error) => {
+      console.error('❌ Failed to load background image:', error, backgroundImage.url);
+      setImage(null);
+    };
+    img.src = backgroundImage.url;
+    
+    return () => {
+      // Cleanup: remove event listeners
+      img.onload = null;
+      img.onerror = null;
+    };
+  }, [backgroundImage.url, backgroundImage.id]); // Include id to detect when the entire object changes
+  
+  if (!image) {
+    return null;
+  }
+  
+  return (
+    <Image
+      image={image}
+      x={0}
+      y={0}
+      width={backgroundImage.width}
+      height={backgroundImage.height}
+      listening={false}
+    />
+  );
+};
 
 interface CanvasProps {
   projectId?: string;
@@ -74,7 +117,13 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
   const currentCursorRef = useRef<Konva.Circle>(null);
   const isDragging = useRef(false);
   const isSelecting = useRef(false);
+  // Throttle mousemove handler using requestAnimationFrame to batch updates
+  const rafPendingRef = useRef<number | null>(null);
+  const pendingMouseMoveRef = useRef<{ pointer: { x: number; y: number } | null; stage: Konva.Stage | null } | null>(null);
   const selectionStart = useRef({ x: 0, y: 0 });
+  // Throttle zoom change notifications to avoid excessive React re-renders
+  const zoomChangeRafRef = useRef<number | null>(null);
+  const pendingZoomRef = useRef<number | null>(null);
   const lastFrameTime = useRef(performance.now());
   const frameCount = useRef(0);
   const rafId = useRef<number | undefined>(undefined);
@@ -112,6 +161,16 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
   useEffect(() => {
     console.log('🔄 activeLayerId changed to:', activeLayerId);
   }, [activeLayerId]);
+  
+  // Debug: Track canvasScale changes to see if store updates are triggering re-renders
+  useEffect(() => {
+    console.log('🔄 canvasScale changed:', { 
+      hasBackgroundImage: !!canvasScale.backgroundImage, 
+      backgroundImageUrl: canvasScale.backgroundImage?.url,
+      hasScaleLine: !!canvasScale.scaleLine,
+      scaleLineId: canvasScale.scaleLine?.id
+    });
+  }, [canvasScale]);
   
   // Presence state
   const { users: otherUsers, updateCursorPosition } = usePresence();
@@ -199,6 +258,20 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     };
   }, [onFpsUpdate]);
 
+  // Cleanup pending RAFs on unmount
+  useEffect(() => {
+    return () => {
+      if (rafPendingRef.current !== null) {
+        cancelAnimationFrame(rafPendingRef.current);
+        rafPendingRef.current = null;
+      }
+      if (zoomChangeRafRef.current !== null) {
+        cancelAnimationFrame(zoomChangeRafRef.current);
+        zoomChangeRafRef.current = null;
+      }
+    };
+  }, []);
+
   // Handle wheel zoom - imperative updates for performance
   const handleWheel = (e: Konva.KonvaEventObject<WheelEvent>) => {
     e.evt.preventDefault();
@@ -240,9 +313,19 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     stage.scale({ x: clampedScale, y: clampedScale });
     
     // REMOVED: scheduleStateUpdate - Don't trigger React re-renders during zoom!
-    // Only notify parent for zoom indicator display
+    // Throttle zoom change notifications using requestAnimationFrame to avoid excessive re-renders
     if (onZoomChange) {
-      onZoomChange(clampedScale);
+      pendingZoomRef.current = clampedScale;
+      
+      if (zoomChangeRafRef.current === null) {
+        zoomChangeRafRef.current = requestAnimationFrame(() => {
+          zoomChangeRafRef.current = null;
+          if (pendingZoomRef.current !== null) {
+            onZoomChange(pendingZoomRef.current);
+            pendingZoomRef.current = null;
+          }
+        });
+      }
     }
   };
 
@@ -342,14 +425,17 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
     }
   };
 
-  // Handle mouse move - pan the canvas if dragging, track cursor position always
-  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
-    const stage = stageRef.current;
-    if (!stage) return;
+  // Process batched mousemove updates in requestAnimationFrame
+  const processMouseMove = () => {
+    const pending = pendingMouseMoveRef.current;
+    if (!pending || !pending.pointer || !pending.stage) {
+      rafPendingRef.current = null;
+      return;
+    }
 
-    // Get the mouse position in stage coordinates
-    const pointer = stage.getPointerPosition();
-    if (!pointer) return;
+    const pointer = pending.pointer;
+    pendingMouseMoveRef.current = null;
+    rafPendingRef.current = null;
 
     // Convert pointer position to stage coordinates (accounting for pan and zoom)
     const currentStagePos = stagePosRef.current;
@@ -394,14 +480,31 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
         return prev;
       });
     }
+  };
 
-    // Handle bounding box drawing
+  // Handle mouse move - pan the canvas if dragging, track cursor position always
+  // Use requestAnimationFrame to batch updates and reduce handler execution time
+  const handleMouseMove = (e: Konva.KonvaEventObject<MouseEvent>) => {
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    // Get the mouse position in stage coordinates
+    const pointer = stage.getPointerPosition();
+    if (!pointer) return;
+
+    // Handle immediate operations that need to be responsive (pan, selection, bounding box)
+    const currentStagePos = stagePosRef.current;
+    const currentStageScale = stageScaleRef.current;
+    const stageX = (pointer.x - currentStagePos.x) / currentStageScale;
+    const stageY = (pointer.y - currentStagePos.y) / currentStageScale;
+
+    // Handle bounding box drawing (immediate, no batching)
     if (activeDrawingTool === 'boundingbox' && boundingBoxStart && isDragging.current) {
       setBoundingBoxEnd({ x: stageX, y: stageY });
       return; // Don't pan when drawing bounding box
     }
 
-    // Handle drag selection
+    // Handle drag selection (immediate, no batching)
     if (isSelecting.current) {
       const startX = selectionStart.current.x;
       const startY = selectionStart.current.y;
@@ -417,7 +520,7 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       return;
     }
 
-    // Pan the canvas if dragging - imperative updates for performance
+    // Pan the canvas if dragging - imperative updates for performance (immediate)
     // Don't pan if drawing bounding box
     if (isDragging.current && activeDrawingTool !== 'boundingbox') {
       const newPos = {
@@ -432,6 +535,14 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
       stage.position(newPos);
       
       // REMOVED: scheduleStateUpdate - Don't trigger React re-renders during pan!
+      return; // Skip batched updates during pan for better responsiveness
+    }
+
+    // Batch non-critical updates (cursor, snap indicators, preview points) using requestAnimationFrame
+    pendingMouseMoveRef.current = { pointer, stage };
+    
+    if (rafPendingRef.current === null) {
+      rafPendingRef.current = requestAnimationFrame(processMouseMove);
     }
   };
 
@@ -850,17 +961,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
           {/* Background Image Layer - non-interactive */}
           <Layer listening={false}>
             {canvasScale.backgroundImage && (
-              <Image
-                image={(() => {
-                  const img = new window.Image();
-                  img.src = canvasScale.backgroundImage.url;
-                  return img;
-                })()}
-                x={0}
-                y={0}
-                width={canvasScale.backgroundImage.width}
-                height={canvasScale.backgroundImage.height}
-                listening={false}
+              <BackgroundImageComponent
+                backgroundImage={canvasScale.backgroundImage}
               />
             )}
           </Layer>
@@ -963,6 +1065,8 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
           <Layer>
             {(() => {
               // Calculate viewport bounds for object culling
+              // Note: Refs don't trigger re-renders, so this recalculates on every render
+              // but the calculation is fast (just math operations)
               const viewportBounds = calculateViewportBounds(
                 dimensions.width,
                 dimensions.height,
