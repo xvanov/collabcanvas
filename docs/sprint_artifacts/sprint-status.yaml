@@ -1,0 +1,47 @@
+# generated: 2025-11-19
+# project: projective
+# project_key: projective-fieldpay-integration
+# tracking_system: file-system
+# story_location: "{project-root}/docs/sprint_artifacts"
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted: Epic tech context created (required before drafting stories)
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder
+#   - ready-for-dev: Draft approved and story context created
+#   - in-progress: Developer actively working on implementation
+#   - review: Under SM review (via code-review workflow)
+#   - done: Story completed
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be 'contexted' before stories can be 'drafted'
+# - Stories can be worked in parallel if team capacity allows
+# - SM typically drafts next story after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', SM reviews, then Dev moves to 'done'
+
+generated: 2025-11-19
+project: projective
+project_key: projective-fieldpay-integration
+tracking_system: file-system
+story_location: "{project-root}/docs/sprint_artifacts"
+
+development_status:
+  # Epic 1: FieldPay-Pro P4P Integration
+  epic-1: backlog
+  1-1-backend-integration-database-schema-ai-crew-generation: in-progress
+  1-2-project-crew-assignment: ready-for-dev
+  1-3-ai-labor-estimation-cpm-calculation: drafted
+  1-4-timeline-visualization-mermaid-js: drafted
+  1-5-multi-project-time-tracking-profitability-dashboard: drafted
+  1-6-admin-payroll-ui-daily-automation-testing: drafted
+  epic-1-retrospective: optional

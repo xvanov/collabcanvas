@@ -36,6 +36,16 @@ CollabCanvas is a real-time collaborative canvas application for construction pr
 - [Development Guide](./development-guide.md) - Setup, development workflow, testing
 - [Deployment Guide](./deployment-guide.md) - Production deployment, CI/CD, monitoring
 
+## Deep-Dive Documentation
+
+Detailed exhaustive analysis of specific areas:
+
+- [FieldPay-Pro Payment System Deep-Dive](./deep-dive-fieldpay-payment-system.md) - Comprehensive analysis of FieldPay-Pro's complete payment processing system (35+ files, ~10,000+ LOC) - Generated 2025-11-19
+  - **Purpose:** Integration reference for Projective Money View payment capabilities
+  - **Coverage:** Backend services (calculation, payroll, data), API routes (payroll, upload), CSV import/export, frontend API client
+  - **Key Topics:** P4P calculation engine, payment workflow (analyze→process→approve), role-based permissions, CSV export to Paychex, notification system
+  - **Integration Guide:** Includes database schema mapping, API integration examples, code reuse opportunities, and step-by-step integration plan
+
 ## Existing Documentation
 
 The following documentation files exist in the project root (`collabcanvas/`):
