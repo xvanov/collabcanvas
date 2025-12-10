@@ -5,7 +5,7 @@
 **Phase**: Implementation - Epic 2 (Deep Agent Pipeline)
 **Sprint**: 1
 **Date**: December 10, 2025
-**Branch**: `true-agent-pipeline`
+**Branch**: `ture-agent-pipeline`
 **Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed PR breakdown
 **Local Dev**: ✅ Running (Firebase emulators + Vite dev server)
 
@@ -17,11 +17,11 @@
 |----|--------|-------------|--------|-----------|
 | #1 | `epic2/foundation` | Project setup, config, services | ✅ Complete | Dec 10, 2025 |
 | #2 | `epic2/clarification-validation` | ClarificationOutput models & parsing | ✅ Complete | Dec 10, 2025 |
-| #3 | `epic2/orchestrator` | Pipeline orchestrator & entry points | 🔲 Not Started | - |
-| #4 | `epic2/location-agent` | Location Intelligence Agent | 🔲 Not Started | - |
+| #3 | `epic2/orchestrator` | Pipeline orchestrator & entry points | ✅ Complete | Dec 10, 2025 |
+| #4 | `epic2/location-agent` | Location Intelligence Agent | 🔲 Ready | - |
 | #5 | `epic2/scope-agent` | Construction Scope Agent | 🔲 Not Started | - |
 | #6 | `epic2/cost-agent` | Cost Estimation Agent | 🔲 Not Started | - |
-| #7 | `epic2/risk-final-agents` | Risk & Final Estimator Agents | 🔲 Not Started | - |
+| #7 | `epic2/risk-final-agents` | Risk, Timeline & Final Agents | 🔲 Not Started | - |
 | #8 | `epic2/firestore-rules` | Security rules & documentation | 🔲 Not Started | - |
 
 **Legend**: 🔲 Not Started | 🔄 In Progress | ✅ Complete | ⏸️ Blocked
@@ -46,7 +46,7 @@
 - [x] `sagemakerInvoke` - AWS SageMaker integration
 
 ### Firebase Configuration
-- [x] `firebase.json` - Hosting, Firestore, Storage, Functions
+- [x] `firebase.json` - Hosting, Firestore, Storage, Functions (Python added)
 - [x] `firestore.rules` - Security rules for projects/shapes/layers
 - [x] Emulator configuration (ports 9099, 5001, 8081, 9199, 4000)
 
@@ -80,7 +80,7 @@
 ## Epic 2 Story Progress
 
 ### Story 2.1: Pipeline Foundation & Orchestrator
-**Status**: 🔄 In Progress (PR #1, #2 Complete)
+**Status**: ✅ Complete
 **PRs**: #1, #2, #3
 
 | Task | PR | Status |
@@ -100,21 +100,29 @@
 | Create `parse_clarification_output()` helper | #2 | ✅ |
 | Create test fixtures (kitchen, bathroom) | #2 | ✅ |
 | Unit tests for PR #2 (7 tests passing) | #2 | ✅ |
-| Create orchestrator with `DEEP_AGENT_SEQUENCE` | #3 | 🔲 |
-| Implement `start_deep_pipeline` Cloud Function | #3 | 🔲 |
-| Implement `delete_estimate` Cloud Function | #3 | 🔲 |
-| Create stub agents for pipeline testing | #3 | 🔲 |
-| Unit tests | #3 | 🔲 |
+| Create agent_output.py models | #3 | ✅ |
+| Create estimate.py models | #3 | ✅ |
+| Create orchestrator with AGENT_SEQUENCE | #3 | ✅ |
+| Implement `start_deep_pipeline` Cloud Function | #3 | ✅ |
+| Implement `delete_estimate` Cloud Function | #3 | ✅ |
+| Implement `get_pipeline_status` Cloud Function | #3 | ✅ |
+| Create 18 A2A endpoints (6 primary + 6 scorer + 6 critic) | #3 | ✅ |
+| Create 6 stub primary agents | #3 | ✅ |
+| Create 6 stub scorer agents | #3 | ✅ |
+| Create 6 stub critic agents | #3 | ✅ |
+| Unit tests for PR #3 (15 tests passing) | #3 | ✅ |
 
 ### Story 2.2: Location Intelligence Agent
-**Status**: 🔲 Not Started
+**Status**: 🔲 Ready to Start
 **PR**: #4
 
 | Task | Status |
 |------|--------|
 | Create location factor models | 🔲 |
 | Create mock cost data service | 🔲 |
-| Implement Location Agent | 🔲 |
+| Implement Location Agent (real logic) | 🔲 |
+| Implement Location Scorer (real logic) | 🔲 |
+| Implement Location Critic (real logic) | 🔲 |
 | Create mock location data fixtures | 🔲 |
 | Unit tests | 🔲 |
 
@@ -126,7 +134,7 @@
 |------|--------|
 | Create Bill of Quantities models | 🔲 |
 | Add cost code lookup to service | 🔲 |
-| Implement Scope Agent | 🔲 |
+| Implement Scope Agent (real logic) | 🔲 |
 | Unit tests | 🔲 |
 
 ### Story 2.4: Cost Estimation Agent
@@ -137,10 +145,10 @@
 |------|--------|
 | Create cost estimate models | 🔲 |
 | Add material cost lookup to service | 🔲 |
-| Implement Cost Agent | 🔲 |
+| Implement Cost Agent (real logic) | 🔲 |
 | Unit tests | 🔲 |
 
-### Story 2.5: Risk Analysis & Final Estimator Agent
+### Story 2.5: Risk Analysis, Timeline & Final Estimator Agent
 **Status**: 🔲 Not Started
 **PR**: #7
 
@@ -148,9 +156,10 @@
 |------|--------|
 | Create risk analysis models | 🔲 |
 | Create mock Monte Carlo service | 🔲 |
-| Implement Risk Agent | 🔲 |
+| Implement Risk Agent (real logic) | 🔲 |
+| Implement Timeline Agent (real logic) | 🔲 |
 | Create final estimate models | 🔲 |
-| Implement Final Agent | 🔲 |
+| Implement Final Agent (real logic) | 🔲 |
 | Integration test (full pipeline) | 🔲 |
 | Unit tests | 🔲 |
 
@@ -169,7 +178,7 @@
 
 ## Known Issues
 
-- None yet
+- Branch name typo: `ture-agent-pipeline` instead of `true-agent-pipeline`
 
 ---
 
@@ -181,12 +190,12 @@
 
 ## Next Actions
 
-1. **Start PR #3**: Orchestrator & Pipeline Infrastructure
-2. Create agent output models (`models/agent_output.py`)
-3. Create estimate models (`models/estimate.py`)
-4. Create orchestrator with `DEEP_AGENT_SEQUENCE`
-5. Create Cloud Function entry points (`main.py`)
-6. Create stub agents for pipeline testing
+1. **Start PR #4**: Location Intelligence Agent
+2. Create `models/location_factors.py` with Pydantic models
+3. Create `services/cost_data_service.py` (mock implementation)
+4. Implement real LocationAgent logic (replace stub)
+5. Implement real LocationScorer logic (replace stub)
+6. Implement real LocationCritic logic (replace stub)
 7. Add unit tests
 8. Submit PR for review
 
@@ -196,7 +205,8 @@
 |----|-------|--------|
 | PR #1 | 58 | ✅ All passing |
 | PR #2 | 7 | ✅ All passing |
-| **Total** | **65** | ✅ All passing |
+| PR #3 | 15 | ✅ All passing |
+| **Total** | **80** | ✅ All passing |
 
 ## Local Development Setup
 

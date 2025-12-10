@@ -1,72 +1,61 @@
-# Prompt for Starting New Chat - Epic 2 Deep Agent Pipeline
+# Next Chat Prompt - PR #4: Location Intelligence Agent
 
-Copy and paste this prompt when starting a new chat:
+Copy and paste this into a new chat:
 
 ---
 
-**I'm working on Epic 2: Deep Agent Pipeline for TrueCost. I'm Dev 2 responsible for building the deep agent pipeline that transforms `ClarificationOutput` into complete cost estimates.**
+I'm Dev 2 for the TrueCost project, continuing Epic 2: Deep Agent Pipeline.
 
 ## Context
-
-- **Project**: TrueCost - AI-powered construction estimation system (brownfield pivot from CollabCanvas)
+- **Project**: TrueCost - AI-powered construction estimation system
 - **My Role**: Dev 2 - Deep Agent Pipeline
-- **Current Branch**: `true-agent-pipeline`
-- **Status**: Local dev environment running (Firebase emulators + Vite)
+- **Branch**: `ture-agent-pipeline`
+- **Status**: PR #1 ✅, PR #2 ✅, PR #3 ✅, Starting PR #4
 
-## What I'm Building
+## Completed PRs
+- **PR #1**: Foundation (58 tests) - config, services, base classes, agent cards
+- **PR #2**: ClarificationOutput Models (7 tests) - Pydantic models for v3.0.0
+- **PR #3**: Orchestrator & Pipeline Infrastructure (15 tests) - PipelineOrchestrator, main.py, stub agents
 
-A 5-agent sequential pipeline:
-```
-ClarificationOutput → Location → Scope → Cost → Risk → Final → Complete Estimate
-```
+**Total: 80 tests passing**
 
-**Agents to build**:
-1. Location Agent - Zip-code based cost factors
-2. Scope Agent - Bill of Quantities enrichment
-3. Cost Agent - Material/labor/equipment calculations
-4. Risk Agent - Monte Carlo simulation
-5. Final Agent - Synthesis and executive summary
+## PR #4: Location Intelligence Agent
 
-## Key Technical Decisions
+### Tasks
+- [ ] Create `functions/models/location_factors.py` - LocationFactors, LaborRates, PermitCosts models
+- [ ] Create `functions/services/cost_data_service.py` - Mock cost data service interface
+- [ ] Replace stub `functions/agents/primary/location_agent.py` with real LLM implementation
+- [ ] Replace stub `functions/agents/scorers/location_scorer.py` with real scoring logic
+- [ ] Replace stub `functions/agents/critics/location_critic.py` with real critique logic
+- [ ] Create `functions/tests/fixtures/mock_cost_data.py` - Mock location data (Denver, NYC, Houston)
+- [ ] Create `functions/tests/unit/test_location_agent.py`
 
-- **Agent Framework**: **LangChain Deep Agents** (`deepagents` library) - provides planning tool, file system tools, and subagent spawning
-- **LLM**: OpenAI GPT-4.1 (configurable via env var)
-- **Backend**: Python Cloud Functions (2nd gen) in `functions/` directory at project root
-- **State Management**: Firestore for persistence and real-time updates
-- **Input Contract**: `ClarificationOutput` v3.0.0 (see `docs/clarification-output-schema.md`)
-- **Deep Agents Guide**: See `docs/setup/deep-agents-integration.md` for implementation patterns
+### Location Agent Requirements
+- Extract zip code from `clarificationOutput.projectBrief.location.zipCode`
+- Call `cost_data_service.get_location_factors(zip_code)`
+- Return structured LocationFactors:
+  - Labor rates (electrician, plumber, carpenter, HVAC, etc.)
+  - Union vs non-union market determination
+  - Permit costs (building, electrical, plumbing, mechanical)
+  - Weather/seasonal factors
+  - Location cost multiplier (0.8-1.5 range)
+- Save output to Firestore
+- Generate human-readable summary
 
-## Current Task
+### Key References
+- Task list: `memory-bank/epic2-task-list.md` (PR #4 section)
+- Base agent: `functions/agents/base_agent.py`
+- Base scorer: `functions/agents/scorers/base_scorer.py`
+- Base critic: `functions/agents/critics/base_critic.py`
+- Current stub: `functions/agents/primary/location_agent.py`
+- Services: `functions/services/` (firestore, llm, a2a_client)
 
-**PR #1: Foundation & Project Setup**
+### Mock Data to Support
+- Denver (80202) - Mixed market, locationFactor 1.05
+- NYC (10001) - Union market, locationFactor 1.25
+- Houston (77001) - Non-union, locationFactor 0.95
+- Unknown zips - Default to national averages
 
-I need to:
-1. Create `functions/` directory structure at project root
-2. Set up Python environment with `requirements.txt` (include `deepagents`, `langchain`, `langchain-openai`, `langgraph`)
-3. Create configuration module (`config/settings.py`, `config/errors.py`)
-4. Create Firestore service (`services/firestore_service.py`)
-5. Create LLM service wrapper using LangChain (`services/llm_service.py`)
-6. Create base agent class using Deep Agents pattern (`agents/base_agent.py` - wraps `create_deep_agent()`)
-7. Set up test infrastructure
-
-## Important Files
-
-- **Memory Bank**: `memory-bank/` - Read ALL files for full context
-- **Task List**: `memory-bank/epic2-task-list.md` - Complete PR breakdown
-- **Schema**: `docs/clarification-output-schema.md` - Input contract
-- **Example**: `docs/clarification-output-example.json` - Sample input
-- **Architecture**: `docs/architecture.md` - Technical decisions (note: mentions Python Deep Agents but we're using LangChain)
-
-## Dependencies
-
-- **From Dev 3**: `ClarificationOutput` v3.0.0 schema (defined, example available)
-- **From Dev 4**: `cost_data_service.py`, `monte_carlo.py` (will mock initially)
-
-## What I Need Help With
-
-[Describe your current task or question]
+Please read `memory-bank/epic2-task-list.md` (PR #4 section) first, then start implementing.
 
 ---
-
-**Please read the memory bank files first to understand the full context, then help me proceed with implementation.**
-
