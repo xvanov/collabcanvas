@@ -1,0 +1,1198 @@
+{
+  "estimateId": "est_abc123",
+  "schemaVersion": "3.0.0",
+  "timestamp": "2025-12-10T14:30:00Z",
+  "clarificationStatus": "complete",
+
+  "projectBrief": {
+    "projectType": "kitchen_remodel",
+
+    "location": {
+      "fullAddress": "1847 Blake Street, Unit 302, Denver, CO 80202",
+      "streetAddress": "1847 Blake Street",
+      "unit": "302",
+      "city": "Denver",
+      "state": "CO",
+      "zipCode": "80202",
+      "county": "Denver County",
+      "coordinates": {
+        "lat": 39.7536,
+        "lng": -104.9962
+      }
+    },
+
+    "scopeSummary": {
+      "description": "Full kitchen remodel with new cabinets, granite countertops, hardwood flooring, and updated appliances. Keep existing layout and plumbing locations.",
+      "totalSqft": 196,
+      "rooms": ["kitchen"],
+      "finishLevel": "mid_range",
+      "projectComplexity": "moderate",
+      "includedDivisions": ["01", "02", "06", "08", "09", "10", "11", "12", "22", "26"],
+      "excludedDivisions": ["03", "04", "05", "07", "13", "14", "21", "23", "25", "27", "28", "31", "32", "33"],
+      "byOwnerDivisions": [],
+      "notApplicableDivisions": [],
+      "totalIncluded": 10,
+      "totalExcluded": 14
+    },
+
+    "specialRequirements": [
+      "Keep existing plumbing rough-in locations",
+      "Soft-close hardware on all cabinets and drawers",
+      "GFCI protection for all countertop outlets",
+      "LED lighting throughout"
+    ],
+
+    "exclusions": [
+      "Structural changes",
+      "HVAC modifications",
+      "Permit fees (by owner)",
+      "Appliance installation (delivery includes basic install)"
+    ],
+
+    "timeline": {
+      "desiredStart": "2025-02-01",
+      "deadline": null,
+      "flexibility": "flexible"
+    }
+  },
+
+  "csiScope": {
+    "div01_general_requirements": {
+      "code": "01",
+      "name": "General Requirements",
+      "status": "included",
+      "description": "Project management, cleanup, and protection of existing surfaces.",
+      "items": [
+        {
+          "id": "01-001",
+          "item": "Project supervision and coordination",
+          "subdivisionCode": "01 31 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum for project duration",
+          "specifications": "Daily site coordination, scheduling, subcontractor management",
+          "notes": null,
+          "confidence": 1.0,
+          "source": "standard_allowance"
+        },
+        {
+          "id": "01-002",
+          "item": "Floor protection",
+          "subdivisionCode": "01 56 00",
+          "quantity": 200,
+          "unit": "sf",
+          "unitDescription": "square feet of protected area",
+          "specifications": "Ram board or equivalent for adjacent areas during construction",
+          "notes": "Protect hallway and adjacent living areas",
+          "confidence": 0.95,
+          "source": "inferred"
+        },
+        {
+          "id": "01-003",
+          "item": "Daily cleanup",
+          "subdivisionCode": "01 74 00",
+          "quantity": 15,
+          "unit": "days",
+          "unitDescription": "working days",
+          "specifications": "End of day debris removal, dust control, HEPA vacuum",
+          "notes": "Critical for occupied condo unit",
+          "confidence": 0.90,
+          "source": "inferred"
+        },
+        {
+          "id": "01-004",
+          "item": "Final cleaning",
+          "subdivisionCode": "01 74 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum",
+          "specifications": "Post-construction detail cleaning including windows, cabinets interior, appliances",
+          "notes": null,
+          "confidence": 1.0,
+          "source": "standard_allowance"
+        }
+      ]
+    },
+
+    "div02_existing_conditions": {
+      "code": "02",
+      "name": "Existing Conditions",
+      "status": "included",
+      "description": "Demolition of existing kitchen cabinets, countertops, flooring, and fixtures.",
+      "items": [
+        {
+          "id": "02-001",
+          "item": "Cabinet demolition and removal",
+          "subdivisionCode": "02 41 19",
+          "quantity": 30,
+          "unit": "lf",
+          "unitDescription": "linear feet of cabinets removed",
+          "specifications": "Remove all existing base and upper cabinets, haul away",
+          "notes": "Includes island cabinet removal",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "02-002",
+          "item": "Countertop demolition",
+          "subdivisionCode": "02 41 19",
+          "quantity": 45,
+          "unit": "sf",
+          "unitDescription": "square feet of countertop removed",
+          "specifications": "Remove existing laminate countertops and backsplash",
+          "notes": null,
+          "confidence": 0.88,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "02-003",
+          "item": "Flooring demolition",
+          "subdivisionCode": "02 41 19",
+          "quantity": 196,
+          "unit": "sf",
+          "unitDescription": "square feet of flooring removed",
+          "specifications": "Remove existing vinyl flooring down to subfloor",
+          "notes": "User confirmed existing floor is vinyl sheet",
+          "confidence": 0.85,
+          "source": "user_input"
+        },
+        {
+          "id": "02-004",
+          "item": "Fixture disconnection",
+          "subdivisionCode": "02 41 19",
+          "quantity": 4,
+          "unit": "each",
+          "unitDescription": "fixtures disconnected",
+          "specifications": "Disconnect sink, faucet, disposal, dishwasher for removal",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "02-005",
+          "item": "Appliance removal",
+          "subdivisionCode": "02 41 19",
+          "quantity": 4,
+          "unit": "each",
+          "unitDescription": "appliances removed",
+          "specifications": "Remove range, refrigerator, dishwasher, microwave - owner disposing",
+          "notes": "Owner handling donation/disposal of old appliances",
+          "confidence": 1.0,
+          "source": "user_input"
+        },
+        {
+          "id": "02-006",
+          "item": "Dumpster rental",
+          "subdivisionCode": "02 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "dumpster rental period",
+          "specifications": "10-yard dumpster, 1 week rental, kitchen demo debris",
+          "notes": "May need to coordinate with building management for placement",
+          "confidence": 0.90,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div03_concrete": {
+      "code": "03",
+      "name": "Concrete",
+      "status": "excluded",
+      "exclusionReason": "No concrete work required. Existing slab in good condition. No structural changes planned.",
+      "description": "",
+      "items": []
+    },
+
+    "div04_masonry": {
+      "code": "04",
+      "name": "Masonry",
+      "status": "excluded",
+      "exclusionReason": "No masonry work in kitchen remodel scope. No fireplace or brick features in this unit.",
+      "description": "",
+      "items": []
+    },
+
+    "div05_metals": {
+      "code": "05",
+      "name": "Metals",
+      "status": "excluded",
+      "exclusionReason": "No structural steel or metal framing required. No load-bearing changes in scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div06_wood_plastics_composites": {
+      "code": "06",
+      "name": "Wood, Plastics, and Composites",
+      "status": "included",
+      "description": "New kitchen cabinets, trim, and blocking for wall-mounted items.",
+      "items": [
+        {
+          "id": "06-001",
+          "item": "Base cabinets",
+          "subdivisionCode": "06 41 00",
+          "quantity": 16,
+          "unit": "lf",
+          "unitDescription": "linear feet of cabinet face",
+          "specifications": "Shaker style, maple, painted white, soft-close drawers and doors. Include lazy susan corner unit, 36-inch sink base, and 24-inch dishwasher opening.",
+          "notes": "Customer prefers Kraftmaid or equivalent quality",
+          "confidence": 0.94,
+          "source": "user_input"
+        },
+        {
+          "id": "06-002",
+          "item": "Upper cabinets",
+          "subdivisionCode": "06 41 00",
+          "quantity": 14,
+          "unit": "lf",
+          "unitDescription": "linear feet of cabinet face",
+          "specifications": "Shaker style, maple, painted white, soft-close. 42-inch height extending to ceiling. Include glass-front accent doors over sink.",
+          "notes": "Glass doors for displaying dishware",
+          "confidence": 0.94,
+          "source": "user_input"
+        },
+        {
+          "id": "06-003",
+          "item": "Island base cabinet",
+          "subdivisionCode": "06 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "island cabinet unit",
+          "specifications": "60x36 inch island cabinet, shaker style matching uppers/lowers. Three drawers, two doors. 12-inch overhang on one side for seating.",
+          "notes": "No plumbing in island per customer request",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "06-004",
+          "item": "Tall pantry cabinet",
+          "subdivisionCode": "06 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "pantry cabinet unit",
+          "specifications": "84-inch tall, 24-inch wide pantry cabinet with pull-out shelves. Shaker style matching other cabinets.",
+          "notes": "Located at southeast corner per plan",
+          "confidence": 0.88,
+          "source": "user_input"
+        },
+        {
+          "id": "06-005",
+          "item": "Crown molding",
+          "subdivisionCode": "06 22 00",
+          "quantity": 30,
+          "unit": "lf",
+          "unitDescription": "linear feet installed",
+          "specifications": "3.5-inch crown molding to match cabinet style, painted to match cabinets",
+          "notes": "Bridges gap between 42-inch cabinets and 9-foot ceiling",
+          "confidence": 0.90,
+          "source": "inferred"
+        },
+        {
+          "id": "06-006",
+          "item": "Base trim/shoe molding",
+          "subdivisionCode": "06 22 00",
+          "quantity": 56,
+          "unit": "lf",
+          "unitDescription": "linear feet installed",
+          "specifications": "3.5-inch colonial base, painted white to match cabinets",
+          "notes": "Room perimeter minus cabinet/appliance areas",
+          "confidence": 0.85,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "06-007",
+          "item": "Blocking for wall cabinets",
+          "subdivisionCode": "06 10 00",
+          "quantity": 28,
+          "unit": "lf",
+          "unitDescription": "linear feet of blocking",
+          "specifications": "2x4 blocking in wall cavities for secure upper cabinet mounting",
+          "notes": "Required for 42-inch cabinets with heavy contents",
+          "confidence": 0.95,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div07_thermal_moisture": {
+      "code": "07",
+      "name": "Thermal and Moisture Protection",
+      "status": "excluded",
+      "exclusionReason": "No insulation or waterproofing work required. Interior kitchen remodel with no exterior wall modifications.",
+      "description": "",
+      "items": []
+    },
+
+    "div08_openings": {
+      "code": "08",
+      "name": "Openings",
+      "status": "included",
+      "description": "Hardware upgrades only. Existing door and window remain unchanged.",
+      "items": [
+        {
+          "id": "08-001",
+          "item": "Cabinet hardware - pulls",
+          "subdivisionCode": "08 71 00",
+          "quantity": 28,
+          "unit": "each",
+          "unitDescription": "pulls installed",
+          "specifications": "5-inch brushed nickel bar pulls for drawers and base cabinet doors",
+          "notes": "Customer selected Amerock Blackrock style",
+          "confidence": 0.85,
+          "source": "user_input"
+        },
+        {
+          "id": "08-002",
+          "item": "Cabinet hardware - knobs",
+          "subdivisionCode": "08 71 00",
+          "quantity": 18,
+          "unit": "each",
+          "unitDescription": "knobs installed",
+          "specifications": "Brushed nickel knobs for upper cabinet doors, matching finish to pulls",
+          "notes": null,
+          "confidence": 0.85,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div09_finishes": {
+      "code": "09",
+      "name": "Finishes",
+      "status": "included",
+      "description": "New flooring, wall paint, ceiling paint, and tile backsplash.",
+      "items": [
+        {
+          "id": "09-001",
+          "item": "Engineered hardwood flooring",
+          "subdivisionCode": "09 64 00",
+          "quantity": 210,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "5-inch plank engineered hardwood, medium oak, click-lock installation. Includes 7% waste factor.",
+          "notes": "Brand options: Shaw, Mohawk, or equivalent. Customer prefers medium tone.",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-002",
+          "item": "Flooring underlayment",
+          "subdivisionCode": "09 64 00",
+          "quantity": 200,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "Moisture barrier underlayment for engineered hardwood over concrete",
+          "notes": "Required per manufacturer specs for slab installation",
+          "confidence": 0.95,
+          "source": "inferred"
+        },
+        {
+          "id": "09-003",
+          "item": "Subfloor prep/leveling",
+          "subdivisionCode": "09 62 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum",
+          "specifications": "Minor subfloor repair and leveling compound as needed after demo",
+          "notes": "Allowance for unknown conditions under existing flooring",
+          "confidence": 0.80,
+          "source": "standard_allowance"
+        },
+        {
+          "id": "09-004",
+          "item": "Wall paint",
+          "subdivisionCode": "09 91 00",
+          "quantity": 450,
+          "unit": "sf",
+          "unitDescription": "square feet painted",
+          "specifications": "2 coats, eggshell finish, Sherwin-Williams or Benjamin Moore. Color TBD by owner.",
+          "notes": "Walls only - ceiling separate line item",
+          "confidence": 0.88,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-005",
+          "item": "Ceiling paint",
+          "subdivisionCode": "09 91 00",
+          "quantity": 196,
+          "unit": "sf",
+          "unitDescription": "square feet painted",
+          "specifications": "1 coat flat white ceiling paint, touch-up after recessed light installation",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-006",
+          "item": "Drywall repair/patching",
+          "subdivisionCode": "09 29 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum",
+          "specifications": "Patch holes from cabinet removal, electrical work. Texture match existing orange peel.",
+          "notes": "Extent unknown until demo complete",
+          "confidence": 0.85,
+          "source": "inferred"
+        },
+        {
+          "id": "09-007",
+          "item": "Subway tile backsplash",
+          "subdivisionCode": "09 30 00",
+          "quantity": 35,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "3x6 white ceramic subway tile, gray grout, 18-inch height. Behind sink and range areas.",
+          "notes": "Classic brick pattern layout",
+          "confidence": 0.90,
+          "source": "user_input"
+        },
+        {
+          "id": "09-008",
+          "item": "Tile setting materials",
+          "subdivisionCode": "09 30 00",
+          "quantity": 35,
+          "unit": "sf",
+          "unitDescription": "square feet coverage",
+          "specifications": "Thinset mortar, grout, grout sealer for backsplash tile installation",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div10_specialties": {
+      "code": "10",
+      "name": "Specialties",
+      "status": "included",
+      "description": "Kitchen accessories and specialties.",
+      "items": [
+        {
+          "id": "10-001",
+          "item": "Paper towel holder",
+          "subdivisionCode": "10 28 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit installed",
+          "specifications": "Wall-mounted, brushed nickel finish to match cabinet hardware",
+          "notes": "Optional - customer to confirm",
+          "confidence": 0.70,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div11_equipment": {
+      "code": "11",
+      "name": "Equipment",
+      "status": "included",
+      "description": "All new kitchen appliances, mid-range tier.",
+      "items": [
+        {
+          "id": "11-001",
+          "item": "Refrigerator",
+          "subdivisionCode": "11 31 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit",
+          "specifications": "36-inch french door, counter depth, stainless steel. ~22 cu ft capacity. Mid-range brand (GE, Whirlpool, Frigidaire Gallery).",
+          "notes": "Delivery includes basic install. Owner responsible for water line connection if ice maker desired.",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "11-002",
+          "item": "Gas range",
+          "subdivisionCode": "11 31 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit",
+          "specifications": "30-inch freestanding gas range, 5-burner, stainless steel, convection oven. Mid-range brand.",
+          "notes": "Existing gas line in place - verified by customer",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "11-003",
+          "item": "Dishwasher",
+          "subdivisionCode": "11 31 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit",
+          "specifications": "24-inch built-in, stainless steel front, 44dB or quieter, 3rd rack. Mid-range brand (Bosch 300 series or equivalent).",
+          "notes": "Quiet operation important for open floor plan",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "11-004",
+          "item": "Range hood",
+          "subdivisionCode": "11 31 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit",
+          "specifications": "30-inch wall-mount chimney hood, stainless steel, 400+ CFM, LED lights, 3-speed.",
+          "notes": "Venting to existing duct - verify during demo",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "11-005",
+          "item": "Microwave",
+          "subdivisionCode": "11 31 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit",
+          "specifications": "Countertop microwave, 1.6 cu ft, stainless steel exterior, 1100W.",
+          "notes": "Countertop unit - not built-in or over-range. Location on counter near pantry.",
+          "confidence": 0.90,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div12_furnishings": {
+      "code": "12",
+      "name": "Furnishings",
+      "status": "included",
+      "description": "Countertops and sink.",
+      "items": [
+        {
+          "id": "12-001",
+          "item": "Granite countertops - perimeter",
+          "subdivisionCode": "12 36 00",
+          "quantity": 52,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "Level 2 granite (e.g., New Venetian Gold, Santa Cecilia, Giallo Ornamental), 1.25-inch thick, eased edge profile. Includes sink cutout with polished edges.",
+          "notes": "Customer to visit slab yard for final selection",
+          "confidence": 0.92,
+          "source": "user_input"
+        },
+        {
+          "id": "12-002",
+          "item": "Granite countertops - island",
+          "subdivisionCode": "12 36 00",
+          "quantity": 18,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "Matching granite to perimeter, includes overhang support brackets for seating side",
+          "notes": "12-inch overhang on seating side requires corbels or steel supports",
+          "confidence": 0.90,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "12-003",
+          "item": "Undermount kitchen sink",
+          "subdivisionCode": "12 36 40",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "sink installed",
+          "specifications": "32-inch double bowl, 18-gauge stainless steel, undermount with sound dampening",
+          "notes": "60/40 split preferred by customer",
+          "confidence": 0.95,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div13_special_construction": {
+      "code": "13",
+      "name": "Special Construction",
+      "status": "excluded",
+      "exclusionReason": "No special construction elements (clean rooms, pools, saunas, etc.) applicable to kitchen remodel scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div14_conveying_equipment": {
+      "code": "14",
+      "name": "Conveying Equipment",
+      "status": "excluded",
+      "exclusionReason": "No elevators, dumbwaiters, or conveying systems in kitchen remodel scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div21_fire_suppression": {
+      "code": "21",
+      "name": "Fire Suppression",
+      "status": "excluded",
+      "exclusionReason": "No modifications to existing fire suppression system. Condo building has central sprinkler system managed by HOA.",
+      "description": "",
+      "items": []
+    },
+
+    "div22_plumbing": {
+      "code": "22",
+      "name": "Plumbing",
+      "status": "included",
+      "description": "New fixtures on existing rough-in locations. No plumbing relocation.",
+      "items": [
+        {
+          "id": "22-001",
+          "item": "Kitchen faucet",
+          "subdivisionCode": "22 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "faucet installed",
+          "specifications": "Single-hole, pull-down sprayer, stainless steel or chrome finish. Delta, Moen, or Kohler.",
+          "notes": "Customer prefers pull-down vs pull-out style",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "22-002",
+          "item": "Garbage disposal",
+          "subdivisionCode": "22 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "unit installed",
+          "specifications": "3/4 HP, continuous feed, Insinkerator Evolution or equivalent. Includes power cord kit.",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "22-003",
+          "item": "Sink drain assembly",
+          "subdivisionCode": "22 13 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "assembly installed",
+          "specifications": "New P-trap, tailpiece, drain fittings for double bowl sink with disposal connection",
+          "notes": "Replace all drain components for warranty",
+          "confidence": 0.90,
+          "source": "inferred"
+        },
+        {
+          "id": "22-004",
+          "item": "Water supply lines",
+          "subdivisionCode": "22 11 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "supply lines",
+          "specifications": "Braided stainless steel supply lines, 3/8 compression fittings, hot and cold",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "inferred"
+        },
+        {
+          "id": "22-005",
+          "item": "Dishwasher supply line",
+          "subdivisionCode": "22 11 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "supply line with valve",
+          "specifications": "Braided dishwasher supply line with dedicated shutoff valve",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "inferred"
+        },
+        {
+          "id": "22-006",
+          "item": "Ice maker line",
+          "subdivisionCode": "22 11 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "supply line installed",
+          "specifications": "1/4-inch copper or braided line for refrigerator ice maker with saddle valve or dedicated stop",
+          "notes": "Customer may defer - fridge works without ice maker",
+          "confidence": 0.70,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div23_hvac": {
+      "code": "23",
+      "name": "Heating, Ventilating, and Air Conditioning (HVAC)",
+      "status": "excluded",
+      "exclusionReason": "No HVAC modifications required. Existing central HVAC system adequate for kitchen. Range hood vents to existing duct.",
+      "description": "",
+      "items": []
+    },
+
+    "div25_integrated_automation": {
+      "code": "25",
+      "name": "Integrated Automation",
+      "status": "excluded",
+      "exclusionReason": "No smart home or building automation systems included in base scope. Customer may add later.",
+      "description": "",
+      "items": []
+    },
+
+    "div26_electrical": {
+      "code": "26",
+      "name": "Electrical",
+      "status": "included",
+      "description": "Updated lighting to LED, under-cabinet lights, outlet upgrades, and appliance circuits.",
+      "items": [
+        {
+          "id": "26-001",
+          "item": "Recessed LED lights",
+          "subdivisionCode": "26 51 00",
+          "quantity": 6,
+          "unit": "each",
+          "unitDescription": "fixtures installed",
+          "specifications": "6-inch recessed LED, 3000K warm white, dimmable, IC rated for insulation contact",
+          "notes": "Layout: 2 over sink, 2 over island, 2 over range/prep area",
+          "confidence": 0.90,
+          "source": "user_input"
+        },
+        {
+          "id": "26-002",
+          "item": "Pendant light rough-in",
+          "subdivisionCode": "26 51 00",
+          "quantity": 3,
+          "unit": "each",
+          "unitDescription": "junction boxes installed",
+          "specifications": "Junction box and support for island pendant lights. Fixtures provided and selected by owner.",
+          "notes": "Owner purchasing pendants separately - we provide rough-in only",
+          "confidence": 0.88,
+          "source": "user_input"
+        },
+        {
+          "id": "26-003",
+          "item": "Under-cabinet LED lighting",
+          "subdivisionCode": "26 51 00",
+          "quantity": 14,
+          "unit": "lf",
+          "unitDescription": "linear feet installed",
+          "specifications": "Hardwired LED strip, 3000K, with low-profile transformer. Connected to dimmer switch.",
+          "notes": "North and east wall upper cabinet runs",
+          "confidence": 0.85,
+          "source": "user_input"
+        },
+        {
+          "id": "26-004",
+          "item": "GFCI outlets",
+          "subdivisionCode": "26 27 00",
+          "quantity": 4,
+          "unit": "each",
+          "unitDescription": "outlets replaced",
+          "specifications": "20A GFCI outlets, replace all existing countertop outlets. White finish.",
+          "notes": "Code requirement for kitchen countertop receptacles",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "26-005",
+          "item": "Dedicated range circuit verification",
+          "subdivisionCode": "26 27 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "circuit verified/upgraded",
+          "specifications": "Verify existing 40A/240V circuit for gas range ignition. Replace receptacle if worn.",
+          "notes": "Gas range still needs electric for ignition and clock",
+          "confidence": 0.85,
+          "source": "inferred"
+        },
+        {
+          "id": "26-006",
+          "item": "Dedicated refrigerator circuit",
+          "subdivisionCode": "26 27 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "circuit verified",
+          "specifications": "Verify 20A dedicated circuit for refrigerator, NOT on GFCI per code",
+          "notes": "GFCI not required for fridge - nuisance tripping concern",
+          "confidence": 0.85,
+          "source": "inferred"
+        },
+        {
+          "id": "26-007",
+          "item": "Dimmer switches",
+          "subdivisionCode": "26 27 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "switches installed",
+          "specifications": "Lutron Caseta or equivalent LED-compatible dimmers. One for recessed, one for under-cabinet.",
+          "notes": "Single-pole locations",
+          "confidence": 0.80,
+          "source": "user_input"
+        },
+        {
+          "id": "26-008",
+          "item": "Disposal switch",
+          "subdivisionCode": "26 27 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "switch installed",
+          "specifications": "Air switch mounted in countertop or standard wall switch near sink",
+          "notes": "Customer preference TBD - air switch is cleaner look",
+          "confidence": 0.90,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div27_communications": {
+      "code": "27",
+      "name": "Communications",
+      "status": "excluded",
+      "exclusionReason": "No communications wiring (data, phone, cable) modifications in kitchen scope. Existing building infrastructure adequate.",
+      "description": "",
+      "items": []
+    },
+
+    "div28_electronic_safety_security": {
+      "code": "28",
+      "name": "Electronic Safety and Security",
+      "status": "excluded",
+      "exclusionReason": "No security system modifications required. Building has central security managed by HOA.",
+      "description": "",
+      "items": []
+    },
+
+    "div31_earthwork": {
+      "code": "31",
+      "name": "Earthwork",
+      "status": "excluded",
+      "exclusionReason": "Interior remodel only - no earthwork, excavation, or site work applicable.",
+      "description": "",
+      "items": []
+    },
+
+    "div32_exterior_improvements": {
+      "code": "32",
+      "name": "Exterior Improvements",
+      "status": "excluded",
+      "exclusionReason": "Interior remodel only - no exterior improvements in scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div33_utilities": {
+      "code": "33",
+      "name": "Utilities",
+      "status": "excluded",
+      "exclusionReason": "No site utility work required. Condo unit - all utilities handled by building infrastructure.",
+      "description": "",
+      "items": []
+    }
+  },
+
+  "cadData": {
+    "fileUrl": "gs://truecost-bucket/cad/est_abc123/kitchen_plan.pdf",
+    "fileType": "pdf",
+    "extractionMethod": "vision",
+    "extractionConfidence": 0.91,
+
+    "spaceModel": {
+      "totalSqft": 196,
+      "boundingBox": {
+        "length": 14,
+        "width": 14,
+        "height": 9,
+        "units": "feet"
+      },
+      "scale": {
+        "detected": true,
+        "ratio": 48,
+        "units": "feet"
+      },
+      "rooms": [
+        {
+          "id": "room_1",
+          "name": "Kitchen",
+          "type": "kitchen",
+          "sqft": 196,
+          "dimensions": {
+            "length": 14,
+            "width": 14,
+            "height": 9
+          },
+          "confidence": 0.94,
+          "needsVerification": false
+        }
+      ],
+      "walls": [
+        {
+          "id": "wall_north",
+          "length": 14,
+          "height": 9,
+          "thickness": 0.5,
+          "type": "exterior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_east", "wall_west"],
+          "confidence": 0.95
+        },
+        {
+          "id": "wall_east",
+          "length": 14,
+          "height": 9,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_north", "wall_south"],
+          "confidence": 0.88
+        },
+        {
+          "id": "wall_south",
+          "length": 14,
+          "height": 9,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_east", "wall_west"],
+          "confidence": 0.91
+        },
+        {
+          "id": "wall_west",
+          "length": 14,
+          "height": 9,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_north", "wall_south"],
+          "confidence": 0.90
+        }
+      ],
+      "openings": [
+        {
+          "id": "door_1",
+          "type": "door",
+          "width": 3,
+          "height": 6.8,
+          "inWall": "wall_south",
+          "connectsRooms": ["room_1"],
+          "position": {
+            "distanceFromCorner": 2,
+            "side": "left"
+          },
+          "swing": "in",
+          "confidence": 0.92
+        },
+        {
+          "id": "window_1",
+          "type": "window",
+          "width": 4,
+          "height": 3,
+          "inWall": "wall_north",
+          "connectsRooms": ["room_1"],
+          "position": {
+            "distanceFromCorner": 5,
+            "side": "center"
+          },
+          "confidence": 0.89
+        }
+      ]
+    },
+
+    "spatialRelationships": {
+      "layoutNarrative": "The kitchen is a 14x14 foot square room with 9-foot ceilings in a condo unit on the 3rd floor. Entering through a 3-foot door on the south wall (positioned 2 feet from the southwest corner, swinging inward), you face the center island directly ahead, approximately 5 feet from the entry.\n\nThe north wall is the primary work wall featuring a centered 4-foot window with a 32-inch double-bowl undermount sink directly below it. Upper cabinets flank both sides of the window (42-inch height, extending to ceiling with crown molding). Lower cabinets run continuously along the north wall from corner to corner, interrupted only by the 36-inch sink base cabinet and 24-inch dishwasher opening immediately to the right of the sink.\n\nThe east wall continues the L-shaped cabinet configuration. Starting from the northeast corner: the 36-inch counter-depth refrigerator sits in a recessed alcove (2-inch gap to corner for air circulation), followed by 36 inches of counter space with upper and lower cabinets, then the 30-inch gas range centered on that wall with a stainless steel wall-mounted range hood above (no upper cabinets above range to allow for hood and clearance), then more counter space continuing to the southeast corner where the 84-inch tall pantry cabinet is positioned.\n\nThe west wall has no cabinets - this is the circulation zone. The entry door is located on the south end of this wall, with open floor space for traffic flow between the entry, island, and the rest of the condo.\n\nThe 60x36 inch center island is positioned 42 inches from the north (sink) wall and 36 inches from the east (range) wall, with a 12-inch countertop overhang on the west side providing seating for two bar stools. This creates an efficient work triangle: sink to range = 8 feet diagonal, range to refrigerator = 6 feet, refrigerator to sink = 7 feet (total 21 feet, within the ideal 13-26 foot range for kitchen efficiency).\n\nLighting layout: Six 6-inch recessed LED lights are positioned in a roughly 2x3 grid pattern - two centered above the sink work area (north), two centered above the island, and two above the range/prep area (east). Three pendant light junction boxes are centered above the island in a row running north-south for task lighting. Under-cabinet LED strips run along the underside of the north and east wall upper cabinets (14 linear feet total), providing task lighting for counter work surfaces.",
+
+      "roomAdjacencies": [
+        {
+          "room1": "room_1",
+          "room2": "hallway",
+          "connection": "door",
+          "openingId": "door_1"
+        }
+      ],
+
+      "entryPoints": [
+        {
+          "openingId": "door_1",
+          "fromSpace": "hallway",
+          "isPrimary": true
+        }
+      ]
+    },
+
+    "kitchenSpecific": {
+      "workTriangle": {
+        "sinkToStove": 8,
+        "stoveToFridge": 6,
+        "fridgeToSink": 7,
+        "triangleValid": true
+      },
+      "fixtures": {
+        "sink": {
+          "type": "undermount",
+          "location": "north wall, centered under window",
+          "width": 32,
+          "adjacentTo": ["window_1", "dishwasher", "upper cabinets", "disposal"]
+        },
+        "stove": {
+          "type": "range",
+          "fuel": "gas",
+          "location": "east wall, centered between fridge alcove and corner",
+          "width": 30,
+          "ventilation": "hood",
+          "adjacentTo": ["countertop_east", "range_hood", "refrigerator_area"]
+        },
+        "refrigerator": {
+          "type": "counter_depth",
+          "location": "northeast corner alcove",
+          "width": 36,
+          "adjacentTo": ["wall_north", "wall_east", "countertop_east"]
+        },
+        "dishwasher": {
+          "present": true,
+          "location": "north wall, immediately right of sink base cabinet",
+          "adjacentTo": ["sink", "corner_base_cabinet"]
+        }
+      },
+      "cabinets": {
+        "upperCabinets": {
+          "linearFeet": 14,
+          "walls": ["north", "east"],
+          "height": 42
+        },
+        "lowerCabinets": {
+          "linearFeet": 16,
+          "walls": ["north", "east"]
+        },
+        "island": {
+          "present": true,
+          "dimensions": {
+            "length": 60,
+            "width": 36
+          },
+          "hasSink": false,
+          "hasCooktop": false,
+          "seatingCount": 2
+        },
+        "pantry": {
+          "type": "cabinet",
+          "sqft": 6
+        }
+      },
+      "countertops": {
+        "totalSqft": 70,
+        "backsplashLinearFeet": 16,
+        "backsplashHeight": 18
+      }
+    },
+
+    "rawExtraction": null
+  },
+
+  "conversation": {
+    "inputMethod": "mixed",
+    "messageCount": 8,
+    "clarificationQuestions": [
+      {
+        "question": "What's your full project address including unit number?",
+        "answer": "1847 Blake Street, Unit 302, Denver CO 80202",
+        "inputMethod": "text",
+        "extractedData": {
+          "fullAddress": "1847 Blake Street, Unit 302, Denver, CO 80202",
+          "streetAddress": "1847 Blake Street",
+          "unit": "302",
+          "city": "Denver",
+          "state": "CO",
+          "zipCode": "80202"
+        }
+      },
+      {
+        "question": "Looking at your floor plan, I see an L-shaped cabinet configuration along the north and east walls. Can you confirm: is the refrigerator in the northeast corner, and is the range centered on the east wall?",
+        "answer": "Yes that's right. Fridge in the corner, stove on the wall next to it with some counter space between them.",
+        "inputMethod": "voice",
+        "extractedData": {
+          "refrigeratorLocation": "northeast corner",
+          "rangeLocation": "east wall, centered",
+          "layoutConfirmed": true
+        }
+      },
+      {
+        "question": "What cabinet style and finish are you looking for?",
+        "answer": "Shaker style cabinets, maple wood, but painted white. I definitely want soft close on everything - doors and drawers.",
+        "inputMethod": "text",
+        "extractedData": {
+          "cabinetStyle": "shaker",
+          "cabinetMaterial": "maple",
+          "cabinetFinish": "painted white",
+          "softClose": true
+        }
+      },
+      {
+        "question": "For countertops, what material were you thinking? And any preference on edge profile?",
+        "answer": "Granite, something mid-range, not the cheapest but don't need the exotic stuff. Simple eased edge, nothing fancy.",
+        "inputMethod": "voice",
+        "extractedData": {
+          "countertopMaterial": "granite",
+          "countertopLevel": "level_2",
+          "edgeProfile": "eased"
+        }
+      },
+      {
+        "question": "Are you keeping the existing plumbing locations, or do you want to move the sink or add plumbing to the island?",
+        "answer": "Keep everything where it is. No plumbing in the island - just want it for prep space and seating.",
+        "inputMethod": "text",
+        "extractedData": {
+          "plumbingChanges": false,
+          "islandPlumbing": false,
+          "islandUse": ["prep", "seating"]
+        }
+      },
+      {
+        "question": "What level of appliances are you targeting - budget, mid-range, or high-end? Any specific brands you like?",
+        "answer": "Mid-range is fine. Stainless steel everything. The range has to be gas - we have a gas line already. No strong brand preference, maybe GE or Whirlpool.",
+        "inputMethod": "text",
+        "extractedData": {
+          "applianceLevel": "mid_range",
+          "applianceFinish": "stainless",
+          "rangeFuel": "gas",
+          "brandPreference": ["GE", "Whirlpool"]
+        }
+      },
+      {
+        "question": "For lighting, are you thinking recessed cans, pendants over the island, or both? And do you want under-cabinet lighting?",
+        "answer": "Both - recessed for general light and some nice pendants over the island. I'll pick out the pendants myself. And yes, definitely under cabinet lights, makes such a difference.",
+        "inputMethod": "voice",
+        "extractedData": {
+          "recessedLighting": true,
+          "pendantLighting": true,
+          "pendantsProvided": "by_owner",
+          "underCabinetLighting": true
+        }
+      },
+      {
+        "question": "Last question - what's your ideal timeline to start, and is there any hard deadline?",
+        "answer": "Would love to start early February if possible. No hard deadline, but hoping to be done before Easter so maybe 6-8 weeks?",
+        "inputMethod": "text",
+        "extractedData": {
+          "desiredStart": "2025-02-01",
+          "flexibility": "flexible",
+          "targetCompletion": "before Easter 2025"
+        }
+      }
+    ],
+    "confidenceScore": 0.91
+  },
+
+  "flags": {
+    "lowConfidenceItems": [
+      {
+        "field": "cadData.spaceModel.walls[1].type",
+        "confidence": 0.88,
+        "reason": "East wall type uncertain - marked as interior but could be load-bearing based on building structure. Recommend verification during demo."
+      },
+      {
+        "field": "csiScope.div10_specialties.items[0]",
+        "confidence": 0.70,
+        "reason": "Paper towel holder is inferred as typical inclusion - customer should confirm if desired."
+      },
+      {
+        "field": "csiScope.div22_plumbing.items[5]",
+        "confidence": 0.70,
+        "reason": "Ice maker line may be deferred by customer - refrigerator functions without it."
+      }
+    ],
+    "missingData": [
+      "Exact ceiling height confirmed by measurement (assumed 9ft based on typical condo)",
+      "Existing flooring type under vinyl (assumed adequate subfloor)",
+      "Exact pendant light fixtures (owner selecting separately)"
+    ],
+    "userVerificationRequired": false,
+    "verificationItems": []
+  }
+}
