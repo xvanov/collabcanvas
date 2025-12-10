@@ -131,6 +131,15 @@ export function MaterialEstimationPanel({ isVisible, onClose }: MaterialEstimati
           )}
           {billOfMaterials && (
             <button
+              onClick={() => window.open('/compare-prices', '_blank')}
+              className="px-3 py-1 text-sm bg-purple-600 text-white rounded hover:bg-purple-700 transition-colors"
+              title="Compare prices across retailers"
+            >
+              Compare Prices
+            </button>
+          )}
+          {billOfMaterials && (
+            <button
               onClick={handleRefreshPrices}
               disabled={fetchingPrices.size > 0}
               className={`px-3 py-1 text-sm rounded transition-colors ${
