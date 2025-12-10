@@ -2,9 +2,21 @@
 
 **Type**: Monolith Web Application
 **Stack**: React 19 + TypeScript + Vite + Firebase + Konva + Zustand
-**Last Updated**: 2025-12-09
+**Last Updated**: 2025-12-09 (Deep Scan)
+**Lines of Code**: ~44,000 LOC
 
 CollabCanvas is a real-time collaborative canvas application for construction professionals. It enables multiple users to annotate construction plans, measure walls and rooms, and get instant material estimates with AI assistance.
+
+## Project Metrics
+
+| Metric | Value |
+|--------|-------|
+| Components | 55+ |
+| Services | 25+ |
+| Custom Hooks | 8 |
+| Zustand Stores | 5 |
+| Cloud Functions | 6 |
+| Test Files | 40+ |
 
 ---
 

@@ -1,8 +1,25 @@
 # Source Tree Analysis
 
+**Last Updated**: 2025-12-09
+**Scan Level**: Deep
+**Lines of Code**: ~44,000 LOC
+
 ## Overview
 
 CollabCanvas follows a clean, modular architecture with clear separation of concerns. The codebase is organized into logical directories: components, services, hooks, store, pages, types, utils, and test utilities.
+
+### Key Metrics
+
+| Metric | Value |
+|--------|-------|
+| Total LOC | ~44,000 |
+| Components | 55+ |
+| Services | 25+ |
+| Custom Hooks | 8 |
+| Zustand Stores | 5 |
+| Cloud Functions | 6 |
+| Type Files | 6 |
+| Test Files | 40+ |
 
 ## Directory Structure
 

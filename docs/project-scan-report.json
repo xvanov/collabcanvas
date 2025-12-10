@@ -1,0 +1,109 @@
+{
+  "workflow_version": "1.2.0",
+  "timestamps": {
+    "started": "2025-12-09T19:55:00Z",
+    "last_updated": "2025-12-09T20:15:00Z",
+    "completed": "2025-12-09T20:15:00Z"
+  },
+  "mode": "full_rescan",
+  "scan_level": "deep",
+  "project_root": "/Users/kalin.ivanov/rep/collabcanvas-root/gauntletai",
+  "output_folder": "/Users/kalin.ivanov/rep/collabcanvas-root/gauntletai/docs",
+  "project_classification": {
+    "repository_type": "monolith",
+    "project_type": "web",
+    "primary_language": "TypeScript",
+    "framework": "React 19",
+    "build_tool": "Vite 7",
+    "backend": "Firebase BaaS + Cloud Functions"
+  },
+  "metrics": {
+    "lines_of_code": 44000,
+    "components": 55,
+    "services": 25,
+    "hooks": 8,
+    "stores": 5,
+    "cloud_functions": 6,
+    "test_files": 40
+  },
+  "completed_steps": [
+    {
+      "step": "step_1",
+      "status": "completed",
+      "timestamp": "2025-12-09T19:56:00Z",
+      "summary": "Classified as monolith with 1 part (React SPA + Cloud Functions)"
+    },
+    {
+      "step": "step_2",
+      "status": "completed",
+      "timestamp": "2025-12-09T19:57:00Z",
+      "summary": "Found 60+ existing docs in reorganized structure"
+    },
+    {
+      "step": "step_3",
+      "status": "completed",
+      "timestamp": "2025-12-09T19:58:00Z",
+      "summary": "Tech stack: React 19, TypeScript 5.9, Vite 7, Firebase 12"
+    },
+    {
+      "step": "step_4",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:05:00Z",
+      "summary": "Deep scan: 55 components, 25 services, 6 cloud functions analyzed"
+    },
+    {
+      "step": "step_5",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:08:00Z",
+      "summary": "Source tree documented with 25 critical folders"
+    },
+    {
+      "step": "step_6",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:10:00Z",
+      "summary": "Dev/deployment guides verified"
+    },
+    {
+      "step": "step_8",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:12:00Z",
+      "summary": "Architecture docs updated for 1 part"
+    },
+    {
+      "step": "step_10",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:14:00Z",
+      "summary": "Master index updated with metrics"
+    },
+    {
+      "step": "step_12",
+      "status": "completed",
+      "timestamp": "2025-12-09T20:15:00Z",
+      "summary": "Workflow complete"
+    }
+  ],
+  "current_step": "completed",
+  "outputs_generated": [
+    "index.md",
+    "architecture/overview.md",
+    "architecture/source-tree-analysis.md",
+    "architecture/component-inventory.md",
+    "setup/firebase.md",
+    "setup/ai-services.md",
+    "project-scan-report.json"
+  ],
+  "project_types": [
+    {
+      "part_id": "main",
+      "project_type_id": "web",
+      "display_name": "React 19 SPA with Firebase"
+    }
+  ],
+  "findings": {
+    "project_classification": "Monolith, 1 part, React 19 + Firebase",
+    "technology_stack": "React 19, TypeScript 5.9, Vite 7, Firebase 12, Konva, Zustand 5",
+    "components": "55+ components in 6 categories (canvas, scope, time, money, shared, project)",
+    "services": "25+ services (Firebase, AI, material, pricing, export)",
+    "cloud_functions": "6 functions (aiCommand, materialEstimate, pricing, sagemaker, projectDeletion, index)"
+  }
+}
