@@ -366,24 +366,24 @@ service cloud.firestore {
         function getProject() {
           return get(/databases/$(database)/documents/projects/$(projectId));
         }
-        
+
         // Helper function to check if user is owner or collaborator
         function isOwnerOrCollaborator() {
           return request.auth != null && getProject() != null
             && (getProject().data.ownerId == request.auth.uid
                 || getProject().data.collaborators != null);
         }
-        
+
         // Helper function to check if user is owner or editor
         function isOwnerOrEditor() {
           return request.auth != null && getProject() != null
             && (getProject().data.ownerId == request.auth.uid
                 || getProject().data.collaborators != null);
         }
-        
+
         // Read: Owner or collaborator (viewer/editor)
         allow read: if isOwnerOrCollaborator();
-        
+
         // Create/Update: Owner or editor collaborator
         allow create, update: if isOwnerOrEditor()
           && request.resource.data.tasks is list
@@ -391,11 +391,20 @@ service cloud.firestore {
           && request.resource.data.updatedBy == request.auth.uid
           && request.resource.data.createdAt is number
           && request.resource.data.updatedAt is number;
-        
+
         // Delete: Only owner
-        allow delete: if request.auth != null 
+        allow delete: if request.auth != null
           && getProject() != null
           && getProject().data.ownerId == request.auth.uid;
+      }
+
+      // Price Comparison subcollection - multi-retailer price comparison results
+      match /priceComparison/{comparisonId} {
+        // Allow authenticated users to read/write price comparison data
+        // Cloud Functions handle most writes, but frontend needs read access
+        allow read: if request.auth != null;
+        allow create, update: if request.auth != null;
+        allow delete: if request.auth != null;
       }
     }
     
