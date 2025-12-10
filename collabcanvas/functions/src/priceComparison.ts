@@ -51,7 +51,7 @@ interface RetailerProduct {
   price: number;
   currency: string;
   url: string;
-  imageUrl?: string;
+  imageUrl: string | null;
   retailer: Retailer;
 }
 
@@ -248,7 +248,7 @@ function normalizeProduct(rawProduct: unknown, retailer: Retailer): RetailerProd
     price,
     currency: 'USD',
     url,
-    imageUrl: product.image ? String(product.image) : undefined,
+    imageUrl: product.image ? String(product.image) : null,
     retailer,
   };
 }

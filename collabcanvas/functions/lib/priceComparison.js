@@ -183,7 +183,7 @@ function normalizeProduct(rawProduct, retailer) {
         price,
         currency: 'USD',
         url,
-        imageUrl: product.image ? String(product.image) : undefined,
+        imageUrl: product.image ? String(product.image) : null,
         retailer,
     };
 }
