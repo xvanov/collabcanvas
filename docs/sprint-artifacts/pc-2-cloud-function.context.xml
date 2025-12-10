@@ -1,0 +1,262 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>price-comparison</epicId>
+    <storyId>PC-2</storyId>
+    <title>Unwrangle + LLM Cloud Function</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/story-pc-2-cloud-function.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>frontend application</asA>
+    <iWant>a Cloud Function that fetches and matches products from multiple retailers</iWant>
+    <soThat>I can display price comparisons to users</soThat>
+    <tasks>
+      <task id="1" ac="1,12,13">
+        <title>Set up Cloud Function scaffold</title>
+        <subtasks>
+          <subtask>Create functions/src/priceComparison.ts</subtask>
+          <subtask>Configure onCall with CORS, memory (1GiB), timeout (540s)</subtask>
+          <subtask>Export from functions/src/index.ts</subtask>
+        </subtasks>
+      </task>
+      <task id="2" ac="2,3,4,5">
+        <title>Implement caching logic</title>
+        <subtasks>
+          <subtask>Check for existing status='complete' results in Firestore</subtask>
+          <subtask>Handle forceRefresh parameter</subtask>
+          <subtask>Return { cached: true } when appropriate</subtask>
+        </subtasks>
+      </task>
+      <task id="3" ac="6,11">
+        <title>Implement progress tracking</title>
+        <subtasks>
+          <subtask>Initialize Firestore document with status='processing'</subtask>
+          <subtask>Update after each product completes</subtask>
+          <subtask>Set status='complete' or 'error' on finish</subtask>
+        </subtasks>
+      </task>
+      <task id="4" ac="7">
+        <title>Implement Unwrangle API integration</title>
+        <subtasks>
+          <subtask>Create fetchFromUnwrangle() function</subtask>
+          <subtask>Query all 3 retailers in parallel per product</subtask>
+          <subtask>Handle API errors gracefully</subtask>
+        </subtasks>
+      </task>
+      <task id="5" ac="8,9">
+        <title>Implement LLM matching</title>
+        <subtasks>
+          <subtask>Create selectBestMatch() with OpenAI GPT-4o-mini</subtask>
+          <subtask>Create parseMatchResult() with JSON sanitization</subtask>
+          <subtask>Handle markdown-wrapped JSON responses (```json blocks)</subtask>
+        </subtasks>
+      </task>
+      <task id="6" ac="10">
+        <title>Implement error handling</title>
+        <subtasks>
+          <subtask>Handle partial failures (1-2 retailers fail)</subtask>
+          <subtask>Ensure other retailers still return results</subtask>
+        </subtasks>
+      </task>
+      <task id="7" ac="14">
+        <title>Write unit tests</title>
+        <subtasks>
+          <subtask>Test caching logic</subtask>
+          <subtask>Test parseMatchResult() with various inputs</subtask>
+          <subtask>Mock Unwrangle and OpenAI responses</subtask>
+          <subtask>Test partial and complete failures</subtask>
+        </subtasks>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">Cloud Function comparePrices is callable from frontend</criterion>
+    <criterion id="AC2">Function accepts projectId as required parameter</criterion>
+    <criterion id="AC3">Function checks for existing status='complete' results in Firestore</criterion>
+    <criterion id="AC4">If complete results exist AND forceRefresh is false, return { cached: true } immediately</criterion>
+    <criterion id="AC5">If no results OR forceRefresh is true, run full comparison with incremental writes</criterion>
+    <criterion id="AC6">Function writes progress to Firestore after EACH product completes (real-time updates)</criterion>
+    <criterion id="AC7">Function queries all 3 retailers via Unwrangle API in parallel (per product)</criterion>
+    <criterion id="AC8">OpenAI GPT-4o-mini selects best match per retailer with JSON sanitization</criterion>
+    <criterion id="AC9">LLM response parser handles markdown-wrapped JSON (strips ```json blocks)</criterion>
+    <criterion id="AC10">Function handles partial failures gracefully (1-2 retailers fail for a product)</criterion>
+    <criterion id="AC11">Firestore document includes status field: 'processing' | 'complete' | 'error'</criterion>
+    <criterion id="AC12">Timeout is set to 540 seconds (max for 2nd gen functions)</criterion>
+    <criterion id="AC13">CORS configured for localhost dev servers</criterion>
+    <criterion id="AC14">Unit tests with mocked API responses pass</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/price-comparison-tech-spec.md</path>
+        <title>Price Intelligence Module - Technical Specification</title>
+        <section>Cloud Function Structure</section>
+        <snippet>Main Cloud Function entry point with fetchFromUnwrangle, selectBestMatch, normalizeProduct functions. Handles caching via Firestore, parallel API calls to 3 retailers.</snippet>
+      </doc>
+      <doc>
+        <path>docs/price-comparison-tech-spec.md</path>
+        <title>Price Intelligence Module - Technical Specification</title>
+        <section>Technical Approach - Unwrangle API Integration</section>
+        <snippet>Platform identifiers: homeDepot='homedepot_search', lowes='lowes_search', aceHardware='acehardware_search'. Parallel API calls via Promise.all to all 3 retailers.</snippet>
+      </doc>
+      <doc>
+        <path>docs/price-comparison-tech-spec.md</path>
+        <title>Price Intelligence Module - Technical Specification</title>
+        <section>LLM Product Matching (OpenAI)</section>
+        <snippet>Use GPT-4o-mini for cost-effective matching. Returns JSON: { selectedIndex, confidence, reasoning }. Must handle markdown-wrapped JSON responses.</snippet>
+      </doc>
+      <doc>
+        <path>docs/price-comparison-tech-spec.md</path>
+        <title>Price Intelligence Module - Technical Specification</title>
+        <section>Existing Patterns to Follow</section>
+        <snippet>Pattern from pricing.ts: onCall with CORS, extended timeout (540s for 2nd gen). Real-time updates via Firestore incremental writes and onSnapshot subscriptions.</snippet>
+      </doc>
+      <doc>
+        <path>docs/price-comparison-tech-spec.md</path>
+        <title>Price Intelligence Module - Technical Specification</title>
+        <section>Project-Scoped Persistence Strategy</section>
+        <snippet>Firestore path: projects/{projectId}/priceComparison/latest. Fields: status, totalProducts, completedProducts, results[], startedAt, completedAt, error.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/epic-price-comparison.md</path>
+        <title>Epic: Price Intelligence Module</title>
+        <section>Technical Dependencies</section>
+        <snippet>Unwrangle API key, OpenAI API key (already in stack), Firebase Cloud Functions, Firestore for caching.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/story-pc-1-types-mock-data.md</path>
+        <title>Story PC-1: Types and Mock Data Setup</title>
+        <section>Type Definitions</section>
+        <snippet>Retailer, RetailerProduct, MatchResult, ComparisonResult, CompareRequest, ComparisonProgress, ComparisonStatus types defined in src/types/priceComparison.ts. Must duplicate in Cloud Function.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>API Pattern</section>
+        <snippet>Firebase Callable + Firestore Listeners pattern. Native auth, instant UI updates via onSnapshot, no extra infra needed.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>collabcanvas/functions/src/pricing.ts</path>
+        <kind>cloud-function</kind>
+        <symbol>getHomeDepotPrice</symbol>
+        <lines>226-365</lines>
+        <reason>Reference pattern for onCall Cloud Function with CORS, timeout, caching. Shows retry logic, error handling, Firestore cache pattern.</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/functions/src/index.ts</path>
+        <kind>entry-point</kind>
+        <symbol>exports</symbol>
+        <lines>1-12</lines>
+        <reason>Must add comparePrices export here alongside existing exports.</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/src/types/priceComparison.ts</path>
+        <kind>type-definitions</kind>
+        <symbol>Retailer, RetailerProduct, MatchResult, ComparisonResult, CompareRequest, ComparisonStatus, ComparisonProgress</symbol>
+        <lines>1-84</lines>
+        <reason>Types from PC-1 that must be duplicated in Cloud Function (can't import from src/).</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <node>
+        <package>firebase-functions</package>
+        <version>^4.8.0</version>
+        <usage>onCall, HttpsError for Cloud Function definition</usage>
+      </node>
+      <node>
+        <package>firebase-admin</package>
+        <version>^12.0.0</version>
+        <usage>getFirestore, FieldValue for Firestore operations</usage>
+      </node>
+      <node>
+        <package>openai</package>
+        <version>^4.20.0</version>
+        <usage>OpenAI client for GPT-4o-mini product matching</usage>
+      </node>
+      <node>
+        <package>dotenv</package>
+        <version>^16.0.0</version>
+        <usage>Load UNWRANGLE_API_KEY and OPENAI_API_KEY from .env</usage>
+      </node>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Cloud Function uses onCall pattern with CORS configuration for localhost dev servers (5173, 4173)</constraint>
+    <constraint type="architecture">Types must be duplicated in Cloud Function file - cannot import from src/</constraint>
+    <constraint type="architecture">Firestore path is projects/{projectId}/priceComparison/latest - project-scoped storage</constraint>
+    <constraint type="performance">Timeout set to 540 seconds (max for 2nd gen Cloud Functions)</constraint>
+    <constraint type="performance">Memory set to 1GiB for LLM calls</constraint>
+    <constraint type="pattern">Use Promise.all for parallel API calls to all 3 retailers per product</constraint>
+    <constraint type="pattern">Incremental Firestore writes after each product completes (real-time updates pattern)</constraint>
+    <constraint type="pattern">Return error objects instead of throwing - match existing pricing.ts pattern</constraint>
+    <constraint type="testing">Mock Unwrangle and OpenAI responses in tests - no real API calls</constraint>
+    <constraint type="testing">Test files co-located: functions/src/priceComparison.test.ts</constraint>
+    <constraint type="code-style">No semicolons, single quotes, 2-space indentation (per existing codebase)</constraint>
+    <constraint type="env">UNWRANGLE_API_KEY must be added to functions/.env</constraint>
+    <constraint type="env">OPENAI_API_KEY already exists in functions/.env</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>Unwrangle API</name>
+      <kind>REST endpoint</kind>
+      <signature>GET https://data.unwrangle.com/api/getter/?platform={platform}&amp;search={productName}&amp;api_key={apiKey}&amp;zipcode={zipCode}</signature>
+      <path>External API</path>
+      <notes>Platforms: homedepot_search, lowes_search, acehardware_search. Returns results array with product data.</notes>
+    </interface>
+    <interface>
+      <name>OpenAI Chat Completions</name>
+      <kind>REST endpoint</kind>
+      <signature>openai.chat.completions.create({ model: 'gpt-4o-mini', messages: [...], temperature: 0.1 })</signature>
+      <path>External API via openai npm package</path>
+      <notes>Returns JSON with selectedIndex, confidence, reasoning. May wrap in markdown code blocks.</notes>
+    </interface>
+    <interface>
+      <name>comparePrices</name>
+      <kind>Firebase Callable Function</kind>
+      <signature>onCall&lt;{ request: CompareRequest }&gt;({ cors: [...], maxInstances: 10, memory: '1GiB', timeoutSeconds: 540 }, async (req) => { ... })</signature>
+      <path>functions/src/priceComparison.ts</path>
+      <notes>Input: { projectId, productNames, forceRefresh?, zipCode? }. Output: { cached: boolean } or throws HttpsError.</notes>
+    </interface>
+    <interface>
+      <name>Firestore Price Comparison Document</name>
+      <kind>Firestore document</kind>
+      <signature>projects/{projectId}/priceComparison/latest</signature>
+      <path>Firestore</path>
+      <notes>Fields: status, totalProducts, completedProducts, results[], startedAt, completedAt?, createdBy, error?</notes>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Tests use Vitest framework with vi.mock for mocking. Cloud Function tests are co-located at functions/src/priceComparison.test.ts. Mock all external API calls (Unwrangle, OpenAI). Test error scenarios including partial failures. Use existing pricing.ts test patterns as reference.
+    </standards>
+    <locations>
+      <location>functions/src/priceComparison.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC3,AC4">Test: Complete results exist (status='complete'), forceRefresh=false - returns { cached: true } immediately</idea>
+      <idea ac="AC5">Test: Complete results exist, forceRefresh=true - runs full comparison, overwrites</idea>
+      <idea ac="AC5,AC6">Test: No existing results - initializes with status='processing', processes all products</idea>
+      <idea ac="AC9">Test: parseMatchResult() handles clean JSON</idea>
+      <idea ac="AC9">Test: parseMatchResult() handles markdown-wrapped JSON (```json blocks)</idea>
+      <idea ac="AC9">Test: parseMatchResult() returns fallback on invalid JSON</idea>
+      <idea ac="AC7">Test: Mock Unwrangle responses for all 3 retailers</idea>
+      <idea ac="AC8">Test: Mock OpenAI response</idea>
+      <idea ac="AC10">Test: Partial failure (1-2 retailers fail for a product) - other retailers still work</idea>
+      <idea ac="AC10,AC11">Test: Complete failure - status set to 'error' with message</idea>
+      <idea ac="AC6">Test: Verify Firestore document updated after each product (incremental writes)</idea>
+      <idea ac="AC11">Test: Verify final status is 'complete' with completedAt timestamp</idea>
+    </ideas>
+  </tests>
+</story-context>
