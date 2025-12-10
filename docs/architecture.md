@@ -2,10 +2,10 @@
 
 ## Executive Summary
 
-TrueCost is an AI-powered construction estimation system built as a brownfield pivot from the existing CollabCanvas application. The architecture employs Python Deep Agents (7 specialized agents) orchestrated via Firebase Cloud Functions, with the existing React 19 frontend extended for the three-section estimation workflow (Input → Plan → Final Estimate).
+TrueCost is an AI-powered construction estimation system built as a brownfield pivot from the existing CollabCanvas application. The architecture employs LangChain Deep Agents (5 specialized agents) orchestrated via Firebase Cloud Functions, with the existing React 19 frontend extended for the three-section estimation workflow (Input → Plan → Final Estimate).
 
 Key architectural decisions:
-- **Agent Framework:** Python Deep Agents (deepagents 0.2) for multi-agent orchestration
+- **Agent Framework:** LangChain Deep Agents (`deepagents` 0.2.0+) for multi-agent orchestration with built-in planning, file system tools, and subagent spawning
 - **LLM:** OpenAI GPT-4.1 (configurable via `LLM_MODEL` env var)
 - **Backend:** Firebase ecosystem (Cloud Functions Python 2nd gen, Firestore, Storage)
 - **Frontend:** Existing React 19 + TypeScript + Vite + shadcn/ui
@@ -29,7 +29,7 @@ npm install
 
 | Category | Decision | Version | Affects | Rationale |
 |----------|----------|---------|---------|-----------|
-| Agent Orchestration | Python Deep Agents | deepagents 0.2 | All agent FRs | Native subagent spawning, built-in planning, context management |
+| Agent Orchestration | LangChain Deep Agents | deepagents 0.2.0+ | All agent FRs | Built-in planning tool (`write_todos`), file system tools, subagent spawning (`task`), context management |
 | LLM Provider | OpenAI GPT-4.1 (configurable) | gpt-4.1 | All agents | Strong instruction following, 1M context, swappable via env var |
 | Agent State | Firestore + Deep Agents Filesystem | Firestore SDK | FR11, FR65-68, FR77 | Firebase-native persistence, real-time UI updates |
 | CAD Processing | ezdxf (DWG) + GPT-4o Vision (PDF/images) | ezdxf, gpt-4o | FR12-17 | Programmatic for DWG (100% accuracy), Vision for images |
@@ -536,10 +536,16 @@ ENABLE_WHISPER_FALLBACK=true
 
 ## Architecture Decision Records (ADRs)
 
-### ADR-001: Python Deep Agents over LangGraph.js
-**Decision:** Use Python Deep Agents for agent orchestration
-**Context:** Need multi-agent pipeline with structured handoffs
-**Rationale:** Native subagent spawning, built-in planning tool, context management for large CAD data, history summarization
+### ADR-001: LangChain Deep Agents for Agent Orchestration
+**Decision:** Use LangChain Deep Agents (`deepagents` library) for agent orchestration
+**Context:** Need multi-agent pipeline with structured handoffs, planning, and context management
+**Rationale:** 
+- Built-in planning tool (`write_todos`) for task decomposition
+- Native subagent spawning via `task` tool for context isolation
+- File system tools (`ls`, `read_file`, `write_file`, `edit_file`) for context management
+- Built on LangGraph with LangChain integration
+- Perfect for complex multi-step tasks like cost estimation
+**Implementation:** Install `deepagents>=0.2.0`, use `create_deep_agent()` for each agent
 **Consequences:** Mixed language codebase (TypeScript frontend, Python backend)
 
 ### ADR-002: GPT-4.1 with Env Var Configuration
