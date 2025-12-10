@@ -15,7 +15,7 @@ test.describe('Example Test Suite', () => {
     await page.goto('/');
 
     // Then: Page should load successfully
-    await expect(page).toHaveTitle(/CollabCanvas/i);
+    await expect(page).toHaveTitle(/Projective/i);
   });
 
   test('should demonstrate user factory usage', async ({ userFactory }) => {
