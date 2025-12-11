@@ -7,8 +7,7 @@ from BLS and Weather APIs.
 Architecture:
 - Runs monthly via Cloud Scheduler
 - Batch updates all tracked zip codes
-- Retry logic with exponential backoff
-- Graceful fallback on API failure
+- Graceful fallback on API failure (retry logic handled by underlying services)
 - Structured logging for monitoring
 
 References:
@@ -21,12 +20,6 @@ from typing import Dict, List, Optional
 import asyncio
 import time
 
-from tenacity import (
-    retry,
-    stop_after_attempt,
-    wait_exponential,
-    retry_if_exception_type,
-)
 import structlog
 
 from services.bls_service import get_labor_rates_for_zip, BLSResponse

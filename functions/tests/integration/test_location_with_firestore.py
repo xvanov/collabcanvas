@@ -155,23 +155,22 @@ class TestLocationWithFirestore:
         # 5. Cache result
         # 6. Return
 
-        # For now, test with local data since Firestore integration
-        # requires emulator setup
-        result = await get_location_factors("80202")
+        # Use the seeded zip code from seed_test_data fixture
+        result = await get_location_factors("12345")
 
         assert isinstance(result, LocationFactors)
-        assert result.zip_code == "80202"
+        assert result.zip_code == "12345"
         assert len(result.labor_rates) == 8
 
     @pytest.mark.asyncio
-    async def test_firestore_document_structure_matches_schema(self, firestore_client):
+    async def test_firestore_document_structure_matches_schema(self, seed_test_data, firestore_client):
         """AC 4.1.1-4.1.5: Verify Firestore document structure matches expected schema."""
         # Expected schema from tech-spec:
         # /costData/locationFactors/{zipCode}
         #   └── { regionCode, city, state, laborRates: {}, isUnion,
         #         permitCosts: {}, weatherFactors: {} }
 
-        expected_fields = [
+        expected_fields = {
             "regionCode",
             "city",
             "state",
@@ -180,9 +179,9 @@ class TestLocationWithFirestore:
             "unionPremium",
             "permitCosts",
             "weatherFactors",
-        ]
+        }
 
-        expected_labor_rates = [
+        expected_labor_rates = {
             "electrician",
             "plumber",
             "carpenter",
@@ -191,26 +190,58 @@ class TestLocationWithFirestore:
             "painter",
             "tile_setter",
             "general_labor",
-        ]
+        }
 
-        expected_permit_fields = [
+        expected_permit_fields = {
             "basePercentage",
             "minimum",
             "maximum",
             "inspectionFee",
-        ]
+        }
 
-        expected_weather_fields = [
+        expected_weather_fields = {
             "winterSlowdown",
             "summerPremium",
             "rainySeasonMonths",
             "outdoorWorkAdjustment",
-        ]
+        }
 
-        # Validate schema documentation is correct
-        assert len(expected_labor_rates) == 8, "Must have 8 trades"
-        assert len(expected_permit_fields) == 4, "Permit costs has 4 fields"
-        assert len(expected_weather_fields) == 4, "Weather factors has 4 fields"
+        # Fetch the seeded document from Firestore
+        test_zip = "12345"
+        doc_ref = (
+            firestore_client.collection("costData")
+            .document("locationFactors")
+            .collection(test_zip)
+            .document("data")
+        )
+        doc = doc_ref.get()
+
+        assert doc.exists, f"Document for zip {test_zip} not found in Firestore"
+
+        doc_data = doc.to_dict()
+
+        # Validate top-level fields
+        actual_fields = set(doc_data.keys())
+        missing_fields = expected_fields - actual_fields
+        assert not missing_fields, f"Missing top-level fields: {missing_fields}"
+
+        # Validate laborRates nested keys
+        actual_labor_rates = set(doc_data.get("laborRates", {}).keys())
+        missing_labor_rates = expected_labor_rates - actual_labor_rates
+        assert not missing_labor_rates, f"Missing labor rate keys: {missing_labor_rates}"
+        assert len(actual_labor_rates) == 8, f"Expected 8 trades, got {len(actual_labor_rates)}"
+
+        # Validate permitCosts nested keys
+        actual_permit_fields = set(doc_data.get("permitCosts", {}).keys())
+        missing_permit_fields = expected_permit_fields - actual_permit_fields
+        assert not missing_permit_fields, f"Missing permit fields: {missing_permit_fields}"
+        assert len(actual_permit_fields) == 4, f"Expected 4 permit fields, got {len(actual_permit_fields)}"
+
+        # Validate weatherFactors nested keys
+        actual_weather_fields = set(doc_data.get("weatherFactors", {}).keys())
+        missing_weather_fields = expected_weather_fields - actual_weather_fields
+        assert not missing_weather_fields, f"Missing weather fields: {missing_weather_fields}"
+        assert len(actual_weather_fields) == 4, f"Expected 4 weather fields, got {len(actual_weather_fields)}"
 
     @pytest.mark.asyncio
     async def test_fallback_when_zip_not_in_firestore(self):

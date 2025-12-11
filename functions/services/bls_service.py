@@ -633,12 +633,20 @@ async def get_single_trade_rate(
         BLSLaborRate for the specified trade
 
     Raises:
-        ValueError: If trade is not recognized
+        ValueError: If trade is not recognized or not found in response
     """
     if trade not in SOC_CODE_MAP:
         raise ValueError(f"Unknown trade: {trade}. Valid trades: {list(SOC_CODE_MAP.keys())}")
 
     response = await get_labor_rates_for_zip(zip_code, trades=[trade])
+
+    if trade not in response.rates:
+        available_rates = list(response.rates.keys())
+        raise ValueError(
+            f"Trade '{trade}' not found in response for zip_code '{zip_code}'. "
+            f"Available rates: {available_rates}"
+        )
+
     return response.rates[trade]
 
 

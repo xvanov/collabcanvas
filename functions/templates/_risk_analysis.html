@@ -77,9 +77,9 @@
             <text x="430" y="15" class="histogram-label" text-anchor="middle" fill="#dc2626">P90</text>
 
             {# X-axis labels #}
-            <text x="50" y="175" class="histogram-label">${{ "{:,.0f}".format(risk_analysis.min | default(estimate.p50 * 0.85)) | replace(',', '') }}k</text>
+            <text x="50" y="175" class="histogram-label">${{ "{:,.0f}".format((risk_analysis.min | default(estimate.p50 * 0.85)) / 1000) | replace(',', '') }}k</text>
             <text x="315" y="175" class="histogram-label" text-anchor="middle">Cost Range</text>
-            <text x="580" y="175" class="histogram-label" text-anchor="end">${{ "{:,.0f}".format(risk_analysis.max | default(estimate.p90 * 1.1)) | replace(',', '') }}k</text>
+            <text x="580" y="175" class="histogram-label" text-anchor="end">${{ "{:,.0f}".format((risk_analysis.max | default(estimate.p90 * 1.1)) / 1000) | replace(',', '') }}k</text>
         </svg>
     </div>
 
