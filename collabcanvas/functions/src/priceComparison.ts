@@ -4,8 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import OpenAI from 'openai';
-// Note: Using cors: true to support Firebase preview channel URLs
-// (dynamic URLs like collabcanvas-dev--pr{N}-{branch}-{hash}.web.app)
+import { getCorsOrigins } from './corsConfig';
 
 // Load environment variables - try multiple locations
 dotenv.config();
@@ -738,7 +737,7 @@ async function compareOneProduct(
 
 // Export configuration for testing - changes here are detected by tests
 export const comparePricesConfig = {
-  cors: true, // Allow all origins - Firebase preview channels have dynamic URLs
+  cors: getCorsOrigins(),
   maxInstances: 10,
   memory: '1GiB' as const,
   timeoutSeconds: 540, // Max for 2nd gen - handles large product lists

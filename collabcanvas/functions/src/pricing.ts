@@ -3,7 +3,7 @@ import * as admin from 'firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-// Note: Using cors: true to support Firebase preview channel URLs
+import { getCorsOrigins } from './corsConfig';
 
 // Load environment variables - try multiple locations
 dotenv.config(); // Default: .env in functions directory
@@ -225,7 +225,7 @@ async function fetchFromSerpApi(
 }
 
 export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
-  cors: true, // Allow all origins - Firebase preview channels have dynamic URLs
+  cors: getCorsOrigins(),
   maxInstances: 20,
   memory: '256MiB',
   timeoutSeconds: 60, // Allow up to 60 seconds for SerpAPI calls
