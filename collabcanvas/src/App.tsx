@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Project } from './pages/Project';
+import { PriceComparisonPage } from './components/PriceComparisonPage';
 
 /**
  * Protected Route Component
@@ -51,6 +52,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Project />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/compare-prices"
+          element={
+            <ProtectedRoute>
+              <PriceComparisonPage />
             </ProtectedRoute>
           }
         />
