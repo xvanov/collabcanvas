@@ -2,14 +2,443 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ===================================================================
+   FONT IMPORTS - IBM Plex Sans, IBM Plex Serif from Google Fonts
+   SF Pro Text will fall back to system fonts on Apple devices
+   =================================================================== */
+
+/* IBM Plex Sans - Headings (400, 600, 700) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;600;700&display=swap');
+
+/* IBM Plex Serif - Accent (400, 600) */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600&display=swap');
+
+/* Note: SF Pro Text is a system font on Apple devices and will be used via font-family fallback */
+
+/* ===================================================================
+   GLOBAL CSS RESET & BASE STYLES
+   =================================================================== */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
 body {
   margin: 0;
   padding: 0;
   min-height: 100vh;
-  font-family: system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  font-family: 'SF Pro Text', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
+  background-color: #050A14; /* truecost-bg-primary */
+  color: #FFFFFF; /* truecost-text-primary */
+  overflow-x: hidden;
 }
 
 #root {
   width: 100%;
-  height: 100vh;
+  min-height: 100vh;
+}
+
+/* ===================================================================
+   CUSTOM UTILITY CLASSES - Glass Components
+   =================================================================== */
+
+@layer components {
+  /* Glass panel base - used for cards, panels, modals */
+  .glass-panel {
+    background: rgba(255, 255, 255, 0.07);
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 18px;
+    box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  }
+
+  /* Glass panel with hover glow */
+  .glass-panel-hover {
+    @apply glass-panel;
+    transition: box-shadow 120ms ease, transform 120ms ease;
+  }
+
+  .glass-panel-hover:hover {
+    box-shadow: 0 0 16px rgba(59, 227, 245, 0.5), 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+    transform: translateY(-2px);
+  }
+
+  /* Glass input/form field */
+  .glass-input {
+    @apply glass-panel;
+    padding: 12px 16px;
+    color: rgba(255, 255, 255, 0.95);
+    outline: none;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+  }
+
+  .glass-input:focus {
+    border-color: #3BE3F5;
+    box-shadow: 0 0 16px rgba(59, 227, 245, 0.5);
+  }
+
+  .glass-input::placeholder {
+    color: rgba(255, 255, 255, 0.55);
+  }
+
+  /* Primary pill button */
+  .btn-pill-primary {
+    padding: 12px 32px;
+    border-radius: 999px;
+    background: linear-gradient(135deg, #3BE3F5 0%, #17C5D1 100%);
+    color: #050A14;
+    font-weight: 600;
+    font-size: 16px;
+    box-shadow: 0 0 16px rgba(59, 227, 245, 0.5);
+    transition: box-shadow 120ms ease, transform 120ms ease;
+    border: none;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-pill-primary:hover {
+    box-shadow: 0 0 24px rgba(59, 227, 245, 0.7);
+    transform: scale(1.02);
+  }
+
+  .btn-pill-primary:active {
+    transform: scale(0.98);
+  }
+
+  /* Secondary outline button */
+  .btn-pill-secondary {
+    padding: 12px 32px;
+    border-radius: 999px;
+    background: transparent;
+    color: #3BE3F5;
+    font-weight: 600;
+    font-size: 16px;
+    border: 1px solid rgba(255, 255, 255, 0.16);
+    transition: border-color 120ms ease, box-shadow 120ms ease, background-color 120ms ease, color 120ms ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+  }
+
+  .btn-pill-secondary:hover {
+    border-color: #3BE3F5;
+    box-shadow: 0 0 16px rgba(59, 227, 245, 0.3);
+    background: rgba(59, 227, 245, 0.05);
+  }
+
+  /* Utility square button */
+  .btn-utility {
+    padding: 10px;
+    border-radius: 10px;
+    background: rgba(255, 255, 255, 0.05);
+    color: rgba(255, 255, 255, 0.75);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    transition: background-color 120ms ease, border-color 120ms ease;
+    cursor: pointer;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .btn-utility:hover {
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+
+  /* Neon underline (for navbars) */
+  .neon-underline {
+    border-bottom: 1px solid rgba(59, 227, 245, 0.3);
+    box-shadow: 0 1px 8px rgba(59, 227, 245, 0.2);
+  }
+
+  /* Spacious container with responsive padding */
+  .container-spacious {
+    width: 100%;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: 20px;
+    padding-right: 20px;
+  }
+
+  @media (min-width: 768px) {
+    .container-spacious {
+      padding-left: 40px;
+      padding-right: 40px;
+    }
+  }
+
+  @media (min-width: 1280px) {
+    .container-spacious {
+      padding-left: 80px;
+      padding-right: 80px;
+    }
+  }
+}
+
+/* ===================================================================
+   FOCUS VISIBLE STYLES (Accessibility)
+   =================================================================== */
+
+@layer base {
+  *:focus-visible {
+    outline: 2px solid #3BE3F5;
+    outline-offset: 2px;
+  }
+
+  button:focus-visible,
+  a:focus-visible,
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible {
+    outline: 2px solid #3BE3F5;
+    outline-offset: 2px;
+  }
+}
+
+/* ===================================================================
+   REDUCED MOTION SUPPORT (Accessibility)
+   =================================================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable skyline animations when reduced motion is requested */
+  .animate-skyline-rise-1,
+  .animate-skyline-rise-2,
+  .animate-skyline-rise-3,
+  .animate-skyline-rise-4,
+  .animate-skyline-rise-5 {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: scaleY(1) !important;
+  }
+}
+
+/* ===================================================================
+   SCROLLBAR STYLING (Dark Theme)
+   =================================================================== */
+
+::-webkit-scrollbar {
+  width: 12px;
+  height: 12px;
+}
+
+::-webkit-scrollbar-track {
+  background: #0F1629;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(59, 227, 245, 0.4);
+}
+
+/* Firefox scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) #0F1629;
+}
+
+/* ===================================================================
+   LANDING PAGE - SKYLINE ANIMATION
+   =================================================================== */
+
+@layer utilities {
+  /* Skyline building rise animations */
+  @keyframes skyline-rise {
+    0%, 100% {
+      transform: scaleY(0);
+      opacity: 0;
+      transform-origin: bottom;
+    }
+    10% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+    90% {
+      transform: scaleY(1);
+      opacity: 1;
+    }
+  }
+
+  .animate-skyline-rise-1 {
+    animation: skyline-rise 6s ease-in-out infinite;
+    animation-delay: 0s;
+  }
+
+  .animate-skyline-rise-2 {
+    animation: skyline-rise 6s ease-in-out infinite;
+    animation-delay: 0.2s;
+  }
+
+  .animate-skyline-rise-3 {
+    animation: skyline-rise 6s ease-in-out infinite;
+    animation-delay: 0.4s;
+  }
+
+  .animate-skyline-rise-4 {
+    animation: skyline-rise 6s ease-in-out infinite;
+    animation-delay: 0.6s;
+  }
+
+  .animate-skyline-rise-5 {
+    animation: skyline-rise 6s ease-in-out infinite;
+    animation-delay: 0.8s;
+  }
+
+  /* Glow effect for skyline */
+  .skyline-building {
+    box-shadow: 0 0 10px rgba(59, 227, 245, 0.1);
+    transition: box-shadow 0.3s ease;
+  }
+
+  .skyline-building:hover {
+    box-shadow: 0 0 20px rgba(59, 227, 245, 0.3);
+  }
+}
+
+/* ===================================================================
+   SKYLINE STYLES (Hero)
+   =================================================================== */
+
+@layer utilities {
+  .skyline-bar {
+    background: linear-gradient(180deg, rgba(59, 227, 245, 0.55) 0%, rgba(23, 197, 209, 0.22) 100%);
+    box-shadow:
+      0 0 18px rgba(59, 227, 245, 0.35),
+      0 0 32px rgba(23, 197, 209, 0.25);
+    border-radius: 6px;
+    opacity: 0.85;
+    transform-origin: bottom;
+  }
+
+  .skyline-grid {
+    background:
+      linear-gradient(to right, rgba(59, 227, 245, 0.15) 1px, transparent 1px),
+      linear-gradient(to top, rgba(59, 227, 245, 0.12) 1px, transparent 1px);
+    background-size: 80px 80px;
+    position: relative;
+    transform: perspective(800px) rotateX(65deg);
+    transform-origin: center bottom;
+    filter: drop-shadow(0 0 12px rgba(59, 227, 245, 0.25));
+  }
+}
+
+/* ===================================================================
+   MICRO-INTERACTIONS & ANIMATIONS
+   =================================================================== */
+
+@layer utilities {
+  /* Hover/active micro-interactions */
+  .transition-micro {
+    transition-property: all;
+    transition-duration: 120ms;
+    transition-timing-function: ease;
+  }
+
+  /* Focus-visible ring utility */
+  .focus-ring {
+    @apply focus-visible:outline focus-visible:outline-2 focus-visible:outline-truecost-cyan focus-visible:outline-offset-2;
+  }
+
+  /* Page transitions */
+  .page-enter {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+
+  .page-enter-active {
+    opacity: 1;
+    transform: translateY(0);
+    transition: opacity 300ms ease, transform 300ms ease;
+  }
+
+  .page-exit {
+    opacity: 1;
+  }
+
+  .page-exit-active {
+    opacity: 0;
+    transition: opacity 200ms ease;
+  }
+
+  /* Modal scale-in */
+  @keyframes modal-scale-in {
+    from {
+      opacity: 0;
+      transform: scale(0.96);
+    }
+    to {
+      opacity: 1;
+      transform: scale(1);
+    }
+  }
+
+  .modal-enter {
+    animation: modal-scale-in 200ms ease;
+  }
+
+  /* Overlay fade-in */
+  @keyframes overlay-fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+
+  .overlay-enter {
+    animation: overlay-fade-in 200ms ease;
+  }
+}
+
+/* ===================================================================
+   FOCUS MANAGEMENT & ACCESSIBILITY
+   =================================================================== */
+
+/* Remove focus outline for mouse users, keep for keyboard */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Skip to main content link */
+.skip-to-main {
+  position: absolute;
+  top: -40px;
+  left: 0;
+  background: #3BE3F5;
+  color: #050A14;
+  padding: 8px 16px;
+  text-decoration: none;
+  z-index: 100;
+  border-radius: 0 0 8px 0;
+  font-weight: 600;
+}
+
+.skip-to-main:focus {
+  top: 0;
 }
