@@ -1,0 +1,148 @@
+{# Executive Summary Section - AC 4.3.1
+   Shows total cost, timeline, and confidence range
+   Client-ready mode: Removes Monte Carlo references and shows single authoritative total
+#}
+<div class="section page-break">
+    <h2>Executive Summary</h2>
+
+    <div class="card">
+        <div class="stats-grid">
+            {% if client_ready %}
+            {# Client view: Clean, authoritative numbers - NO contingency shown (industry practice) #}
+            <div class="stat-card">
+                <div class="stat-value success">${{ "{:,.0f}".format(estimate.p80) }}</div>
+                <div class="stat-label">Total Project Estimate</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value primary">{{ estimate.timeline_weeks }} weeks</div>
+                <div class="stat-label">Estimated Duration</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value">${{ "{:,.0f}".format(estimate.p80 / (project.square_footage | default(1))) }}/sf</div>
+                <div class="stat-label">Cost per Sq Ft</div>
+            </div>
+            {% else %}
+            {# Contractor view: Full methodology details #}
+            <div class="stat-card">
+                <div class="stat-value success">${{ "{:,.0f}".format(estimate.total_cost) }}</div>
+                <div class="stat-label">Total Estimated Cost</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value primary">{{ estimate.timeline_weeks }} weeks</div>
+                <div class="stat-label">Estimated Duration</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value warning">{{ estimate.contingency_pct }}%</div>
+                <div class="stat-label">Recommended Contingency</div>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <h3>Project Overview</h3>
+    <table>
+        <tr>
+            <td style="width: 30%;"><strong>Project Name:</strong></td>
+            <td>{{ project.name }}</td>
+        </tr>
+        <tr>
+            <td><strong>Location:</strong></td>
+            <td>{{ project.address }}</td>
+        </tr>
+        <tr>
+            <td><strong>Project Type:</strong></td>
+            <td>{{ project.type | default('Residential Renovation') }}</td>
+        </tr>
+        <tr>
+            <td><strong>Square Footage:</strong></td>
+            <td>{{ project.square_footage | default('N/A') }} sq ft</td>
+        </tr>
+        <tr>
+            <td><strong>Scope:</strong></td>
+            <td>{{ project.scope | default('Full renovation') }}</td>
+        </tr>
+    </table>
+
+    {% if client_ready %}
+    {# Client-ready: Simple summary without contingency or methodology details #}
+    <h3>About This Estimate</h3>
+    <p class="text-muted">
+        This estimate has been prepared based on current market pricing for materials and labor
+        in your area. The total includes all work described in the project scope, permits, and
+        standard project management.
+    </p>
+    {% else %}
+    {# Contractor view: Full Monte Carlo cost confidence levels #}
+    <h3>Cost Confidence Levels</h3>
+    <p class="text-muted">
+        Based on Monte Carlo simulation with {{ estimate.monte_carlo_iterations | default(1000) }} iterations,
+        accounting for material price volatility and labor market conditions.
+    </p>
+
+    <table>
+        <thead>
+            <tr>
+                <th>Percentile</th>
+                <th>Estimated Cost</th>
+                <th>Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge badge-green">P50</span></td>
+                <td class="currency">${{ "{:,.0f}".format(estimate.p50) }}</td>
+                <td>50% probability the actual cost will be at or below this amount (median)</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-yellow">P80</span></td>
+                <td class="currency">${{ "{:,.0f}".format(estimate.p80) }}</td>
+                <td>80% probability the actual cost will be at or below this amount (likely)</td>
+            </tr>
+            <tr>
+                <td><span class="badge badge-red">P90</span></td>
+                <td class="currency">${{ "{:,.0f}".format(estimate.p90) }}</td>
+                <td>90% probability the actual cost will be at or below this amount (conservative)</td>
+            </tr>
+        </tbody>
+    </table>
+    {% endif %}
+
+    <h3>Key Cost Drivers</h3>
+    <ul>
+        {% for driver in estimate.get('cost_drivers', []) %}
+        <li><strong>{{ driver.name }}:</strong> ${{ "{:,.0f}".format(driver.cost) }} ({{ driver.percentage }}% of total)</li>
+        {% else %}
+        <li>Material costs: Largest portion of project budget</li>
+        <li>Labor costs: Varies by trade and location</li>
+        <li>Permits and inspections: Required for code compliance</li>
+        {% endfor %}
+    </ul>
+
+    {% if estimate.timeline_summary %}
+    <h3>Timeline Summary</h3>
+    <table>
+        <thead>
+            <tr>
+                <th>Phase</th>
+                <th>Duration</th>
+                <th>Key Milestones</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for phase in estimate.timeline_summary %}
+            <tr>
+                <td>{{ phase.name }}</td>
+                <td>{{ phase.duration }}</td>
+                <td>{{ phase.milestones | join(', ') }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if not client_ready and estimate.internal_notes %}
+    <div class="internal-only">
+        {{ estimate.internal_notes }}
+    </div>
+    {% endif %}
+</div>
