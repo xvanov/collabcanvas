@@ -1049,10 +1049,12 @@ async def _lookup_firestore(zip_code: str) -> Optional[Dict]:
     try:
         # Import firebase_admin here to allow graceful fallback in tests
         from firebase_admin import firestore
+        import asyncio
 
         db = firestore.client()
         doc_ref = db.collection("costData").document("locationFactors").collection(zip_code).document("data")
-        doc = doc_ref.get()
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, doc_ref.get)
 
         if doc.exists:
             return doc.to_dict()
