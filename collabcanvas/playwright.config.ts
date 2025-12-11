@@ -37,6 +37,14 @@ export default defineConfig({
     ['list'],
   ],
 
+  /* Run local dev server before starting the tests */
+  webServer: {
+    command: 'npm run preview',
+    url: 'http://localhost:4173',
+    reuseExistingServer: !process.env.CI,
+    timeout: 120 * 1000,
+  },
+
   projects: [
     {
       name: 'chromium',

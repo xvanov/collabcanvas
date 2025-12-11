@@ -27,7 +27,14 @@ class Settings:
     firestore_emulator_host: str = os.getenv("FIRESTORE_EMULATOR_HOST", "localhost:8081")
     
     # A2A Protocol Configuration
-    a2a_base_url: str = os.getenv("A2A_BASE_URL", "http://localhost:5001")
+    # In emulator mode, use full Firebase Functions emulator URL with project/region
+    _default_a2a_url: str = (
+        "http://127.0.0.1:5001/collabcanvas-dev/us-central1"
+        if os.getenv("USE_FIREBASE_EMULATORS", "false").lower() == "true"
+        or os.getenv("FUNCTIONS_EMULATOR", "false").lower() == "true"
+        else "http://localhost:5001"
+    )
+    a2a_base_url: str = os.getenv("A2A_BASE_URL", _default_a2a_url)
     a2a_timeout_seconds: int = int(os.getenv("A2A_TIMEOUT_SECONDS", "300"))  # 5 minutes
     
     # Pipeline Configuration
