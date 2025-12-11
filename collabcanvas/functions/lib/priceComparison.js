@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.comparePrices = exports.parseMatchResult = void 0;
+exports.comparePrices = exports.parseMatchResult = exports.normalizeCacheKey = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
@@ -33,6 +33,7 @@ else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATO
     process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081';
     console.log('[PRICE_COMPARISON] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
 }
+// CacheLookupResult interface reserved for future use (tracking cache hits/misses)
 // ============ CONSTANTS ============
 // Unwrangle platforms (for Home Depot)
 const UNWRANGLE_PLATFORMS = {
@@ -47,6 +48,152 @@ const SERPAPI_SITES = {
 const RETAILERS = ['homeDepot', 'lowes'];
 const UNWRANGLE_TIMEOUT_MS = 30000;
 const SERPAPI_TIMEOUT_MS = 30000;
+// Cache configuration
+const CACHE_CONFIDENCE_THRESHOLD = 0.8;
+// ============ CACHE UTILITIES ============
+/**
+ * Normalize product name for cache key
+ * Lowercase, remove special chars, collapse whitespace, max 100 chars
+ */
+function normalizeCacheKey(productName) {
+    return productName
+        .toLowerCase()
+        .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+        .replace(/\s+/g, '-') // Replace whitespace with hyphens
+        .substring(0, 100); // Max 100 chars for Firestore doc ID
+}
+exports.normalizeCacheKey = normalizeCacheKey;
+/**
+ * Check product cache for a potential match
+ * First tries exact normalized key match, then searches by searchQueries array
+ */
+async function findInProductCache(db, retailer, searchQuery) {
+    const normalizedKey = normalizeCacheKey(searchQuery);
+    const cacheRef = db.collection('productCache').doc(retailer).collection('products');
+    console.log(`[PRICE_COMPARISON] Cache lookup for "${searchQuery}" (key: ${normalizedKey}) in ${retailer}`);
+    // Try 1: Exact match by normalized key
+    const exactDoc = await cacheRef.doc(normalizedKey).get();
+    if (exactDoc.exists) {
+        const data = exactDoc.data();
+        console.log(`[PRICE_COMPARISON] Cache HIT (exact key match) for "${searchQuery}" in ${retailer}`);
+        return { cachedProduct: data, docId: exactDoc.id };
+    }
+    // Try 2: Search by searchQueries array-contains
+    const querySnapshot = await cacheRef
+        .where('searchQueries', 'array-contains', searchQuery.toLowerCase())
+        .limit(1)
+        .get();
+    if (!querySnapshot.empty) {
+        const doc = querySnapshot.docs[0];
+        const data = doc.data();
+        console.log(`[PRICE_COMPARISON] Cache HIT (searchQueries match) for "${searchQuery}" in ${retailer}`);
+        return { cachedProduct: data, docId: doc.id };
+    }
+    console.log(`[PRICE_COMPARISON] Cache MISS for "${searchQuery}" in ${retailer}`);
+    return { cachedProduct: null, docId: null };
+}
+/**
+ * Use LLM to assess if cached product matches search query
+ */
+async function assessCacheMatchConfidence(searchQuery, cachedProduct) {
+    var _a, _b;
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+        console.error('[PRICE_COMPARISON] OPENAI_API_KEY not configured for cache confidence');
+        return { confidence: 0.5, reasoning: 'OpenAI not configured - using moderate confidence' };
+    }
+    const openai = new openai_1.default({ apiKey });
+    try {
+        const response = await openai.chat.completions.create({
+            model: 'gpt-4o-mini',
+            messages: [{
+                    role: 'user',
+                    content: `Is this cached product a good match for the search query?
+
+Search Query: "${searchQuery}"
+
+Cached Product:
+- Name: ${cachedProduct.product.name}
+- Brand: ${cachedProduct.product.brand || 'N/A'}
+- Price: $${cachedProduct.product.price}
+- Original Search Term: "${cachedProduct.originalSearchTerm}"
+
+Consider:
+1. Is this the same type of product?
+2. Are specifications likely compatible?
+3. Would a user searching for "${searchQuery}" want this product?
+
+Return ONLY JSON: { "confidence": number (0-1), "reasoning": "brief explanation" }`
+                }],
+            temperature: 0.1,
+        });
+        const content = ((_b = (_a = response.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content) || '{}';
+        console.log(`[PRICE_COMPARISON] Cache confidence response: ${content.substring(0, 100)}...`);
+        // Parse response (reuse existing parsing logic pattern)
+        const cleaned = content
+            .replace(/```json\n?/gi, '')
+            .replace(/```\n?/g, '')
+            .trim();
+        try {
+            const parsed = JSON.parse(cleaned);
+            return {
+                confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+                reasoning: parsed.reasoning || 'No reasoning provided',
+            };
+        }
+        catch (_c) {
+            console.warn('[PRICE_COMPARISON] Cache confidence JSON parse failed');
+            return { confidence: 0.5, reasoning: 'JSON parse failed - using moderate confidence' };
+        }
+    }
+    catch (err) {
+        console.error('[PRICE_COMPARISON] OpenAI error for cache confidence:', err);
+        return { confidence: 0.5, reasoning: 'OpenAI error - using moderate confidence' };
+    }
+}
+/**
+ * Save product to cache after successful API match
+ * Handles upsert: creates new entry or updates existing with merged searchQueries
+ */
+async function saveToProductCache(db, retailer, product, searchQuery) {
+    const normalizedKey = normalizeCacheKey(product.name);
+    const docRef = db.collection('productCache').doc(retailer).collection('products').doc(normalizedKey);
+    console.log(`[PRICE_COMPARISON] Saving to cache: ${retailer}/${normalizedKey}`);
+    try {
+        const existingDoc = await docRef.get();
+        if (existingDoc.exists) {
+            // Update existing entry
+            const existingData = existingDoc.data();
+            const updatedSearchQueries = Array.from(new Set([
+                ...existingData.searchQueries,
+                searchQuery.toLowerCase()
+            ]));
+            await docRef.update({
+                product,
+                searchQueries: updatedSearchQueries,
+                lastUpdated: Date.now(),
+                matchCount: (existingData.matchCount || 0) + 1,
+            });
+            console.log(`[PRICE_COMPARISON] Cache UPDATED: ${retailer}/${normalizedKey} (matchCount: ${(existingData.matchCount || 0) + 1})`);
+        }
+        else {
+            // Create new entry
+            const newCacheEntry = {
+                product,
+                searchQueries: [searchQuery.toLowerCase()],
+                lastUpdated: Date.now(),
+                matchCount: 1,
+                originalSearchTerm: searchQuery,
+            };
+            await docRef.set(newCacheEntry);
+            console.log(`[PRICE_COMPARISON] Cache CREATED: ${retailer}/${normalizedKey}`);
+        }
+    }
+    catch (err) {
+        console.error(`[PRICE_COMPARISON] Cache save error for ${retailer}/${normalizedKey}:`, err);
+        // Don't throw - cache failures shouldn't break the comparison
+    }
+}
 // ============ UNWRANGLE API ============
 async function fetchFromUnwrangle(productName, platform, zipCode) {
     const apiKey = process.env.UNWRANGLE_API_KEY;
@@ -340,17 +487,47 @@ async function fetchForRetailer(productName, retailer, zipCode) {
     console.warn(`[PRICE_COMPARISON] No API configured for ${retailer}`);
     return { results: [], normalizer: normalizeUnwrangleProduct };
 }
-async function compareOneProduct(productName, zipCode) {
+async function compareOneProduct(productName, zipCode, db) {
     const matches = {};
     console.log(`[PRICE_COMPARISON] Comparing product: "${productName}"`);
-    // Fetch from all retailers in parallel
+    // Get Firestore instance if not provided (for cache operations)
+    const firestoreDb = db || (0, firestore_1.getFirestore)();
+    // Process each retailer with cache-first strategy
     const retailerResults = await Promise.all(RETAILERS.map(async (retailer) => {
         try {
+            // Step 1: Check cache first
+            const { cachedProduct } = await findInProductCache(firestoreDb, retailer, productName);
+            if (cachedProduct) {
+                // Step 2: Assess cache match confidence
+                const { confidence, reasoning } = await assessCacheMatchConfidence(productName, cachedProduct);
+                // Step 3: If confidence >= threshold, use cached product
+                if (confidence >= CACHE_CONFIDENCE_THRESHOLD) {
+                    console.log(`[PRICE_COMPARISON] Using CACHED product for "${productName}" from ${retailer} (confidence: ${confidence.toFixed(2)})`);
+                    return {
+                        retailer,
+                        match: {
+                            selectedProduct: cachedProduct.product,
+                            confidence,
+                            reasoning: `[CACHE HIT] ${reasoning}`,
+                            searchResultsCount: 0, // No API call made
+                        },
+                        fromCache: true,
+                    };
+                }
+                else {
+                    console.log(`[PRICE_COMPARISON] Cache confidence too low (${confidence.toFixed(2)} < ${CACHE_CONFIDENCE_THRESHOLD}) for "${productName}" from ${retailer}, calling API`);
+                }
+            }
+            // Step 4: Cache miss or low confidence - call API
             const { results, normalizer } = await fetchForRetailer(productName, retailer, zipCode);
             const match = await selectBestMatch(productName, results, retailer);
             let selectedProduct = null;
             if (match.index >= 0 && results[match.index]) {
                 selectedProduct = normalizer(results[match.index], retailer);
+                // Step 5: Save to cache after successful API match
+                if (selectedProduct) {
+                    await saveToProductCache(firestoreDb, retailer, selectedProduct, productName);
+                }
             }
             return {
                 retailer,
@@ -360,6 +537,7 @@ async function compareOneProduct(productName, zipCode) {
                     reasoning: match.reasoning,
                     searchResultsCount: results.length,
                 },
+                fromCache: false,
             };
         }
         catch (error) {
@@ -372,6 +550,7 @@ async function compareOneProduct(productName, zipCode) {
                     reasoning: `Error: ${error instanceof Error ? error.message : 'Unknown'}`,
                     searchResultsCount: 0,
                 },
+                fromCache: false,
             };
         }
     }));
@@ -381,7 +560,9 @@ async function compareOneProduct(productName, zipCode) {
     }
     // Determine best price
     const bestPrice = determineBestPrice(matches);
-    console.log(`[PRICE_COMPARISON] Completed comparison for "${productName}". Best price: ${bestPrice ? `$${bestPrice.product.price} at ${bestPrice.retailer}` : 'none'}`);
+    // Log cache usage summary
+    const cacheHits = retailerResults.filter(r => r.fromCache).length;
+    console.log(`[PRICE_COMPARISON] Completed comparison for "${productName}". Cache hits: ${cacheHits}/${RETAILERS.length}. Best price: ${bestPrice ? `$${bestPrice.product.price} at ${bestPrice.retailer}` : 'none'}`);
     return {
         originalProductName: productName,
         matches,

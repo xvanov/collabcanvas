@@ -83,16 +83,7 @@ interface CachedProduct {
   originalSearchTerm: string;
 }
 
-/**
- * Result of checking the product cache
- */
-interface CacheLookupResult {
-  found: boolean;
-  cachedProduct?: CachedProduct;
-  confidence: number;
-  useCache: boolean;
-  reasoning: string;
-}
+// CacheLookupResult interface reserved for future use (tracking cache hits/misses)
 
 // ============ CONSTANTS ============
 
