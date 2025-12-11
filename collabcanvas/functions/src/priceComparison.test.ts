@@ -469,19 +469,14 @@ describe('determineBestPrice', () => {
 // ============ FUNCTION CONFIGURATION TESTS ============
 
 describe('Cloud Function configuration', () => {
-  it('has correct CORS origins configured', async () => {
+  it('has CORS enabled for all origins (Firebase preview channels)', async () => {
     // Import the actual function configuration to test it
     const { comparePricesConfig } = await import('./priceComparison');
-    const corsOrigins = comparePricesConfig.cors;
+    const corsConfig = comparePricesConfig.cors;
 
-    // Should always include localhost origins for development
-    expect(corsOrigins).toBeDefined();
-    expect(corsOrigins).toContain('http://localhost:5173');
-    expect(corsOrigins).toContain('http://127.0.0.1:5173');
-    expect(corsOrigins).toContain('http://localhost:4173');
-    expect(corsOrigins).toContain('http://127.0.0.1:4173');
-    // Should have at least 4 origins (dev) + production if PRODUCTION_DOMAIN is set
-    expect(corsOrigins.length).toBeGreaterThanOrEqual(4);
+    // CORS is now set to true to support Firebase preview channel URLs
+    // which have dynamic URLs like collabcanvas-dev--pr{N}-{branch}-{hash}.web.app
+    expect(corsConfig).toBe(true);
   });
 
   it('has correct timeout for 2nd gen functions', async () => {
