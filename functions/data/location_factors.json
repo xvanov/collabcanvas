@@ -1,0 +1,1594 @@
+{
+  "location_factors": [
+    {
+      "zip_code": "96801",
+      "region_code": "west",
+      "city": "Honolulu",
+      "state": "HI",
+      "labor_rates": {
+        "electrician": 78.00,
+        "plumber": 75.00,
+        "carpenter": 65.00,
+        "hvac_tech": 72.00,
+        "roofer": 55.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 38.00
+      },
+      "is_union": true,
+      "union_premium": 1.15,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.0,
+        "rainy_season_months": [11, 12, 1, 2, 3],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "99501",
+      "region_code": "west",
+      "city": "Anchorage",
+      "state": "AK",
+      "labor_rates": {
+        "electrician": 72.00,
+        "plumber": 70.00,
+        "carpenter": 58.00,
+        "hvac_tech": 68.00,
+        "roofer": 52.00,
+        "painter": 45.00,
+        "tile_setter": 52.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.18,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.40,
+        "summer_premium": 1.0,
+        "rainy_season_months": [8, 9, 10],
+        "outdoor_work_adjustment": 1.30
+      }
+    },
+    {
+      "zip_code": "21201",
+      "region_code": "northeast",
+      "city": "Baltimore",
+      "state": "MD",
+      "labor_rates": {
+        "electrician": 75.00,
+        "plumber": 72.00,
+        "carpenter": 58.00,
+        "hvac_tech": 70.00,
+        "roofer": 50.00,
+        "painter": 44.00,
+        "tile_setter": 52.00,
+        "general_labor": 33.00
+      },
+      "is_union": true,
+      "union_premium": 1.18,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.15,
+        "summer_premium": 1.05,
+        "rainy_season_months": [3, 4, 5, 9],
+        "outdoor_work_adjustment": 1.08
+      }
+    },
+    {
+      "zip_code": "15201",
+      "region_code": "northeast",
+      "city": "Pittsburgh",
+      "state": "PA",
+      "labor_rates": {
+        "electrician": 70.00,
+        "plumber": 68.00,
+        "carpenter": 55.00,
+        "hvac_tech": 65.00,
+        "roofer": 48.00,
+        "painter": 42.00,
+        "tile_setter": 50.00,
+        "general_labor": 32.00
+      },
+      "is_union": true,
+      "union_premium": 1.15,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.22,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10, 11],
+        "outdoor_work_adjustment": 1.12
+      }
+    },
+    {
+      "zip_code": "10001",
+      "region_code": "northeast",
+      "city": "New York",
+      "state": "NY",
+      "labor_rates": {
+        "electrician": 95.00,
+        "plumber": 92.00,
+        "carpenter": 75.00,
+        "hvac_tech": 88.00,
+        "roofer": 62.00,
+        "painter": 55.00,
+        "tile_setter": 65.00,
+        "general_labor": 42.00
+      },
+      "is_union": true,
+      "union_premium": 1.30,
+      "permit_costs": {
+        "base_percentage": 0.03,
+        "minimum": 300.0,
+        "maximum": 20000.0,
+        "inspection_fee": 200.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "10002",
+      "region_code": "northeast",
+      "city": "New York",
+      "state": "NY",
+      "labor_rates": {
+        "electrician": 95.00,
+        "plumber": 92.00,
+        "carpenter": 75.00,
+        "hvac_tech": 88.00,
+        "roofer": 62.00,
+        "painter": 55.00,
+        "tile_setter": 65.00,
+        "general_labor": 42.00
+      },
+      "is_union": true,
+      "union_premium": 1.30,
+      "permit_costs": {
+        "base_percentage": 0.03,
+        "minimum": 300.0,
+        "maximum": 20000.0,
+        "inspection_fee": 200.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "10016",
+      "region_code": "northeast",
+      "city": "New York",
+      "state": "NY",
+      "labor_rates": {
+        "electrician": 95.00,
+        "plumber": 92.00,
+        "carpenter": 75.00,
+        "hvac_tech": 88.00,
+        "roofer": 62.00,
+        "painter": 55.00,
+        "tile_setter": 65.00,
+        "general_labor": 42.00
+      },
+      "is_union": true,
+      "union_premium": 1.30,
+      "permit_costs": {
+        "base_percentage": 0.03,
+        "minimum": 300.0,
+        "maximum": 20000.0,
+        "inspection_fee": 200.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "02101",
+      "region_code": "northeast",
+      "city": "Boston",
+      "state": "MA",
+      "labor_rates": {
+        "electrician": 88.00,
+        "plumber": 85.00,
+        "carpenter": 70.00,
+        "hvac_tech": 82.00,
+        "roofer": 58.00,
+        "painter": 52.00,
+        "tile_setter": 60.00,
+        "general_labor": 38.00
+      },
+      "is_union": true,
+      "union_premium": 1.25,
+      "permit_costs": {
+        "base_percentage": 0.028,
+        "minimum": 250.0,
+        "maximum": 18000.0,
+        "inspection_fee": 175.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.25,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "19103",
+      "region_code": "northeast",
+      "city": "Philadelphia",
+      "state": "PA",
+      "labor_rates": {
+        "electrician": 80.00,
+        "plumber": 78.00,
+        "carpenter": 62.00,
+        "hvac_tech": 75.00,
+        "roofer": 52.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.22,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.18,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 5, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "07030",
+      "region_code": "northeast",
+      "city": "Hoboken",
+      "state": "NJ",
+      "labor_rates": {
+        "electrician": 90.00,
+        "plumber": 88.00,
+        "carpenter": 72.00,
+        "hvac_tech": 85.00,
+        "roofer": 60.00,
+        "painter": 53.00,
+        "tile_setter": 62.00,
+        "general_labor": 40.00
+      },
+      "is_union": true,
+      "union_premium": 1.28,
+      "permit_costs": {
+        "base_percentage": 0.028,
+        "minimum": 275.0,
+        "maximum": 18000.0,
+        "inspection_fee": 175.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "06103",
+      "region_code": "northeast",
+      "city": "Hartford",
+      "state": "CT",
+      "labor_rates": {
+        "electrician": 78.00,
+        "plumber": 75.00,
+        "carpenter": 60.00,
+        "hvac_tech": 72.00,
+        "roofer": 50.00,
+        "painter": 45.00,
+        "tile_setter": 52.00,
+        "general_labor": 33.00
+      },
+      "is_union": true,
+      "union_premium": 1.20,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.22,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 5, 11],
+        "outdoor_work_adjustment": 1.12
+      }
+    },
+    {
+      "zip_code": "12601",
+      "region_code": "northeast",
+      "city": "Poughkeepsie",
+      "state": "NY",
+      "labor_rates": {
+        "electrician": 72.00,
+        "plumber": 70.00,
+        "carpenter": 55.00,
+        "hvac_tech": 68.00,
+        "roofer": 48.00,
+        "painter": 42.00,
+        "tile_setter": 50.00,
+        "general_labor": 32.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [3, 4, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "60601",
+      "region_code": "midwest",
+      "city": "Chicago",
+      "state": "IL",
+      "labor_rates": {
+        "electrician": 80.00,
+        "plumber": 78.00,
+        "carpenter": 62.00,
+        "hvac_tech": 75.00,
+        "roofer": 52.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.25,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.30,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.20
+      }
+    },
+    {
+      "zip_code": "60602",
+      "region_code": "midwest",
+      "city": "Chicago",
+      "state": "IL",
+      "labor_rates": {
+        "electrician": 80.00,
+        "plumber": 78.00,
+        "carpenter": 62.00,
+        "hvac_tech": 75.00,
+        "roofer": 52.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.25,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.30,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.20
+      }
+    },
+    {
+      "zip_code": "48201",
+      "region_code": "midwest",
+      "city": "Detroit",
+      "state": "MI",
+      "labor_rates": {
+        "electrician": 72.00,
+        "plumber": 70.00,
+        "carpenter": 55.00,
+        "hvac_tech": 68.00,
+        "roofer": 48.00,
+        "painter": 42.00,
+        "tile_setter": 50.00,
+        "general_labor": 32.00
+      },
+      "is_union": true,
+      "union_premium": 1.22,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.28,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10, 11],
+        "outdoor_work_adjustment": 1.18
+      }
+    },
+    {
+      "zip_code": "55401",
+      "region_code": "midwest",
+      "city": "Minneapolis",
+      "state": "MN",
+      "labor_rates": {
+        "electrician": 75.00,
+        "plumber": 72.00,
+        "carpenter": 58.00,
+        "hvac_tech": 70.00,
+        "roofer": 50.00,
+        "painter": 45.00,
+        "tile_setter": 52.00,
+        "general_labor": 33.00
+      },
+      "is_union": true,
+      "union_premium": 1.20,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.35,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.25
+      }
+    },
+    {
+      "zip_code": "43215",
+      "region_code": "midwest",
+      "city": "Columbus",
+      "state": "OH",
+      "labor_rates": {
+        "electrician": 68.00,
+        "plumber": 65.00,
+        "carpenter": 52.00,
+        "hvac_tech": 62.00,
+        "roofer": 45.00,
+        "painter": 40.00,
+        "tile_setter": 48.00,
+        "general_labor": 30.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.22,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "46204",
+      "region_code": "midwest",
+      "city": "Indianapolis",
+      "state": "IN",
+      "labor_rates": {
+        "electrician": 65.00,
+        "plumber": 62.00,
+        "carpenter": 50.00,
+        "hvac_tech": 60.00,
+        "roofer": 42.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 125.0,
+        "maximum": 8000.0,
+        "inspection_fee": 85.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.12
+      }
+    },
+    {
+      "zip_code": "53202",
+      "region_code": "midwest",
+      "city": "Milwaukee",
+      "state": "WI",
+      "labor_rates": {
+        "electrician": 70.00,
+        "plumber": 68.00,
+        "carpenter": 55.00,
+        "hvac_tech": 65.00,
+        "roofer": 48.00,
+        "painter": 42.00,
+        "tile_setter": 50.00,
+        "general_labor": 32.00
+      },
+      "is_union": true,
+      "union_premium": 1.18,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.28,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 10],
+        "outdoor_work_adjustment": 1.18
+      }
+    },
+    {
+      "zip_code": "63101",
+      "region_code": "midwest",
+      "city": "St. Louis",
+      "state": "MO",
+      "labor_rates": {
+        "electrician": 68.00,
+        "plumber": 65.00,
+        "carpenter": 52.00,
+        "hvac_tech": 62.00,
+        "roofer": 45.00,
+        "painter": 40.00,
+        "tile_setter": 48.00,
+        "general_labor": 30.00
+      },
+      "is_union": true,
+      "union_premium": 1.15,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 125.0,
+        "maximum": 8000.0,
+        "inspection_fee": 85.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.18,
+        "summer_premium": 1.05,
+        "rainy_season_months": [4, 5, 6],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "66101",
+      "region_code": "midwest",
+      "city": "Kansas City",
+      "state": "KS",
+      "labor_rates": {
+        "electrician": 62.00,
+        "plumber": 60.00,
+        "carpenter": 48.00,
+        "hvac_tech": 58.00,
+        "roofer": 42.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 100.0,
+        "maximum": 7000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.15,
+        "summer_premium": 1.08,
+        "rainy_season_months": [4, 5, 6],
+        "outdoor_work_adjustment": 1.08
+      }
+    },
+    {
+      "zip_code": "50309",
+      "region_code": "midwest",
+      "city": "Des Moines",
+      "state": "IA",
+      "labor_rates": {
+        "electrician": 60.00,
+        "plumber": 58.00,
+        "carpenter": 48.00,
+        "hvac_tech": 55.00,
+        "roofer": 40.00,
+        "painter": 36.00,
+        "tile_setter": 42.00,
+        "general_labor": 27.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 6000.0,
+        "inspection_fee": 70.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.25,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5, 6],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "77001",
+      "region_code": "south",
+      "city": "Houston",
+      "state": "TX",
+      "labor_rates": {
+        "electrician": 50.00,
+        "plumber": 48.00,
+        "carpenter": 42.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 35.00,
+        "tile_setter": 42.00,
+        "general_labor": 25.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.15,
+        "rainy_season_months": [6, 7, 8, 9],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "77002",
+      "region_code": "south",
+      "city": "Houston",
+      "state": "TX",
+      "labor_rates": {
+        "electrician": 50.00,
+        "plumber": 48.00,
+        "carpenter": 42.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 35.00,
+        "tile_setter": 42.00,
+        "general_labor": 25.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.15,
+        "rainy_season_months": [6, 7, 8, 9],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "75201",
+      "region_code": "south",
+      "city": "Dallas",
+      "state": "TX",
+      "labor_rates": {
+        "electrician": 52.00,
+        "plumber": 50.00,
+        "carpenter": 44.00,
+        "hvac_tech": 54.00,
+        "roofer": 42.00,
+        "painter": 36.00,
+        "tile_setter": 44.00,
+        "general_labor": 26.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 110.0,
+        "maximum": 8500.0,
+        "inspection_fee": 80.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.12,
+        "rainy_season_months": [5, 6, 10],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "78201",
+      "region_code": "south",
+      "city": "San Antonio",
+      "state": "TX",
+      "labor_rates": {
+        "electrician": 48.00,
+        "plumber": 46.00,
+        "carpenter": 40.00,
+        "hvac_tech": 50.00,
+        "roofer": 38.00,
+        "painter": 34.00,
+        "tile_setter": 40.00,
+        "general_labor": 24.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.014,
+        "minimum": 90.0,
+        "maximum": 7000.0,
+        "inspection_fee": 70.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.15,
+        "rainy_season_months": [5, 6, 9, 10],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "30301",
+      "region_code": "south",
+      "city": "Atlanta",
+      "state": "GA",
+      "labor_rates": {
+        "electrician": 55.00,
+        "plumber": 52.00,
+        "carpenter": 45.00,
+        "hvac_tech": 55.00,
+        "roofer": 42.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 125.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.05,
+        "summer_premium": 1.10,
+        "rainy_season_months": [3, 4, 7, 8],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "30302",
+      "region_code": "south",
+      "city": "Atlanta",
+      "state": "GA",
+      "labor_rates": {
+        "electrician": 55.00,
+        "plumber": 52.00,
+        "carpenter": 45.00,
+        "hvac_tech": 55.00,
+        "roofer": 42.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 125.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.05,
+        "summer_premium": 1.10,
+        "rainy_season_months": [3, 4, 7, 8],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "33101",
+      "region_code": "south",
+      "city": "Miami",
+      "state": "FL",
+      "labor_rates": {
+        "electrician": 58.00,
+        "plumber": 55.00,
+        "carpenter": 48.00,
+        "hvac_tech": 58.00,
+        "roofer": 45.00,
+        "painter": 40.00,
+        "tile_setter": 48.00,
+        "general_labor": 30.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 150.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.10,
+        "rainy_season_months": [6, 7, 8, 9, 10],
+        "outdoor_work_adjustment": 1.08
+      }
+    },
+    {
+      "zip_code": "32801",
+      "region_code": "south",
+      "city": "Orlando",
+      "state": "FL",
+      "labor_rates": {
+        "electrician": 52.00,
+        "plumber": 50.00,
+        "carpenter": 44.00,
+        "hvac_tech": 52.00,
+        "roofer": 42.00,
+        "painter": 36.00,
+        "tile_setter": 44.00,
+        "general_labor": 26.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 125.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.08,
+        "rainy_season_months": [6, 7, 8, 9],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "37201",
+      "region_code": "south",
+      "city": "Nashville",
+      "state": "TN",
+      "labor_rates": {
+        "electrician": 52.00,
+        "plumber": 50.00,
+        "carpenter": 44.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 36.00,
+        "tile_setter": 43.00,
+        "general_labor": 26.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 110.0,
+        "maximum": 8500.0,
+        "inspection_fee": 85.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.08,
+        "summer_premium": 1.08,
+        "rainy_season_months": [3, 4, 5, 11, 12],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "28201",
+      "region_code": "south",
+      "city": "Charlotte",
+      "state": "NC",
+      "labor_rates": {
+        "electrician": 50.00,
+        "plumber": 48.00,
+        "carpenter": 42.00,
+        "hvac_tech": 50.00,
+        "roofer": 38.00,
+        "painter": 34.00,
+        "tile_setter": 42.00,
+        "general_labor": 25.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 80.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.05,
+        "summer_premium": 1.08,
+        "rainy_season_months": [3, 4, 7, 8],
+        "outdoor_work_adjustment": 1.03
+      }
+    },
+    {
+      "zip_code": "27601",
+      "region_code": "south",
+      "city": "Raleigh",
+      "state": "NC",
+      "labor_rates": {
+        "electrician": 52.00,
+        "plumber": 50.00,
+        "carpenter": 44.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 36.00,
+        "tile_setter": 44.00,
+        "general_labor": 27.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 110.0,
+        "maximum": 8500.0,
+        "inspection_fee": 85.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.05,
+        "summer_premium": 1.08,
+        "rainy_season_months": [3, 4, 7, 8],
+        "outdoor_work_adjustment": 1.03
+      }
+    },
+    {
+      "zip_code": "70112",
+      "region_code": "south",
+      "city": "New Orleans",
+      "state": "LA",
+      "labor_rates": {
+        "electrician": 48.00,
+        "plumber": 46.00,
+        "carpenter": 40.00,
+        "hvac_tech": 48.00,
+        "roofer": 38.00,
+        "painter": 32.00,
+        "tile_setter": 40.00,
+        "general_labor": 24.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 7500.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.12,
+        "rainy_season_months": [6, 7, 8, 9],
+        "outdoor_work_adjustment": 1.08
+      }
+    },
+    {
+      "zip_code": "35203",
+      "region_code": "south",
+      "city": "Birmingham",
+      "state": "AL",
+      "labor_rates": {
+        "electrician": 45.00,
+        "plumber": 43.00,
+        "carpenter": 38.00,
+        "hvac_tech": 45.00,
+        "roofer": 35.00,
+        "painter": 30.00,
+        "tile_setter": 38.00,
+        "general_labor": 22.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.014,
+        "minimum": 85.0,
+        "maximum": 6500.0,
+        "inspection_fee": 65.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.03,
+        "summer_premium": 1.10,
+        "rainy_season_months": [3, 4, 7, 8, 11, 12],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "29401",
+      "region_code": "south",
+      "city": "Charleston",
+      "state": "SC",
+      "labor_rates": {
+        "electrician": 48.00,
+        "plumber": 46.00,
+        "carpenter": 40.00,
+        "hvac_tech": 48.00,
+        "roofer": 38.00,
+        "painter": 34.00,
+        "tile_setter": 40.00,
+        "general_labor": 24.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 80.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.02,
+        "summer_premium": 1.10,
+        "rainy_season_months": [6, 7, 8, 9],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "90001",
+      "region_code": "west",
+      "city": "Los Angeles",
+      "state": "CA",
+      "labor_rates": {
+        "electrician": 85.00,
+        "plumber": 80.00,
+        "carpenter": 68.00,
+        "hvac_tech": 78.00,
+        "roofer": 55.00,
+        "painter": 50.00,
+        "tile_setter": 58.00,
+        "general_labor": 38.00
+      },
+      "is_union": true,
+      "union_premium": 1.20,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 250.0,
+        "maximum": 18000.0,
+        "inspection_fee": 175.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.05,
+        "rainy_season_months": [1, 2, 12],
+        "outdoor_work_adjustment": 1.0
+      }
+    },
+    {
+      "zip_code": "90002",
+      "region_code": "west",
+      "city": "Los Angeles",
+      "state": "CA",
+      "labor_rates": {
+        "electrician": 85.00,
+        "plumber": 80.00,
+        "carpenter": 68.00,
+        "hvac_tech": 78.00,
+        "roofer": 55.00,
+        "painter": 50.00,
+        "tile_setter": 58.00,
+        "general_labor": 38.00
+      },
+      "is_union": true,
+      "union_premium": 1.20,
+      "permit_costs": {
+        "base_percentage": 0.025,
+        "minimum": 250.0,
+        "maximum": 18000.0,
+        "inspection_fee": 175.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.05,
+        "rainy_season_months": [1, 2, 12],
+        "outdoor_work_adjustment": 1.0
+      }
+    },
+    {
+      "zip_code": "94102",
+      "region_code": "west",
+      "city": "San Francisco",
+      "state": "CA",
+      "labor_rates": {
+        "electrician": 95.00,
+        "plumber": 90.00,
+        "carpenter": 78.00,
+        "hvac_tech": 88.00,
+        "roofer": 62.00,
+        "painter": 55.00,
+        "tile_setter": 65.00,
+        "general_labor": 45.00
+      },
+      "is_union": true,
+      "union_premium": 1.25,
+      "permit_costs": {
+        "base_percentage": 0.030,
+        "minimum": 350.0,
+        "maximum": 25000.0,
+        "inspection_fee": 225.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.05,
+        "summer_premium": 1.0,
+        "rainy_season_months": [11, 12, 1, 2, 3],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "92101",
+      "region_code": "west",
+      "city": "San Diego",
+      "state": "CA",
+      "labor_rates": {
+        "electrician": 75.00,
+        "plumber": 72.00,
+        "carpenter": 60.00,
+        "hvac_tech": 70.00,
+        "roofer": 50.00,
+        "painter": 45.00,
+        "tile_setter": 52.00,
+        "general_labor": 35.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.0,
+        "rainy_season_months": [1, 2, 3],
+        "outdoor_work_adjustment": 1.0
+      }
+    },
+    {
+      "zip_code": "85001",
+      "region_code": "west",
+      "city": "Phoenix",
+      "state": "AZ",
+      "labor_rates": {
+        "electrician": 58.00,
+        "plumber": 55.00,
+        "carpenter": 48.00,
+        "hvac_tech": 62.00,
+        "roofer": 45.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.20,
+        "rainy_season_months": [7, 8],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "85002",
+      "region_code": "west",
+      "city": "Phoenix",
+      "state": "AZ",
+      "labor_rates": {
+        "electrician": 58.00,
+        "plumber": 55.00,
+        "carpenter": 48.00,
+        "hvac_tech": 62.00,
+        "roofer": 45.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 8000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.20,
+        "rainy_season_months": [7, 8],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "80202",
+      "region_code": "west",
+      "city": "Denver",
+      "state": "CO",
+      "labor_rates": {
+        "electrician": 65.00,
+        "plumber": 62.00,
+        "carpenter": 52.00,
+        "hvac_tech": 60.00,
+        "roofer": 45.00,
+        "painter": 40.00,
+        "tile_setter": 48.00,
+        "general_labor": 30.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.25,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "80203",
+      "region_code": "west",
+      "city": "Denver",
+      "state": "CO",
+      "labor_rates": {
+        "electrician": 65.00,
+        "plumber": 62.00,
+        "carpenter": 52.00,
+        "hvac_tech": 60.00,
+        "roofer": 45.00,
+        "painter": 40.00,
+        "tile_setter": 48.00,
+        "general_labor": 30.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.25,
+        "summer_premium": 1.0,
+        "rainy_season_months": [4, 5],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "98101",
+      "region_code": "west",
+      "city": "Seattle",
+      "state": "WA",
+      "labor_rates": {
+        "electrician": 80.00,
+        "plumber": 78.00,
+        "carpenter": 65.00,
+        "hvac_tech": 75.00,
+        "roofer": 52.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.15,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.15,
+        "summer_premium": 1.0,
+        "rainy_season_months": [10, 11, 12, 1, 2, 3],
+        "outdoor_work_adjustment": 1.20
+      }
+    },
+    {
+      "zip_code": "98102",
+      "region_code": "west",
+      "city": "Seattle",
+      "state": "WA",
+      "labor_rates": {
+        "electrician": 80.00,
+        "plumber": 78.00,
+        "carpenter": 65.00,
+        "hvac_tech": 75.00,
+        "roofer": 52.00,
+        "painter": 48.00,
+        "tile_setter": 55.00,
+        "general_labor": 35.00
+      },
+      "is_union": true,
+      "union_premium": 1.15,
+      "permit_costs": {
+        "base_percentage": 0.022,
+        "minimum": 200.0,
+        "maximum": 15000.0,
+        "inspection_fee": 150.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.15,
+        "summer_premium": 1.0,
+        "rainy_season_months": [10, 11, 12, 1, 2, 3],
+        "outdoor_work_adjustment": 1.20
+      }
+    },
+    {
+      "zip_code": "97201",
+      "region_code": "west",
+      "city": "Portland",
+      "state": "OR",
+      "labor_rates": {
+        "electrician": 72.00,
+        "plumber": 70.00,
+        "carpenter": 58.00,
+        "hvac_tech": 68.00,
+        "roofer": 48.00,
+        "painter": 42.00,
+        "tile_setter": 50.00,
+        "general_labor": 32.00
+      },
+      "is_union": true,
+      "union_premium": 1.12,
+      "permit_costs": {
+        "base_percentage": 0.020,
+        "minimum": 175.0,
+        "maximum": 12000.0,
+        "inspection_fee": 125.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.12,
+        "summer_premium": 1.0,
+        "rainy_season_months": [10, 11, 12, 1, 2, 3, 4],
+        "outdoor_work_adjustment": 1.18
+      }
+    },
+    {
+      "zip_code": "89101",
+      "region_code": "west",
+      "city": "Las Vegas",
+      "state": "NV",
+      "labor_rates": {
+        "electrician": 68.00,
+        "plumber": 65.00,
+        "carpenter": 55.00,
+        "hvac_tech": 68.00,
+        "roofer": 50.00,
+        "painter": 42.00,
+        "tile_setter": 52.00,
+        "general_labor": 30.00
+      },
+      "is_union": true,
+      "union_premium": 1.10,
+      "permit_costs": {
+        "base_percentage": 0.018,
+        "minimum": 150.0,
+        "maximum": 10000.0,
+        "inspection_fee": 100.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.18,
+        "rainy_season_months": [7, 8],
+        "outdoor_work_adjustment": 1.12
+      }
+    },
+    {
+      "zip_code": "84101",
+      "region_code": "west",
+      "city": "Salt Lake City",
+      "state": "UT",
+      "labor_rates": {
+        "electrician": 60.00,
+        "plumber": 58.00,
+        "carpenter": 48.00,
+        "hvac_tech": 58.00,
+        "roofer": 42.00,
+        "painter": 38.00,
+        "tile_setter": 45.00,
+        "general_labor": 28.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.016,
+        "minimum": 125.0,
+        "maximum": 8000.0,
+        "inspection_fee": 85.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.05,
+        "rainy_season_months": [4, 5],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "87501",
+      "region_code": "west",
+      "city": "Santa Fe",
+      "state": "NM",
+      "labor_rates": {
+        "electrician": 55.00,
+        "plumber": 52.00,
+        "carpenter": 45.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 35.00,
+        "tile_setter": 42.00,
+        "general_labor": 26.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 7500.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.15,
+        "summer_premium": 1.05,
+        "rainy_season_months": [7, 8, 9],
+        "outdoor_work_adjustment": 1.05
+      }
+    },
+    {
+      "zip_code": "59001",
+      "region_code": "west",
+      "city": "Rural Montana",
+      "state": "MT",
+      "labor_rates": {
+        "electrician": 45.00,
+        "plumber": 42.00,
+        "carpenter": 38.00,
+        "hvac_tech": 45.00,
+        "roofer": 35.00,
+        "painter": 30.00,
+        "tile_setter": 35.00,
+        "general_labor": 22.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.010,
+        "minimum": 50.0,
+        "maximum": 5000.0,
+        "inspection_fee": 50.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.30,
+        "summer_premium": 1.0,
+        "rainy_season_months": [5, 6],
+        "outdoor_work_adjustment": 1.15
+      }
+    },
+    {
+      "zip_code": "83702",
+      "region_code": "west",
+      "city": "Boise",
+      "state": "ID",
+      "labor_rates": {
+        "electrician": 55.00,
+        "plumber": 52.00,
+        "carpenter": 45.00,
+        "hvac_tech": 52.00,
+        "roofer": 40.00,
+        "painter": 35.00,
+        "tile_setter": 42.00,
+        "general_labor": 26.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.015,
+        "minimum": 100.0,
+        "maximum": 7000.0,
+        "inspection_fee": 75.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.20,
+        "summer_premium": 1.05,
+        "rainy_season_months": [4, 5, 11],
+        "outdoor_work_adjustment": 1.10
+      }
+    },
+    {
+      "zip_code": "85701",
+      "region_code": "west",
+      "city": "Tucson",
+      "state": "AZ",
+      "labor_rates": {
+        "electrician": 52.00,
+        "plumber": 50.00,
+        "carpenter": 44.00,
+        "hvac_tech": 55.00,
+        "roofer": 42.00,
+        "painter": 35.00,
+        "tile_setter": 42.00,
+        "general_labor": 25.00
+      },
+      "is_union": false,
+      "union_premium": 1.0,
+      "permit_costs": {
+        "base_percentage": 0.014,
+        "minimum": 90.0,
+        "maximum": 7000.0,
+        "inspection_fee": 70.0
+      },
+      "weather_factors": {
+        "winter_slowdown": 1.0,
+        "summer_premium": 1.18,
+        "rainy_season_months": [7, 8, 9],
+        "outdoor_work_adjustment": 1.12
+      }
+    }
+  ]
+}

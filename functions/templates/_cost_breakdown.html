@@ -1,0 +1,179 @@
+{# Cost Breakdown Section - AC 4.3.2
+   Shows costs organized by CSI division with subtotals
+   Client-ready mode: Hides O&P as separate line, shows simplified totals
+#}
+<div class="section page-break">
+    <h2>Cost Breakdown by Division</h2>
+
+    {% if client_ready %}
+    <p class="text-muted">
+        Detailed cost breakdown organized by construction division.
+        All prices include materials, labor, and applicable project costs.
+    </p>
+    {% else %}
+    <p class="text-muted">
+        Costs organized according to CSI MasterFormat divisions.
+        Each division shows material costs, labor costs, and combined totals.
+    </p>
+    {% endif %}
+
+    {% for division in cost_breakdown.get('divisions', []) %}
+    <div class="card no-break" style="border-left: 4px solid; border-left-color: inherit;" class="csi-{{ division.code[:2] }}">
+        <div class="card-header">
+            Division {{ division.code }} - {{ division.name }}
+            <span class="badge badge-blue" style="float: right;">
+                ${{ "{:,.0f}".format(division.total) }}
+            </span>
+        </div>
+
+        <table class="table-striped">
+            <thead>
+                <tr>
+                    <th style="width: 40%;">Item</th>
+                    <th class="text-right" style="width: 15%;">Quantity</th>
+                    <th class="text-right" style="width: 15%;">Unit Cost</th>
+                    <th class="text-right" style="width: 15%;">Material</th>
+                    <th class="text-right" style="width: 15%;">Labor</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for item in division.get('items', []) %}
+                <tr>
+                    <td>{{ item.description }}</td>
+                    <td class="text-right">{{ item.quantity }} {{ item.unit }}</td>
+                    <td class="currency">${{ "{:,.2f}".format(item.unit_cost) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(item.material_cost) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(item.labor_cost) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="summary-row">
+                    <td colspan="3"><strong>Division {{ division.code }} Subtotal</strong></td>
+                    <td class="currency"><strong>${{ "{:,.0f}".format(division.material_subtotal) }}</strong></td>
+                    <td class="currency"><strong>${{ "{:,.0f}".format(division.labor_subtotal) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+    {% else %}
+    {# Fallback for when no divisions are provided #}
+    <div class="card">
+        <table class="table-striped">
+            <thead>
+                <tr>
+                    <th>Division</th>
+                    <th class="text-right">Material</th>
+                    <th class="text-right">Labor</th>
+                    <th class="text-right">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Division 06 - Wood & Plastics</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.wood_plastics_material | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.wood_plastics_labor | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.wood_plastics_total | default(0)) }}</td>
+                </tr>
+                <tr>
+                    <td>Division 09 - Finishes</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.finishes_material | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.finishes_labor | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.finishes_total | default(0)) }}</td>
+                </tr>
+                <tr>
+                    <td>Division 22 - Plumbing</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.plumbing_material | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.plumbing_labor | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.plumbing_total | default(0)) }}</td>
+                </tr>
+                <tr>
+                    <td>Division 26 - Electrical</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.electrical_material | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.electrical_labor | default(0)) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.electrical_total | default(0)) }}</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+    {% endfor %}
+
+    {# Summary Table #}
+    <div class="card">
+        <div class="card-header">Cost Summary</div>
+        <table>
+            <thead>
+                <tr>
+                    <th>Category</th>
+                    <th class="text-right">Amount</th>
+                    {% if not client_ready %}
+                    <th class="text-right">% of Total</th>
+                    {% endif %}
+                </tr>
+            </thead>
+            <tbody>
+                {% if client_ready %}
+                {# Client view: Simplified cost summary without O&P breakdown #}
+                {# Calculate adjusted totals with O&P rolled in #}
+                {% set base_material = cost_breakdown.total_material | default(estimate.p80 * 0.55) %}
+                {% set base_labor = cost_breakdown.total_labor | default(estimate.p80 * 0.35) %}
+                {% set permits = cost_breakdown.permits | default(estimate.p80 * 0.03) %}
+                {% set overhead = cost_breakdown.overhead | default(estimate.p80 * 0.07) %}
+                {% set total_base = base_material + base_labor %}
+                {% set op_factor = (total_base + overhead) / total_base if total_base > 0 else 1.0 %}
+                <tr>
+                    <td>Materials</td>
+                    <td class="currency">${{ "{:,.0f}".format(base_material * op_factor) }}</td>
+                </tr>
+                <tr>
+                    <td>Labor</td>
+                    <td class="currency">${{ "{:,.0f}".format(base_labor * op_factor) }}</td>
+                </tr>
+                <tr>
+                    <td>Permits & Fees</td>
+                    <td class="currency">${{ "{:,.0f}".format(permits) }}</td>
+                </tr>
+                {% else %}
+                {# Contractor view: Full breakdown with O&P visible #}
+                <tr>
+                    <td>Material Costs</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.total_material | default(estimate.total_cost * 0.55)) }}</td>
+                    <td class="text-right">{{ cost_breakdown.material_pct | default(55) }}%</td>
+                </tr>
+                <tr>
+                    <td>Labor Costs</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.total_labor | default(estimate.total_cost * 0.35)) }}</td>
+                    <td class="text-right">{{ cost_breakdown.labor_pct | default(35) }}%</td>
+                </tr>
+                <tr>
+                    <td>Permits & Fees</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.permits | default(estimate.total_cost * 0.03)) }}</td>
+                    <td class="text-right">{{ cost_breakdown.permits_pct | default(3) }}%</td>
+                </tr>
+                <tr>
+                    <td>Overhead & Profit</td>
+                    <td class="currency">${{ "{:,.0f}".format(cost_breakdown.overhead | default(estimate.total_cost * 0.07)) }}</td>
+                    <td class="text-right">{{ cost_breakdown.overhead_pct | default(7) }}%</td>
+                </tr>
+                {% endif %}
+            </tbody>
+            <tfoot>
+                <tr class="grand-total">
+                    <td><strong>Grand Total</strong></td>
+                    {% if client_ready %}
+                    <td class="currency"><strong>${{ "{:,.0f}".format(estimate.p80) }}</strong></td>
+                    {% else %}
+                    <td class="currency"><strong>${{ "{:,.0f}".format(estimate.total_cost) }}</strong></td>
+                    <td class="text-right"><strong>100%</strong></td>
+                    {% endif %}
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    {% if not client_ready and cost_breakdown.internal_notes %}
+    <div class="internal-only">
+        {{ cost_breakdown.internal_notes }}
+    </div>
+    {% endif %}
+</div>

@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable react-hooks/rules-of-hooks, no-empty-pattern */
 import { test as base } from '@playwright/test';
 import { UserFactory } from './factories/user-factory';
 import { ProjectFactory } from './factories/project-factory';

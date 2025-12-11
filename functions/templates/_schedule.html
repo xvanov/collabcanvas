@@ -1,0 +1,202 @@
+{# Schedule Section - AC 4.3.5
+   Shows task list or timeline for the project
+#}
+<div class="section page-break">
+    <h2>Project Schedule</h2>
+
+    <p class="text-muted">
+        Estimated project timeline based on scope of work, crew availability,
+        and typical construction sequencing for this project type.
+    </p>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value primary">{{ schedule.total_weeks | default(estimate.timeline_weeks) }} wks</div>
+            <div class="stat-label">Total Duration</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ schedule.start_date | default('TBD') }}</div>
+            <div class="stat-label">Estimated Start</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ schedule.end_date | default('TBD') }}</div>
+            <div class="stat-label">Estimated Completion</div>
+        </div>
+    </div>
+
+    <h3>Phase Schedule</h3>
+    <table class="table-striped">
+        <thead>
+            <tr>
+                <th style="width: 5%;">#</th>
+                <th style="width: 30%;">Phase / Task</th>
+                <th class="text-center" style="width: 12%;">Duration</th>
+                <th style="width: 15%;">Start</th>
+                <th style="width: 15%;">End</th>
+                <th style="width: 23%;">Dependencies</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for task in schedule.get('tasks', []) %}
+            <tr>
+                <td>{{ task.number | default(loop.index) }}</td>
+                <td>
+                    {% if task.is_milestone %}
+                    <strong>{{ task.name }}</strong>
+                    {% else %}
+                    {{ task.name }}
+                    {% endif %}
+                </td>
+                <td class="text-center">{{ task.duration }}</td>
+                <td>{{ task.start }}</td>
+                <td>{{ task.end }}</td>
+                <td class="text-muted text-small">{{ task.dependencies | join(', ') if task.dependencies else '-' }}</td>
+            </tr>
+            {% else %}
+            {# Default schedule for demo #}
+            <tr>
+                <td>1</td>
+                <td><strong>Pre-Construction</strong></td>
+                <td class="text-center">1 week</td>
+                <td>Week 1</td>
+                <td>Week 1</td>
+                <td class="text-muted text-small">-</td>
+            </tr>
+            <tr>
+                <td>1.1</td>
+                <td>&nbsp;&nbsp;&nbsp;Permits & Approvals</td>
+                <td class="text-center">3-5 days</td>
+                <td>Day 1</td>
+                <td>Day 5</td>
+                <td class="text-muted text-small">Contract signed</td>
+            </tr>
+            <tr>
+                <td>1.2</td>
+                <td>&nbsp;&nbsp;&nbsp;Material Ordering</td>
+                <td class="text-center">2-3 days</td>
+                <td>Day 3</td>
+                <td>Day 5</td>
+                <td class="text-muted text-small">Permits filed</td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td><strong>Demolition</strong></td>
+                <td class="text-center">2-3 days</td>
+                <td>Week 2</td>
+                <td>Week 2</td>
+                <td class="text-muted text-small">Pre-construction</td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td><strong>Rough Work</strong></td>
+                <td class="text-center">1 week</td>
+                <td>Week 2</td>
+                <td>Week 3</td>
+                <td class="text-muted text-small">Demolition</td>
+            </tr>
+            <tr>
+                <td>3.1</td>
+                <td>&nbsp;&nbsp;&nbsp;Electrical Rough-in</td>
+                <td class="text-center">2 days</td>
+                <td>Week 2</td>
+                <td>Week 2</td>
+                <td class="text-muted text-small">Demo complete</td>
+            </tr>
+            <tr>
+                <td>3.2</td>
+                <td>&nbsp;&nbsp;&nbsp;Plumbing Rough-in</td>
+                <td class="text-center">2 days</td>
+                <td>Week 2</td>
+                <td>Week 3</td>
+                <td class="text-muted text-small">Demo complete</td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td><strong>Inspections</strong></td>
+                <td class="text-center">1-2 days</td>
+                <td>Week 3</td>
+                <td>Week 3</td>
+                <td class="text-muted text-small">Rough work</td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td><strong>Finishes</strong></td>
+                <td class="text-center">2 weeks</td>
+                <td>Week 3</td>
+                <td>Week 5</td>
+                <td class="text-muted text-small">Inspections passed</td>
+            </tr>
+            <tr>
+                <td>5.1</td>
+                <td>&nbsp;&nbsp;&nbsp;Drywall & Painting</td>
+                <td class="text-center">4-5 days</td>
+                <td>Week 3</td>
+                <td>Week 4</td>
+                <td class="text-muted text-small">Inspection passed</td>
+            </tr>
+            <tr>
+                <td>5.2</td>
+                <td>&nbsp;&nbsp;&nbsp;Flooring</td>
+                <td class="text-center">2-3 days</td>
+                <td>Week 4</td>
+                <td>Week 4</td>
+                <td class="text-muted text-small">Drywall complete</td>
+            </tr>
+            <tr>
+                <td>5.3</td>
+                <td>&nbsp;&nbsp;&nbsp;Cabinets & Countertops</td>
+                <td class="text-center">3-4 days</td>
+                <td>Week 4</td>
+                <td>Week 5</td>
+                <td class="text-muted text-small">Flooring complete</td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td><strong>Fixtures & Appliances</strong></td>
+                <td class="text-center">2-3 days</td>
+                <td>Week 5</td>
+                <td>Week 5</td>
+                <td class="text-muted text-small">Finishes</td>
+            </tr>
+            <tr>
+                <td>7</td>
+                <td><strong>Final Inspection & Punch List</strong></td>
+                <td class="text-center">2-3 days</td>
+                <td>Week 6</td>
+                <td>Week 6</td>
+                <td class="text-muted text-small">All work complete</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if schedule.critical_path %}
+    <h3>Critical Path</h3>
+    <p class="text-muted">
+        The following items are on the critical path and directly impact project completion:
+    </p>
+    <ul class="check-list">
+        {% for item in schedule.critical_path %}
+        <li>{{ item }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    <h3>Schedule Notes</h3>
+    <ul>
+        {% for note in schedule.get('notes', []) %}
+        <li>{{ note }}</li>
+        {% else %}
+        <li>Schedule assumes normal weather conditions and material availability</li>
+        <li>Permit timeline may vary based on local jurisdiction workload</li>
+        <li>Delivery of special-order items may require additional lead time</li>
+        <li>Schedule will be refined after contract signing and site verification</li>
+        {% endfor %}
+    </ul>
+
+    {% if not client_ready and schedule.internal_notes %}
+    <div class="internal-only">
+        {{ schedule.internal_notes }}
+    </div>
+    {% endif %}
+</div>
