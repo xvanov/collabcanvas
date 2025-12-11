@@ -6,6 +6,8 @@ import { useAuth } from './hooks/useAuth';
 import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
 import { Signup } from './pages/Signup';
+import { Privacy } from './pages/Privacy';
+import { Terms } from './pages/Terms';
 
 // Authenticated pages
 import { Dashboard } from './pages/Dashboard';
@@ -68,6 +70,8 @@ function App() {
         <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
         <Route path="/signup" element={<Signup />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
 
         {/* Authenticated app routes */}
         <Route

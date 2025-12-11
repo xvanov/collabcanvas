@@ -51,10 +51,13 @@ export function DashboardFilters({
           className="glass-input w-full appearance-none bg-[url('data:image/svg+xml;charset=UTF-8,%3csvg xmlns=%27http://www.w3.org/2000/svg%27 viewBox=%270 0 24 24%27 fill=%27none%27 stroke=%27rgba(255,255,255,0.55)%27 stroke-width=%272%27 stroke-linecap=%27round%27 stroke-linejoin=%27round%27%3e%3cpolyline points=%276 9 12 15 18 9%27%3e%3c/polyline%3e%3c/svg%3e')] bg-[length:1.25rem] bg-[right_0.75rem_center] bg-no-repeat pr-10"
         >
           <option value="all">All Status</option>
-          <option value="draft">Draft</option>
-          <option value="in-progress">In Progress</option>
-          <option value="completed">Completed</option>
-          <option value="archived">Archived</option>
+          <option value="estimating">Estimating</option>
+          <option value="bid-ready">Bid Ready</option>
+          <option value="bid-lost">Bid Lost</option>
+          <option value="executing">Executing</option>
+          <option value="completed-profitable">Completed (Profitable)</option>
+          <option value="completed-unprofitable">Completed (Unprofitable)</option>
+          <option value="completed-unknown">Completed (Unknown)</option>
         </select>
       </div>
 

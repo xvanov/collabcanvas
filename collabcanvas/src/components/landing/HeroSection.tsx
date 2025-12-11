@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-// import heroImage from "../../assets/hero2.jpg";
 import heroVideo from "../../assets/animated_hero.mp4";
 import logo from "../../assets/logo.png";
 import "../../styles/hero.css";

@@ -82,7 +82,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
             {project.name}
           </h3>
 
-          <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <div className="flex gap-2 opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition-opacity duration-200">
             {canShare && (
               <button
                 onClick={(e) => {
@@ -90,7 +90,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
                   setShowShareModal(true);
                 }}
                 disabled={loading}
-                className="text-truecost-cyan hover:text-truecost-teal transition-colors disabled:opacity-50 p-1"
+                className="text-truecost-cyan hover:text-truecost-teal transition-colors disabled:opacity-50 p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-truecost-cyan focus-visible:outline-offset-2 rounded"
                 title="Share project"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -102,7 +102,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
               <button
                 onClick={handleDelete}
                 disabled={loading}
-                className="text-truecost-danger hover:text-red-400 transition-colors disabled:opacity-50 p-1"
+                className="text-truecost-danger hover:text-red-400 transition-colors disabled:opacity-50 p-1 focus-visible:outline focus-visible:outline-2 focus-visible:outline-truecost-danger focus-visible:outline-offset-2 rounded"
                 title="Delete project"
               >
                 <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
