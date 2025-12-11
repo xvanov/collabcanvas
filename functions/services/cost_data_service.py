@@ -1269,7 +1269,8 @@ async def _lookup_material_firestore(item_code: str) -> Optional[Dict]:
 
         db = firestore.client()
         doc_ref = db.collection("costData").document("materials").collection(item_code).document("data")
-        doc = doc_ref.get()
+        loop = asyncio.get_event_loop()
+        doc = await loop.run_in_executor(None, doc_ref.get)
 
         if doc.exists:
             return doc.to_dict()

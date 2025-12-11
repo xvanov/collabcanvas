@@ -199,7 +199,7 @@
                     tooltip: {
                         callbacks: {
                             label: function(context) {
-                                const percentage = [np.float64(0.1), np.float64(0.7), np.float64(1.0), np.float64(2.4), np.float64(3.3), np.float64(4.6), np.float64(7.7), np.float64(8.4), np.float64(10.5), np.float64(11.5), np.float64(10.9), np.float64(9.9), np.float64(10.0), np.float64(7.5), np.float64(5.5), np.float64(3.1), np.float64(1.5), np.float64(0.6), np.float64(0.7), np.float64(0.1)][context.dataIndex];
+                                const percentage = [0.1, 0.7, 1.0, 2.4, 3.3, 4.6, 7.7, 8.4, 10.5, 11.5, 10.9, 9.9, 10.0, 7.5, 5.5, 3.1, 1.5, 0.6, 0.7, 0.1][context.dataIndex];
                                 return `${context.raw} iterations (${percentage.toFixed(1)}%)`;
                             }
                         }
