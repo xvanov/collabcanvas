@@ -27,17 +27,33 @@ so that **I can review, share, and present the cost estimate to clients or stake
 
 ### AC 4.3.12 Detailed Requirements (Client-Ready Mode)
 
-The client-ready PDF must be distinctly different from the contractor/internal PDF. The following table defines what should change:
+The client-ready PDF must be distinctly different from the contractor/internal PDF. Client PDFs show only what a homeowner/client needs to see, without exposing contractor-level details, pricing methodology, or internal analysis.
 
-| Section | Contractor PDF (Current) | Client PDF (Required) |
-|---------|--------------------------|----------------------|
-| **Cover Page** | Shows P50/P80/P90 values with labels | Single "Total Estimate" price (use P80 as final) |
+**Client PDF Sections (3 sections only):**
+1. Executive Summary (simplified, no Monte Carlo mention)
+2. Cost Summary (simplified category totals, no unit costs, no contingency line)
+3. Assumptions & Exclusions
+
+**Sections EXCLUDED from Client PDF:**
+- Bill of Quantities (exposes unit costs, markup percentages)
+- Labor Analysis (exposes hourly rates, burden calculations)
+- Project Schedule (internal planning details)
+- Risk Analysis / Contingency (industry practice: contingency is built into price, not shown separately)
+- CAD Plan (optional)
+
+**Why no contingency in client PDF?**
+Industry standard practice is to NOT show contingency as a separate line item to clients. Contractors build contingency into their pricing (reflected in P80 vs P50). Showing it separately invites clients to question it or request removal.
+
+| Section | Contractor PDF | Client PDF |
+|---------|----------------|------------|
+| **Cover Page** | Shows P50/P80/P90 values with labels | Single "Total Estimate" price (P80 as final) |
 | **Executive Summary** | "Monte Carlo simulation with 1000 iterations" | No mention of Monte Carlo methodology |
-| **Cost Breakdown** | "Overhead & Profit" as separate visible line | O&P rolled into line item prices (hidden from client) |
-| **Risk Analysis** | Full section with histogram, P50/P80/P90 percentiles, iteration counts | Either **excluded entirely** OR simplified to "Contingency recommendation: X%" without Monte Carlo details |
-| **Internal Notes** | Hidden | Hidden (already working) |
-
-**Bug Report:** The current implementation only hides internal notes but does NOT implement the full client-ready experience described above. Templates expose contractor-level detail to clients.
+| **Cost Breakdown** | Full CSI division breakdown with unit costs, material/labor split, O&P line | Simple category summary (Cabinetry, Plumbing, etc.) with inclusive prices, NO contingency line |
+| **Bill of Quantities** | Full itemized list with unit costs | **EXCLUDED** |
+| **Labor Analysis** | Trade hours, rates, burden calculations | **EXCLUDED** |
+| **Project Schedule** | Detailed task breakdown with dependencies | **EXCLUDED** |
+| **Risk Analysis** | Full Monte Carlo histogram, P50/P80/P90, top risks | **EXCLUDED** (contingency baked into P80 price) |
+| **Internal Notes** | Visible | Hidden |
 
 ## Tasks / Subtasks
 
@@ -119,10 +135,22 @@ After completing this story, run these commands to verify it works:
 | Command | What You See |
 |---------|--------------|
 | `cd functions && python3 demo_pdf_generator.py` | Generates `sample_estimate.pdf`, prints file info |
-| Open `functions/sample_estimate.pdf` | Professional PDF with all 8 sections |
-| `cd functions && python3 demo_pdf_generator.py --client-ready` | Generates simplified `sample_estimate_client.pdf` |
+| Open `functions/sample_estimate.pdf` | Professional contractor PDF with all 8 sections |
+| `cd functions && python3 demo_pdf_generator.py --client-ready` | Generates simplified `sample_estimate_client.pdf` with 3 sections only |
+| Open `functions/sample_estimate_client.pdf` | Client PDF: Executive Summary, Cost Summary, Assumptions (NO BOQ, NO Labor, NO Schedule, NO Risk/Contingency) |
 | `cd functions && python3 demo_pdf_generator.py --sections executive_summary,cost_breakdown` | Generates PDF with only 2 sections |
 | `cd functions && python3 -m pytest tests/unit/test_pdf_generator.py -v` | All tests pass |
+
+**Client PDF Visual Verification:**
+- [ ] Cover page shows single "Total Estimate" (not P50/P80/P90)
+- [ ] NO Bill of Quantities section
+- [ ] NO Labor Analysis section
+- [ ] NO Project Schedule section
+- [ ] NO Risk Analysis / Contingency section
+- [ ] NO Monte Carlo histogram or percentile labels
+- [ ] Cost Summary shows simple categories (not CSI divisions with unit costs)
+- [ ] No "Overhead & Profit" visible anywhere
+- [ ] No "Contingency" line item visible
 
 **Expected Console Output:**
 ```

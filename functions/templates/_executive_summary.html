@@ -8,7 +8,7 @@
     <div class="card">
         <div class="stats-grid">
             {% if client_ready %}
-            {# Client view: Clean, authoritative numbers without internal methodology #}
+            {# Client view: Clean, authoritative numbers - NO contingency shown (industry practice) #}
             <div class="stat-card">
                 <div class="stat-value success">${{ "{:,.0f}".format(estimate.p80) }}</div>
                 <div class="stat-label">Total Project Estimate</div>
@@ -18,8 +18,8 @@
                 <div class="stat-label">Estimated Duration</div>
             </div>
             <div class="stat-card">
-                <div class="stat-value warning">{{ estimate.contingency_pct }}%</div>
-                <div class="stat-label">Contingency Included</div>
+                <div class="stat-value">${{ "{:,.0f}".format(estimate.p80 / (project.square_footage | default(1))) }}/sf</div>
+                <div class="stat-label">Cost per Sq Ft</div>
             </div>
             {% else %}
             {# Contractor view: Full methodology details #}
@@ -64,37 +64,13 @@
     </table>
 
     {% if client_ready %}
-    {# Client-ready: Simple cost summary without Monte Carlo terminology #}
-    <h3>Estimate Summary</h3>
+    {# Client-ready: Simple summary without contingency or methodology details #}
+    <h3>About This Estimate</h3>
     <p class="text-muted">
         This estimate has been prepared based on current market pricing for materials and labor
-        in your area. A contingency allowance is included to account for typical project variations.
+        in your area. The total includes all work described in the project scope, permits, and
+        standard project management.
     </p>
-
-    <table>
-        <thead>
-            <tr>
-                <th>Description</th>
-                <th class="text-right">Amount</th>
-            </tr>
-        </thead>
-        <tbody>
-            <tr>
-                <td>Base Project Cost</td>
-                <td class="currency">${{ "{:,.0f}".format(estimate.p50) }}</td>
-            </tr>
-            <tr>
-                <td>Contingency Allowance ({{ estimate.contingency_pct }}%)</td>
-                <td class="currency">${{ "{:,.0f}".format(estimate.p80 - estimate.p50) }}</td>
-            </tr>
-        </tbody>
-        <tfoot>
-            <tr class="grand-total">
-                <td><strong>Total Project Estimate</strong></td>
-                <td class="currency"><strong>${{ "{:,.0f}".format(estimate.p80) }}</strong></td>
-            </tr>
-        </tfoot>
-    </table>
     {% else %}
     {# Contractor view: Full Monte Carlo cost confidence levels #}
     <h3>Cost Confidence Levels</h3>

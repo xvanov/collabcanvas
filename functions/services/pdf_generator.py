@@ -45,6 +45,15 @@ ALL_SECTIONS = [
     "cad_plan",
 ]
 
+# Client-ready mode only includes these sections
+# Excludes: boq (exposes unit costs/markup), labor_analysis (exposes rates/burden),
+# schedule (internal planning), risk_analysis (contingency is internal), cad_plan
+CLIENT_SECTIONS = [
+    "executive_summary",
+    "cost_breakdown",
+    "assumptions",
+]
+
 
 # =============================================================================
 # Data Models (Story 4.3 - Task 3)
@@ -67,10 +76,18 @@ class PDFGenerationRequest:
     client_ready: bool = False
 
     def get_sections(self) -> List[str]:
-        """Return sections to include, defaulting to all sections."""
-        if self.sections is None:
-            return ALL_SECTIONS.copy()
-        return [s for s in self.sections if s in ALL_SECTIONS]
+        """Return sections to include, defaulting to all sections or client sections."""
+        if self.client_ready:
+            # Client-ready mode uses restricted section list
+            if self.sections is None:
+                return CLIENT_SECTIONS.copy()
+            # Only allow sections that are in CLIENT_SECTIONS
+            return [s for s in self.sections if s in CLIENT_SECTIONS]
+        else:
+            # Contractor mode allows all sections
+            if self.sections is None:
+                return ALL_SECTIONS.copy()
+            return [s for s in self.sections if s in ALL_SECTIONS]
 
 
 @dataclass
@@ -521,11 +538,17 @@ def generate_pdf_local(
     """
     start_time = time.perf_counter()
 
-    # Resolve sections
-    if sections is None:
-        resolved_sections = ALL_SECTIONS.copy()
+    # Resolve sections - use CLIENT_SECTIONS for client-ready mode
+    if client_ready:
+        if sections is None:
+            resolved_sections = CLIENT_SECTIONS.copy()
+        else:
+            resolved_sections = [s for s in sections if s in CLIENT_SECTIONS]
     else:
-        resolved_sections = [s for s in sections if s in ALL_SECTIONS]
+        if sections is None:
+            resolved_sections = ALL_SECTIONS.copy()
+        else:
+            resolved_sections = [s for s in sections if s in ALL_SECTIONS]
 
     estimate_id = estimate_data.get("estimate_id", "demo")
 

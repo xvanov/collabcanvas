@@ -33,6 +33,8 @@ from services.pdf_generator import (
     get_available_sections,
     validate_sections,
     PDFGenerationResult,
+    ALL_SECTIONS,
+    CLIENT_SECTIONS,
 )
 from services.monte_carlo import run_simulation, LineItemInput
 
@@ -395,15 +397,25 @@ Examples:
     print(f"  Total Estimate: {format_currency(estimate_data['p50'])} (P50) / {format_currency(estimate_data['p80'])} (P80)")
     print()
 
-    # Show sections being rendered
-    sections_to_render = sections if sections else get_available_sections()
+    # Determine which sections will actually be rendered
+    if args.client_ready:
+        # Client mode: only client sections allowed
+        if sections:
+            sections_to_render = [s for s in sections if s in CLIENT_SECTIONS]
+        else:
+            sections_to_render = CLIENT_SECTIONS.copy()
+    else:
+        # Contractor mode: all sections allowed
+        sections_to_render = sections if sections else ALL_SECTIONS.copy()
+
     print("  Rendering sections:")
     all_sections = get_available_sections()
     for section in all_sections:
         if section in sections_to_render:
             print(f"    [x] {section.replace('_', ' ').title()}")
         else:
-            print(f"    [ ] {section.replace('_', ' ').title()} (excluded)")
+            reason = "(client mode)" if args.client_ready and section not in CLIENT_SECTIONS else "(excluded)"
+            print(f"    [ ] {section.replace('_', ' ').title()} {reason}")
     print()
 
     print("  Converting HTML to PDF...")
@@ -430,15 +442,23 @@ Examples:
         print()
 
         if args.client_ready:
-            print("  Mode: Client-Ready")
+            print("  Mode: Client-Ready (3 sections only)")
             print()
             print("  Client-Ready Mode Differences:")
             print("  ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
             print("  ✓ Cover page: Single 'Total Estimate' (no P50/P80/P90)")
-            print("  ✓ Executive Summary: No Monte Carlo methodology")
-            print("  ✓ Cost Breakdown: O&P hidden (baked into line items)")
-            print("  ✓ Risk Analysis: Simplified contingency section")
+            print("  ✓ Cost Summary: Simple categories, no unit costs or O&P")
             print("  ✓ Footer: Professional disclaimers added")
+            print()
+            print("  EXCLUDED from client PDF:")
+            print("  ✗ Bill of Quantities (exposes unit costs/markup)")
+            print("  ✗ Labor Analysis (exposes rates/burden)")
+            print("  ✗ Project Schedule (internal planning)")
+            print("  ✗ Risk Analysis (contingency built into price)")
+            print("  ✗ CAD Plan")
+            print()
+            print("  Note: Contingency is NOT shown to clients (industry practice).")
+            print("  The P80 price already includes contingency margin.")
             print()
             print("  Compare with: python3 demo_pdf_generator.py (contractor version)")
         else:
