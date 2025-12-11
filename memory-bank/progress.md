@@ -4,25 +4,26 @@
 
 **Phase**: Implementation - Epic 2 (Deep Agent Pipeline)
 **Sprint**: 1
-**Date**: December 10, 2025
+**Date**: December 11, 2025
 **Branch**: `ture-agent-pipeline`
 **Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed PR breakdown
 **Local Dev**: ✅ Running (Firebase emulators + Vite dev server)
+**Total Tests**: 135 passing
 
 ---
 
 ## PR Progress Tracker
 
-| PR | Branch | Description | Status | Completed |
-|----|--------|-------------|--------|-----------|
-| #1 | `epic2/foundation` | Project setup, config, services | ✅ Complete | Dec 10, 2025 |
-| #2 | `epic2/clarification-validation` | ClarificationOutput models & parsing | ✅ Complete | Dec 10, 2025 |
-| #3 | `epic2/orchestrator` | Pipeline orchestrator & entry points | ✅ Complete | Dec 10, 2025 |
-| #4 | `epic2/location-agent` | Location Intelligence Agent | 🔲 Ready | - |
-| #5 | `epic2/scope-agent` | Construction Scope Agent | 🔲 Not Started | - |
-| #6 | `epic2/cost-agent` | Cost Estimation Agent | 🔲 Not Started | - |
-| #7 | `epic2/risk-final-agents` | Risk, Timeline & Final Agents | 🔲 Not Started | - |
-| #8 | `epic2/firestore-rules` | Security rules & documentation | 🔲 Not Started | - |
+| PR | Branch | Description | Tests | Status | Completed |
+|----|--------|-------------|-------|--------|-----------|
+| #1 | `epic2/foundation` | Project setup, config, services | 58 | ✅ Complete | Dec 10, 2025 |
+| #2 | `epic2/clarification-validation` | ClarificationOutput models & parsing | 7 | ✅ Complete | Dec 10, 2025 |
+| #3 | `epic2/orchestrator` | Pipeline orchestrator & entry points | 15 | ✅ Complete | Dec 10, 2025 |
+| #4 | `ture-agent-pipeline` | Location Intelligence Agent | 26 | ✅ Complete | Dec 11, 2025 |
+| #5 | `epic2/scope-agent` | Construction Scope Agent | 29 | ✅ Complete | Dec 11, 2025 |
+| #6 | `epic2/cost-agent` | Cost Estimation Agent | - | 🔲 Ready | - |
+| #7 | `epic2/risk-final-agents` | Risk, Timeline & Final Agents | - | 🔲 Not Started | - |
+| #8 | `epic2/firestore-rules` | Security rules & documentation | - | 🔲 Not Started | - |
 
 **Legend**: 🔲 Not Started | 🔄 In Progress | ✅ Complete | ⏸️ Blocked
 
@@ -113,32 +114,55 @@
 | Unit tests for PR #3 (15 tests passing) | #3 | ✅ |
 
 ### Story 2.2: Location Intelligence Agent
-**Status**: 🔲 Ready to Start
+**Status**: ✅ Complete
 **PR**: #4
+**Tests**: 26 passing
 
 | Task | Status |
 |------|--------|
-| Create location factor models | 🔲 |
-| Create mock cost data service | 🔲 |
-| Implement Location Agent (real logic) | 🔲 |
-| Implement Location Scorer (real logic) | 🔲 |
-| Implement Location Critic (real logic) | 🔲 |
-| Create mock location data fixtures | 🔲 |
-| Unit tests | 🔲 |
+| Create location factor models | ✅ |
+| Create mock cost data service | ✅ |
+| Implement Location Agent (real logic) | ✅ |
+| Implement Location Scorer (real logic) | ✅ |
+| Implement Location Critic (real logic) | ✅ |
+| Create mock location data fixtures | ✅ |
+| Unit tests | ✅ |
+
+**Files Created/Modified**:
+- `functions/models/location_factors.py` - LaborRates, PermitCosts, WeatherFactors, LocationFactors
+- `functions/services/cost_data_service.py` - Mock data for 6 metros
+- `functions/agents/primary/location_agent.py` - Real LLM-powered agent
+- `functions/agents/scorers/location_scorer.py` - 7-criteria scoring
+- `functions/agents/critics/location_critic.py` - Actionable feedback
+- `functions/tests/fixtures/mock_cost_data.py` - Test fixtures
+- `functions/tests/unit/test_location_agent.py` - 26 unit tests
 
 ### Story 2.3: Construction Scope Agent
-**Status**: 🔲 Not Started
+**Status**: ✅ Complete
 **PR**: #5
+**Tests**: 29 passing
 
 | Task | Status |
 |------|--------|
-| Create Bill of Quantities models | 🔲 |
-| Add cost code lookup to service | 🔲 |
-| Implement Scope Agent (real logic) | 🔲 |
-| Unit tests | 🔲 |
+| Create Bill of Quantities models | ✅ |
+| Add cost code lookup to service | ✅ |
+| Implement Scope Agent (real logic) | ✅ |
+| Implement Scope Scorer (real logic) | ✅ |
+| Implement Scope Critic (real logic) | ✅ |
+| Create mock BoQ fixtures | ✅ |
+| Unit tests | ✅ |
+
+**Files Created/Modified**:
+- `functions/models/bill_of_quantities.py` - CostCode, UnitCostReference, EnrichedLineItem, EnrichedDivision, BillOfQuantities
+- `functions/services/cost_data_service.py` - Added `get_cost_code()` for CSI MasterFormat lookup
+- `functions/agents/primary/scope_agent.py` - Real LLM-powered agent (replaced stub)
+- `functions/agents/scorers/scope_scorer.py` - 6-criteria scoring (replaced stub)
+- `functions/agents/critics/scope_critic.py` - Actionable feedback (replaced stub)
+- `functions/tests/fixtures/mock_boq_data.py` - Test fixtures
+- `functions/tests/unit/test_scope_agent.py` - 29 unit tests
 
 ### Story 2.4: Cost Estimation Agent
-**Status**: 🔲 Not Started
+**Status**: 🔲 Ready to Start
 **PR**: #6
 
 | Task | Status |
@@ -190,14 +214,15 @@
 
 ## Next Actions
 
-1. **Start PR #4**: Location Intelligence Agent
-2. Create `models/location_factors.py` with Pydantic models
-3. Create `services/cost_data_service.py` (mock implementation)
-4. Implement real LocationAgent logic (replace stub)
-5. Implement real LocationScorer logic (replace stub)
-6. Implement real LocationCritic logic (replace stub)
-7. Add unit tests
-8. Submit PR for review
+1. **Start PR #6**: Cost Estimation Agent
+2. Create `models/cost_estimate.py` with Pydantic models
+3. Add `get_material_cost()` to cost data service
+4. Implement real CostAgent logic (replace stub)
+5. Implement real CostScorer logic (replace stub)
+6. Implement real CostCritic logic (replace stub)
+7. Create mock cost estimate fixtures
+8. Add unit tests
+9. Submit PR for review
 
 ## Test Summary
 
@@ -206,7 +231,9 @@
 | PR #1 | 58 | ✅ All passing |
 | PR #2 | 7 | ✅ All passing |
 | PR #3 | 15 | ✅ All passing |
-| **Total** | **80** | ✅ All passing |
+| PR #4 | 26 | ✅ All passing |
+| PR #5 | 29 | ✅ All passing |
+| **Total** | **135** | ✅ All passing |
 
 ## Local Development Setup
 
@@ -219,4 +246,4 @@
 
 ---
 
-_Last Updated: December 10, 2025_
+_Last Updated: December 11, 2025 (PR #5 Complete)_

@@ -1,41 +1,144 @@
-"""Scope Agent stub for TrueCost.
+"""Scope Agent for TrueCost.
 
-Stub implementation for pipeline testing.
-Real implementation will be added in PR #5.
+Enriches the Bill of Quantities with cost codes and validates quantities
+against CAD data. Uses LLM to analyze scope completeness and suggest
+missing items.
 """
 
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, List, Optional
+import json
 import structlog
 
 from agents.base_agent import BaseA2AAgent
 from services.firestore_service import FirestoreService
 from services.llm_service import LLMService
+from services.cost_data_service import CostDataService
+from models.bill_of_quantities import (
+    BillOfQuantities,
+    EnrichedDivision,
+    EnrichedLineItem,
+    CostCode,
+    UnitCostReference,
+    CompletenessCheck,
+    ScopeAnalysis,
+    CostCodeSource,
+    QuantityValidationStatus,
+    TradeCategory,
+    CSI_DIVISION_NAMES,
+    get_primary_trade,
+)
 
 logger = structlog.get_logger()
+
+
+# =============================================================================
+# SYSTEM PROMPT
+# =============================================================================
+
+SCOPE_AGENT_SYSTEM_PROMPT = """You are an expert construction estimator specializing in scope analysis and Bill of Quantities (BoQ) validation.
+
+Your role is to analyze the enriched scope data and provide insights about completeness, material selections, and potential issues.
+
+## Your Expertise Includes:
+- CSI MasterFormat divisions and construction trades
+- Material selection and specification interpretation
+- Quantity takeoff validation against floor plans
+- Identifying missing scope items for project types
+- Assessing finish level appropriateness
+
+## Input You Will Receive:
+1. Project information (type, sqft, finish level)
+2. Enriched divisions with line items and cost codes
+3. CAD data with room dimensions
+4. Completeness metrics
+
+## Your Output Must Include:
+1. **summary**: A 2-3 sentence overview of the scope
+2. **key_observations**: List of 3-5 key observations about the scope
+3. **material_highlights**: List of notable material selections
+4. **complexity_factors**: List of factors affecting project complexity
+5. **finish_level_assessment**: Assessment of whether materials match stated finish level
+6. **recommendations**: List of 2-4 recommendations
+7. **missing_items**: Items that appear to be missing for this project type (empty list if complete)
+8. **suggested_additions**: Optional items to consider adding
+
+## Response Format:
+You MUST respond with valid JSON only. No markdown, no explanation.
+
+{
+    "summary": "Brief scope overview...",
+    "key_observations": ["Observation 1", "Observation 2", "Observation 3"],
+    "material_highlights": ["Material 1", "Material 2"],
+    "complexity_factors": ["Factor 1", "Factor 2"],
+    "finish_level_assessment": "Assessment of finish level match...",
+    "recommendations": ["Recommendation 1", "Recommendation 2"],
+    "missing_items": [],
+    "suggested_additions": ["Optional item 1"]
+}
+
+## Guidelines:
+- Be specific about material selections and their appropriateness
+- Identify any scope gaps for the project type
+- Consider the stated finish level when evaluating materials
+- Flag any quantity discrepancies
+- Provide actionable recommendations
+"""
+
+
+# =============================================================================
+# EXPECTED DIVISIONS BY PROJECT TYPE
+# =============================================================================
+
+# Divisions typically included for each project type
+EXPECTED_DIVISIONS_BY_PROJECT_TYPE: Dict[str, List[str]] = {
+    "kitchen_remodel": ["01", "02", "06", "08", "09", "10", "11", "12", "22", "26"],
+    "bathroom_remodel": ["01", "02", "06", "08", "09", "10", "12", "22", "26"],
+    "bedroom_remodel": ["01", "02", "06", "08", "09", "26"],
+    "living_room_remodel": ["01", "02", "06", "08", "09", "26"],
+    "basement_finish": ["01", "02", "03", "06", "07", "08", "09", "22", "23", "26"],
+    "attic_conversion": ["01", "02", "06", "07", "08", "09", "22", "23", "26"],
+    "whole_house_remodel": ["01", "02", "06", "07", "08", "09", "10", "11", "12", "22", "23", "26"],
+    "addition": ["01", "02", "03", "05", "06", "07", "08", "09", "22", "23", "26", "31"],
+    "deck_patio": ["01", "02", "06", "26", "32"],
+    "garage": ["01", "02", "03", "06", "07", "08", "09", "26", "31"],
+}
+
+
+# =============================================================================
+# SCOPE AGENT CLASS
+# =============================================================================
 
 
 class ScopeAgent(BaseA2AAgent):
     """Scope Agent - enriches Bill of Quantities with cost codes.
     
-    This is a stub implementation for pipeline testing.
-    Real implementation in PR #5 will:
-    - Read csiScope from ClarificationOutput
-    - Map line items to RSMeans cost codes
-    - Validate quantities against CAD data
-    - Check completeness for project type
+    This agent:
+    1. Reads csiScope from ClarificationOutput
+    2. Maps line items to RSMeans cost codes
+    3. Validates quantities against CAD data
+    4. Uses LLM to analyze completeness
+    5. Saves enriched BoQ to Firestore
     """
     
     def __init__(
         self,
         firestore_service: Optional[FirestoreService] = None,
-        llm_service: Optional[LLMService] = None
+        llm_service: Optional[LLMService] = None,
+        cost_data_service: Optional[CostDataService] = None
     ):
-        """Initialize ScopeAgent."""
+        """Initialize ScopeAgent.
+        
+        Args:
+            firestore_service: Optional Firestore service instance.
+            llm_service: Optional LLM service instance.
+            cost_data_service: Optional cost data service instance.
+        """
         super().__init__(
             name="scope",
             firestore_service=firestore_service,
             llm_service=llm_service
         )
+        self.cost_data_service = cost_data_service or CostDataService()
     
     async def run(
         self,
@@ -59,117 +162,618 @@ class ScopeAgent(BaseA2AAgent):
             has_feedback=feedback is not None
         )
         
-        # Extract CSI scope from clarification output
+        # Step 1: Extract data from inputs
         clarification = input_data.get("clarification_output", {})
         csi_scope = clarification.get("csiScope", {})
+        project_brief = clarification.get("projectBrief", {})
+        cad_data = clarification.get("cadData", {})
         
-        # Process divisions and enrich with cost codes
-        divisions = []
-        total_items = 0
+        project_type = project_brief.get("projectType", "other")
+        scope_summary = project_brief.get("scopeSummary", {})
+        total_sqft = scope_summary.get("totalSqft", 0)
+        finish_level = scope_summary.get("finishLevel", "mid_range")
         
-        for div_key, div_data in csi_scope.items():
-            if div_data.get("status") == "included":
-                div_num = div_key.split("_")[0].replace("div", "")
-                enriched_items = self._enrich_line_items(
-                    div_data.get("lineItems", []),
-                    div_num
-                )
-                
-                if enriched_items:
-                    divisions.append({
-                        "division": div_num,
-                        "name": self._get_division_name(div_num),
-                        "lineItems": enriched_items
-                    })
-                    total_items += len(enriched_items)
+        logger.info(
+            "scope_extracted",
+            estimate_id=estimate_id,
+            project_type=project_type,
+            total_sqft=total_sqft,
+            finish_level=finish_level,
+            division_count=len(csi_scope)
+        )
         
-        output = {
-            "divisions": divisions,
-            "totalLineItems": total_items,
-            "totalDivisions": len(divisions),
-            "completeness": {
-                "allItemsHaveCostCodes": True,
-                "allItemsHaveQuantities": True,
-                "warnings": []
-            },
-            "summary": f"Enriched {total_items} line items across {len(divisions)} divisions"
-        }
+        # Step 2: Enrich each division with cost codes
+        enriched_divisions = await self._enrich_divisions(
+            csi_scope=csi_scope,
+            cad_data=cad_data
+        )
         
-        # Save output to Firestore
+        # Step 3: Validate quantities against CAD
+        enriched_divisions = self._validate_quantities(
+            divisions=enriched_divisions,
+            cad_data=cad_data,
+            total_sqft=total_sqft
+        )
+        
+        # Step 4: Check completeness
+        completeness = self._check_completeness(
+            divisions=enriched_divisions,
+            project_type=project_type
+        )
+        
+        # Step 5: Use LLM to analyze scope
+        analysis = await self._analyze_with_llm(
+            estimate_id=estimate_id,
+            project_type=project_type,
+            finish_level=finish_level,
+            total_sqft=total_sqft,
+            divisions=enriched_divisions,
+            completeness=completeness,
+            feedback=feedback
+        )
+        
+        # Update completeness with LLM suggestions
+        completeness.missing_items = analysis.get("missing_items", [])
+        completeness.suggested_additions = analysis.get("suggested_additions", [])
+        
+        # Step 6: Calculate totals and build BoQ
+        boq = self._build_bill_of_quantities(
+            estimate_id=estimate_id,
+            project_type=project_type,
+            finish_level=finish_level,
+            total_sqft=total_sqft,
+            divisions=enriched_divisions,
+            completeness=completeness,
+            analysis=analysis
+        )
+        
+        # Step 7: Convert to output format
+        output = boq.to_agent_output()
+        
+        # Step 8: Save to Firestore
         await self.firestore.save_agent_output(
             estimate_id=estimate_id,
             agent_name=self.name,
             output=output,
             summary=output["summary"],
-            confidence=0.90,
+            confidence=output["confidence"],
             tokens_used=self._tokens_used,
+            duration_ms=self.duration_ms
+        )
+        
+        logger.info(
+            "scope_agent_completed",
+            estimate_id=estimate_id,
+            total_items=output["totalLineItems"],
+            total_divisions=output["totalIncludedDivisions"],
+            confidence=output["confidence"],
             duration_ms=self.duration_ms
         )
         
         return output
     
-    def _enrich_line_items(
+    async def _enrich_divisions(
         self,
-        items: List[Dict[str, Any]],
-        division: str
-    ) -> List[Dict[str, Any]]:
-        """Enrich line items with cost codes."""
-        enriched = []
-        for item in items:
-            enriched.append({
-                **item,
-                "costCode": f"{division}-{len(enriched) + 1:04d}",
-                "unitCost": self._estimate_unit_cost(item),
-                "laborHours": self._estimate_labor_hours(item)
-            })
-        return enriched
-    
-    def _estimate_unit_cost(self, item: Dict[str, Any]) -> float:
-        """Estimate unit cost based on description."""
-        desc = item.get("description", "").lower()
+        csi_scope: Dict[str, Any],
+        cad_data: Dict[str, Any]
+    ) -> List[EnrichedDivision]:
+        """Enrich all divisions with cost codes.
         
-        # Simple heuristics for stub
-        if "cabinet" in desc:
-            return 250.0
-        elif "countertop" in desc or "granite" in desc:
-            return 85.0
-        elif "tile" in desc:
-            return 12.0
-        elif "paint" in desc:
-            return 2.5
-        elif "electrical" in desc or "outlet" in desc:
-            return 75.0
-        elif "plumbing" in desc or "fixture" in desc:
-            return 150.0
-        return 50.0
+        Args:
+            csi_scope: CSI scope from clarification output.
+            cad_data: CAD data from clarification output.
+            
+        Returns:
+            List of enriched divisions.
+        """
+        enriched_divisions = []
+        
+        for div_key, div_data in csi_scope.items():
+            if not isinstance(div_data, dict):
+                continue
+            
+            # Extract division code from key (e.g., "div06_wood..." -> "06")
+            div_code = div_data.get("code", "")
+            if not div_code:
+                # Try to extract from key
+                parts = div_key.split("_")
+                if parts and parts[0].startswith("div"):
+                    div_code = parts[0].replace("div", "")
+            
+            status = div_data.get("status", "excluded")
+            div_name = div_data.get("name", CSI_DIVISION_NAMES.get(div_code, f"Division {div_code}"))
+            description = div_data.get("description", "")
+            
+            # Only process included divisions
+            if status != "included":
+                # Create placeholder for excluded divisions
+                enriched_divisions.append(EnrichedDivision(
+                    division_code=div_code,
+                    division_name=div_name,
+                    status=status,
+                    description=description or div_data.get("exclusionReason", ""),
+                    line_items=[],
+                    item_count=0
+                ))
+                continue
+            
+            # Enrich line items
+            items = div_data.get("items", [])
+            enriched_items = []
+            
+            for item in items:
+                enriched_item = await self._enrich_line_item(
+                    item=item,
+                    division_code=div_code
+                )
+                enriched_items.append(enriched_item)
+            
+            # Create enriched division
+            division = EnrichedDivision(
+                division_code=div_code,
+                division_name=div_name,
+                status=status,
+                description=description,
+                line_items=enriched_items
+            )
+            division.calculate_subtotals()
+            enriched_divisions.append(division)
+        
+        return enriched_divisions
     
-    def _estimate_labor_hours(self, item: Dict[str, Any]) -> float:
-        """Estimate labor hours per unit."""
+    async def _enrich_line_item(
+        self,
+        item: Dict[str, Any],
+        division_code: str
+    ) -> EnrichedLineItem:
+        """Enrich a single line item with cost code.
+        
+        Args:
+            item: Line item from clarification output.
+            division_code: CSI division code.
+            
+        Returns:
+            Enriched line item.
+        """
+        item_id = item.get("id", "")
+        description = item.get("item", "")
+        subdivision_code = item.get("subdivisionCode")
+        quantity = item.get("quantity", 0)
         unit = item.get("unit", "EA")
-        if unit == "SF":
-            return 0.1
-        elif unit == "LF":
-            return 0.5
-        return 1.0
+        specs = item.get("specifications")
+        notes = item.get("notes")
+        confidence = item.get("confidence", 0.8)
+        source = item.get("source", "inferred")
+        
+        # Look up cost code
+        cost_code_data = await self.cost_data_service.get_cost_code(
+            item_description=description,
+            division_code=division_code,
+            subdivision_code=subdivision_code
+        )
+        
+        # Build cost code model
+        cost_code = CostCode(
+            code=cost_code_data["cost_code"],
+            description=cost_code_data["description"],
+            subdivision=cost_code_data.get("subdivision"),
+            source=CostCodeSource(cost_code_data.get("source", "inferred")),
+            confidence=cost_code_data.get("confidence", 0.5)
+        )
+        
+        # Build unit cost reference
+        primary_trade_str = cost_code_data.get("primary_trade", "general_labor")
+        try:
+            primary_trade = TradeCategory(primary_trade_str)
+        except ValueError:
+            primary_trade = TradeCategory.GENERAL_LABOR
+        
+        secondary_trades_str = cost_code_data.get("secondary_trades", [])
+        secondary_trades = []
+        for t in secondary_trades_str:
+            try:
+                secondary_trades.append(TradeCategory(t))
+            except ValueError:
+                pass
+        
+        unit_cost_ref = UnitCostReference(
+            material_cost_per_unit=cost_code_data.get("material_cost_per_unit", 0),
+            labor_hours_per_unit=cost_code_data.get("labor_hours_per_unit", 0),
+            primary_trade=primary_trade,
+            secondary_trades=secondary_trades,
+            equipment_cost_per_unit=cost_code_data.get("equipment_cost_per_unit", 0),
+            cost_code_source=cost_code_data.get("source", "mock")
+        )
+        
+        # Calculate estimates
+        material_cost = quantity * unit_cost_ref.material_cost_per_unit
+        labor_hours = quantity * unit_cost_ref.labor_hours_per_unit
+        equipment_cost = quantity * unit_cost_ref.equipment_cost_per_unit
+        
+        return EnrichedLineItem(
+            id=item_id,
+            item=description,
+            original_subdivision_code=subdivision_code,
+            quantity=quantity,
+            unit=unit,
+            specifications=specs,
+            notes=notes,
+            original_confidence=confidence,
+            source=source,
+            cost_code=cost_code,
+            unit_cost_reference=unit_cost_ref,
+            quantity_validation=QuantityValidationStatus.ESTIMATED,
+            estimated_material_cost=round(material_cost, 2),
+            estimated_labor_hours=round(labor_hours, 2),
+            estimated_equipment_cost=round(equipment_cost, 2)
+        )
     
-    def _get_division_name(self, div_num: str) -> str:
-        """Get CSI division name."""
-        names = {
-            "01": "General Requirements",
-            "02": "Existing Conditions",
-            "03": "Concrete",
-            "04": "Masonry",
-            "05": "Metals",
-            "06": "Wood, Plastics, and Composites",
-            "07": "Thermal and Moisture Protection",
-            "08": "Openings",
-            "09": "Finishes",
-            "10": "Specialties",
-            "11": "Equipment",
-            "12": "Furnishings",
-            "22": "Plumbing",
-            "23": "HVAC",
-            "26": "Electrical"
-        }
-        return names.get(div_num, f"Division {div_num}")
+    def _validate_quantities(
+        self,
+        divisions: List[EnrichedDivision],
+        cad_data: Dict[str, Any],
+        total_sqft: float
+    ) -> List[EnrichedDivision]:
+        """Validate quantities against CAD data.
+        
+        Args:
+            divisions: List of enriched divisions.
+            cad_data: CAD data from clarification output.
+            total_sqft: Total square footage from scope.
+            
+        Returns:
+            Divisions with validated quantities.
+        """
+        space_model = cad_data.get("spaceModel", {})
+        cad_sqft = space_model.get("totalSqft", 0)
+        rooms = space_model.get("rooms", [])
+        walls = space_model.get("walls", [])
+        
+        # Calculate derived values from CAD
+        total_wall_length = sum(w.get("length", 0) for w in walls)
+        wall_height = 9  # Default ceiling height
+        if walls:
+            wall_height = walls[0].get("height", 9)
+        wall_sqft = total_wall_length * wall_height
+        
+        for division in divisions:
+            if division.status != "included":
+                continue
+            
+            for item in division.line_items:
+                unit = item.unit.upper()
+                
+                # Validate SF quantities against CAD sqft
+                if unit == "SF":
+                    if "floor" in item.item.lower() or "flooring" in item.item.lower():
+                        # Flooring should match room sqft (+/- waste factor)
+                        if cad_sqft > 0:
+                            expected_min = cad_sqft * 0.95
+                            expected_max = cad_sqft * 1.15  # 15% waste factor max
+                            if expected_min <= item.quantity <= expected_max:
+                                item.quantity_validation = QuantityValidationStatus.VALIDATED
+                            else:
+                                item.quantity_validation = QuantityValidationStatus.DISCREPANCY
+                                item.quantity_discrepancy_notes = (
+                                    f"Quantity {item.quantity} SF vs CAD {cad_sqft} SF"
+                                )
+                        else:
+                            item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                    elif "wall" in item.item.lower() or "paint" in item.item.lower():
+                        # Wall paint should be reasonable for wall area
+                        if wall_sqft > 0:
+                            expected_min = wall_sqft * 0.8
+                            expected_max = wall_sqft * 1.2
+                            if expected_min <= item.quantity <= expected_max:
+                                item.quantity_validation = QuantityValidationStatus.VALIDATED
+                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                    else:
+                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                
+                # Validate LF quantities
+                elif unit == "LF":
+                    if "cabinet" in item.item.lower():
+                        # Cabinets - reasonable check
+                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                    elif "crown" in item.item.lower() or "base" in item.item.lower():
+                        # Trim should relate to perimeter
+                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                    else:
+                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                
+                # EA quantities are harder to validate from CAD
+                else:
+                    item.quantity_validation = QuantityValidationStatus.ESTIMATED
+        
+        return divisions
+    
+    def _check_completeness(
+        self,
+        divisions: List[EnrichedDivision],
+        project_type: str
+    ) -> CompletenessCheck:
+        """Check completeness of the Bill of Quantities.
+        
+        Args:
+            divisions: List of enriched divisions.
+            project_type: Type of project.
+            
+        Returns:
+            CompletenessCheck with metrics and warnings.
+        """
+        # Gather metrics
+        total_items = sum(d.item_count for d in divisions if d.status == "included")
+        items_with_codes = sum(d.items_with_cost_codes for d in divisions if d.status == "included")
+        items_validated = sum(d.items_validated for d in divisions if d.status == "included")
+        
+        # Calculate coverage
+        code_coverage = items_with_codes / total_items if total_items > 0 else 0
+        validation_coverage = items_validated / total_items if total_items > 0 else 0
+        
+        # Check all items have quantities
+        all_have_quantities = True
+        for div in divisions:
+            for item in div.line_items:
+                if item.quantity <= 0:
+                    all_have_quantities = False
+                    break
+        
+        # Check expected divisions
+        expected_divs = EXPECTED_DIVISIONS_BY_PROJECT_TYPE.get(project_type, [])
+        included_div_codes = [d.division_code for d in divisions if d.status == "included"]
+        missing_expected = [d for d in expected_divs if d not in included_div_codes]
+        
+        all_required_present = len(missing_expected) == 0
+        
+        # Generate warnings
+        warnings = []
+        if missing_expected:
+            missing_names = [CSI_DIVISION_NAMES.get(d, f"Div {d}") for d in missing_expected]
+            warnings.append(f"Potentially missing divisions for {project_type}: {', '.join(missing_names)}")
+        
+        if code_coverage < 0.95:
+            warnings.append(f"Only {code_coverage:.0%} of items have cost codes assigned")
+        
+        if validation_coverage < 0.5:
+            warnings.append(f"Only {validation_coverage:.0%} of quantities validated against CAD")
+        
+        return CompletenessCheck(
+            all_items_have_cost_codes=code_coverage >= 0.99,
+            all_items_have_quantities=all_have_quantities,
+            all_required_divisions_present=all_required_present,
+            quantity_validation_complete=validation_coverage >= 0.8,
+            warnings=warnings,
+            missing_items=[],  # Will be filled by LLM
+            suggested_additions=[],  # Will be filled by LLM
+            cost_code_coverage=code_coverage,
+            quantity_validation_coverage=validation_coverage
+        )
+    
+    async def _analyze_with_llm(
+        self,
+        estimate_id: str,
+        project_type: str,
+        finish_level: str,
+        total_sqft: float,
+        divisions: List[EnrichedDivision],
+        completeness: CompletenessCheck,
+        feedback: Optional[Dict[str, Any]] = None
+    ) -> Dict[str, Any]:
+        """Use LLM to analyze scope.
+        
+        Args:
+            estimate_id: The estimate ID.
+            project_type: Type of project.
+            finish_level: Finish level (budget, mid_range, etc.).
+            total_sqft: Total square footage.
+            divisions: Enriched divisions.
+            completeness: Completeness metrics.
+            feedback: Optional critic feedback.
+            
+        Returns:
+            LLM analysis results.
+        """
+        # Build system prompt with feedback if retry
+        system_prompt = self.build_system_prompt(
+            SCOPE_AGENT_SYSTEM_PROMPT,
+            feedback
+        )
+        
+        # Build user message
+        user_message = self._build_llm_user_message(
+            project_type=project_type,
+            finish_level=finish_level,
+            total_sqft=total_sqft,
+            divisions=divisions,
+            completeness=completeness
+        )
+        
+        try:
+            result = await self.llm.generate_json(
+                system_prompt=system_prompt,
+                user_message=user_message
+            )
+            
+            self._tokens_used = result.get("tokens_used", 0)
+            analysis = result.get("content", {})
+            
+            logger.info(
+                "llm_analysis_completed",
+                estimate_id=estimate_id,
+                tokens_used=self._tokens_used
+            )
+            
+            return analysis
+            
+        except Exception as e:
+            logger.warning(
+                "llm_analysis_fallback",
+                estimate_id=estimate_id,
+                error=str(e)
+            )
+            
+            # Return fallback analysis
+            return self._generate_fallback_analysis(
+                project_type=project_type,
+                finish_level=finish_level,
+                divisions=divisions,
+                completeness=completeness
+            )
+    
+    def _build_llm_user_message(
+        self,
+        project_type: str,
+        finish_level: str,
+        total_sqft: float,
+        divisions: List[EnrichedDivision],
+        completeness: CompletenessCheck
+    ) -> str:
+        """Build user message for LLM analysis.
+        
+        Args:
+            project_type: Type of project.
+            finish_level: Finish level.
+            total_sqft: Total square footage.
+            divisions: Enriched divisions.
+            completeness: Completeness metrics.
+            
+        Returns:
+            Formatted user message.
+        """
+        # Summarize divisions for LLM
+        div_summary = []
+        for div in divisions:
+            if div.status == "included":
+                items_preview = []
+                for item in div.line_items[:5]:  # First 5 items
+                    items_preview.append(f"  - {item.item} ({item.quantity} {item.unit})")
+                if len(div.line_items) > 5:
+                    items_preview.append(f"  - ... and {len(div.line_items) - 5} more items")
+                
+                div_summary.append(
+                    f"**{div.division_code} - {div.division_name}** ({div.item_count} items)\n" +
+                    "\n".join(items_preview)
+                )
+        
+        return f"""## Project Information
+Project Type: {project_type}
+Finish Level: {finish_level}
+Total Sqft: {total_sqft}
 
+## Completeness Metrics
+- Cost Code Coverage: {completeness.cost_code_coverage:.0%}
+- Quantity Validation: {completeness.quantity_validation_coverage:.0%}
+- All Required Divisions Present: {completeness.all_required_divisions_present}
+- Warnings: {', '.join(completeness.warnings) if completeness.warnings else 'None'}
+
+## Included Divisions Summary
+{chr(10).join(div_summary)}
+
+Please analyze this scope and provide your assessment in the required JSON format."""
+    
+    def _generate_fallback_analysis(
+        self,
+        project_type: str,
+        finish_level: str,
+        divisions: List[EnrichedDivision],
+        completeness: CompletenessCheck
+    ) -> Dict[str, Any]:
+        """Generate fallback analysis when LLM is unavailable.
+        
+        Args:
+            project_type: Type of project.
+            finish_level: Finish level.
+            divisions: Enriched divisions.
+            completeness: Completeness metrics.
+            
+        Returns:
+            Basic analysis dict.
+        """
+        included_count = sum(1 for d in divisions if d.status == "included")
+        total_items = sum(d.item_count for d in divisions)
+        
+        summary = (
+            f"{project_type.replace('_', ' ').title()} project with {total_items} line items "
+            f"across {included_count} CSI divisions. Finish level: {finish_level}."
+        )
+        
+        key_observations = [
+            f"Scope includes {included_count} active CSI divisions",
+            f"Cost code coverage: {completeness.cost_code_coverage:.0%}",
+            f"Quantity validation: {completeness.quantity_validation_coverage:.0%}"
+        ]
+        
+        if completeness.warnings:
+            key_observations.extend(completeness.warnings[:2])
+        
+        return {
+            "summary": summary,
+            "key_observations": key_observations,
+            "material_highlights": ["Material selections defined per line item specifications"],
+            "complexity_factors": [f"Standard {project_type.replace('_', ' ')} complexity"],
+            "finish_level_assessment": f"Materials specified for {finish_level.replace('_', ' ')} finish level",
+            "recommendations": [
+                "Review line item quantities against CAD measurements",
+                "Verify material selections with client before finalizing estimate"
+            ],
+            "missing_items": completeness.warnings[:2] if completeness.warnings else [],
+            "suggested_additions": []
+        }
+    
+    def _build_bill_of_quantities(
+        self,
+        estimate_id: str,
+        project_type: str,
+        finish_level: str,
+        total_sqft: float,
+        divisions: List[EnrichedDivision],
+        completeness: CompletenessCheck,
+        analysis: Dict[str, Any]
+    ) -> BillOfQuantities:
+        """Build the final Bill of Quantities model.
+        
+        Args:
+            estimate_id: The estimate ID.
+            project_type: Project type.
+            finish_level: Finish level.
+            total_sqft: Total square footage.
+            divisions: Enriched divisions.
+            completeness: Completeness check.
+            analysis: LLM analysis results.
+            
+        Returns:
+            Complete BillOfQuantities model.
+        """
+        # Build scope analysis
+        scope_analysis = ScopeAnalysis(
+            summary=analysis.get("summary", f"{project_type} scope analysis"),
+            key_observations=analysis.get("key_observations", []),
+            material_highlights=analysis.get("material_highlights", []),
+            complexity_factors=analysis.get("complexity_factors", []),
+            finish_level_assessment=analysis.get("finish_level_assessment", ""),
+            recommendations=analysis.get("recommendations", [])
+        )
+        
+        # Calculate confidence based on completeness and LLM analysis
+        confidence = (
+            completeness.cost_code_coverage * 0.4 +
+            completeness.quantity_validation_coverage * 0.3 +
+            (1.0 if completeness.all_required_divisions_present else 0.7) * 0.3
+        )
+        
+        # Build BoQ
+        boq = BillOfQuantities(
+            estimate_id=estimate_id,
+            project_type=project_type,
+            finish_level=finish_level,
+            total_sqft=total_sqft,
+            divisions=divisions,
+            completeness=completeness,
+            analysis=scope_analysis,
+            confidence=round(confidence, 2)
+        )
+        
+        # Calculate totals
+        boq.calculate_totals()
+        
+        return boq

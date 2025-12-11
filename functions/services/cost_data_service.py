@@ -4,7 +4,8 @@ Mock implementation of cost data service for location-based factors.
 This will be replaced by Dev 4 with real RSMeans/cost database integration.
 """
 
-from typing import Dict, Optional
+from typing import Dict, List, Optional, Tuple
+import re
 import structlog
 
 from models.location_factors import (
@@ -697,4 +698,729 @@ class CostDataService:
         """Clear the location factors cache."""
         self._cache.clear()
         logger.info("cost_data_cache_cleared")
+    
+    async def get_cost_code(
+        self,
+        item_description: str,
+        division_code: str,
+        subdivision_code: Optional[str] = None
+    ) -> Dict[str, any]:
+        """Get cost code and unit costs for an item.
+        
+        Uses fuzzy matching on item description to find the best matching
+        cost code from the mock database.
+        
+        Args:
+            item_description: Description of the line item.
+            division_code: CSI division code (e.g., '06', '22').
+            subdivision_code: Optional CSI subdivision code (e.g., '06 41 00').
+            
+        Returns:
+            Dict with cost_code, description, material_cost_per_unit,
+            labor_hours_per_unit, primary_trade, and confidence.
+        """
+        logger.debug(
+            "cost_code_lookup",
+            item=item_description[:50],
+            division=division_code,
+            subdivision=subdivision_code
+        )
+        
+        # Normalize description for matching
+        desc_lower = item_description.lower()
+        
+        # Try subdivision code match first
+        if subdivision_code:
+            normalized_sub = subdivision_code.replace(" ", "")
+            for code_data in MOCK_COST_CODES:
+                if code_data.get("subdivision", "").replace(" ", "") == normalized_sub:
+                    return self._build_cost_code_result(code_data, 0.95)
+        
+        # Try fuzzy keyword matching within division
+        division_codes = [c for c in MOCK_COST_CODES if c["division"] == division_code]
+        
+        best_match = None
+        best_score = 0.0
+        
+        for code_data in division_codes:
+            score = self._calculate_fuzzy_score(desc_lower, code_data)
+            if score > best_score:
+                best_score = score
+                best_match = code_data
+        
+        # If no good match in division, try global search
+        if best_score < 0.3:
+            for code_data in MOCK_COST_CODES:
+                score = self._calculate_fuzzy_score(desc_lower, code_data)
+                if score > best_score:
+                    best_score = score
+                    best_match = code_data
+        
+        # If still no match, return generic based on division
+        if best_match is None or best_score < 0.2:
+            return self._get_default_cost_code(division_code, item_description)
+        
+        return self._build_cost_code_result(best_match, min(0.95, best_score + 0.3))
+    
+    def _calculate_fuzzy_score(
+        self,
+        description: str,
+        code_data: Dict[str, any]
+    ) -> float:
+        """Calculate fuzzy match score between description and cost code.
+        
+        Args:
+            description: Normalized item description (lowercase).
+            code_data: Cost code data from mock database.
+            
+        Returns:
+            Match score from 0.0 to 1.0.
+        """
+        keywords = code_data.get("keywords", [])
+        if not keywords:
+            return 0.0
+        
+        matches = 0
+        for keyword in keywords:
+            if keyword.lower() in description:
+                matches += 1
+        
+        return matches / len(keywords) if keywords else 0.0
+    
+    def _build_cost_code_result(
+        self,
+        code_data: Dict[str, any],
+        confidence: float
+    ) -> Dict[str, any]:
+        """Build cost code result dict from code data.
+        
+        Args:
+            code_data: Cost code data from mock database.
+            confidence: Match confidence.
+            
+        Returns:
+            Formatted cost code result.
+        """
+        return {
+            "cost_code": code_data["code"],
+            "subdivision": code_data.get("subdivision"),
+            "description": code_data["description"],
+            "material_cost_per_unit": code_data["material_cost_per_unit"],
+            "labor_hours_per_unit": code_data["labor_hours_per_unit"],
+            "equipment_cost_per_unit": code_data.get("equipment_cost_per_unit", 0.0),
+            "primary_trade": code_data["primary_trade"],
+            "secondary_trades": code_data.get("secondary_trades", []),
+            "unit": code_data.get("unit", "EA"),
+            "source": "rsmeans",
+            "confidence": confidence
+        }
+    
+    def _get_default_cost_code(
+        self,
+        division_code: str,
+        item_description: str
+    ) -> Dict[str, any]:
+        """Get default cost code for a division when no match found.
+        
+        Args:
+            division_code: CSI division code.
+            item_description: Original item description.
+            
+        Returns:
+            Default cost code for the division.
+        """
+        # Default values by division
+        defaults = {
+            "01": {"trade": "general_labor", "material": 50.0, "labor": 0.5},
+            "02": {"trade": "demolition", "material": 5.0, "labor": 0.25},
+            "03": {"trade": "concrete_finisher", "material": 8.0, "labor": 0.3},
+            "04": {"trade": "mason", "material": 12.0, "labor": 0.4},
+            "05": {"trade": "welder", "material": 25.0, "labor": 0.5},
+            "06": {"trade": "carpenter", "material": 45.0, "labor": 0.5},
+            "07": {"trade": "roofer", "material": 8.0, "labor": 0.3},
+            "08": {"trade": "carpenter", "material": 150.0, "labor": 1.0},
+            "09": {"trade": "painter", "material": 3.0, "labor": 0.15},
+            "10": {"trade": "general_labor", "material": 50.0, "labor": 0.5},
+            "11": {"trade": "appliance_installer", "material": 800.0, "labor": 2.0},
+            "12": {"trade": "cabinet_installer", "material": 200.0, "labor": 1.5},
+            "13": {"trade": "general_labor", "material": 100.0, "labor": 1.0},
+            "14": {"trade": "general_labor", "material": 500.0, "labor": 4.0},
+            "21": {"trade": "plumber", "material": 50.0, "labor": 1.0},
+            "22": {"trade": "plumber", "material": 75.0, "labor": 1.5},
+            "23": {"trade": "hvac", "material": 100.0, "labor": 2.0},
+            "25": {"trade": "electrician", "material": 150.0, "labor": 2.0},
+            "26": {"trade": "electrician", "material": 50.0, "labor": 0.75},
+            "27": {"trade": "electrician", "material": 75.0, "labor": 1.0},
+            "28": {"trade": "electrician", "material": 200.0, "labor": 2.0},
+            "31": {"trade": "general_labor", "material": 5.0, "labor": 0.1},
+            "32": {"trade": "general_labor", "material": 10.0, "labor": 0.2},
+            "33": {"trade": "plumber", "material": 100.0, "labor": 2.0},
+        }
+        
+        div_defaults = defaults.get(
+            division_code,
+            {"trade": "general_labor", "material": 50.0, "labor": 0.5}
+        )
+        
+        return {
+            "cost_code": f"GEN-{division_code}-001",
+            "subdivision": None,
+            "description": f"General {division_code} work item",
+            "material_cost_per_unit": div_defaults["material"],
+            "labor_hours_per_unit": div_defaults["labor"],
+            "equipment_cost_per_unit": 0.0,
+            "primary_trade": div_defaults["trade"],
+            "secondary_trades": [],
+            "unit": "EA",
+            "source": "inferred",
+            "confidence": 0.5
+        }
+
+
+# =============================================================================
+# MOCK COST CODE DATABASE
+# =============================================================================
+
+# Mock RSMeans-style cost codes for common construction items
+MOCK_COST_CODES: List[Dict[str, any]] = [
+    # Division 01 - General Requirements
+    {
+        "code": "01-3100-0100",
+        "subdivision": "01 31 00",
+        "division": "01",
+        "description": "Project supervision and coordination",
+        "keywords": ["supervision", "coordination", "project management", "site management"],
+        "material_cost_per_unit": 0.0,
+        "labor_hours_per_unit": 8.0,
+        "primary_trade": "general_labor",
+        "unit": "day"
+    },
+    {
+        "code": "01-5600-0100",
+        "subdivision": "01 56 00",
+        "division": "01",
+        "description": "Temporary floor protection",
+        "keywords": ["floor protection", "ram board", "protection", "temporary"],
+        "material_cost_per_unit": 0.35,
+        "labor_hours_per_unit": 0.02,
+        "primary_trade": "general_labor",
+        "unit": "SF"
+    },
+    {
+        "code": "01-7400-0100",
+        "subdivision": "01 74 00",
+        "division": "01",
+        "description": "Daily cleaning and debris removal",
+        "keywords": ["cleanup", "cleaning", "debris", "daily"],
+        "material_cost_per_unit": 25.0,
+        "labor_hours_per_unit": 2.0,
+        "primary_trade": "general_labor",
+        "unit": "day"
+    },
+    {
+        "code": "01-7400-0200",
+        "subdivision": "01 74 00",
+        "division": "01",
+        "description": "Final construction cleaning",
+        "keywords": ["final", "cleaning", "post-construction", "detail"],
+        "material_cost_per_unit": 0.15,
+        "labor_hours_per_unit": 0.05,
+        "primary_trade": "general_labor",
+        "unit": "SF"
+    },
+    
+    # Division 02 - Existing Conditions (Demolition)
+    {
+        "code": "02-4119-0100",
+        "subdivision": "02 41 19",
+        "division": "02",
+        "description": "Cabinet demolition and removal",
+        "keywords": ["cabinet", "demolition", "removal", "kitchen"],
+        "material_cost_per_unit": 2.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "demolition",
+        "unit": "LF"
+    },
+    {
+        "code": "02-4119-0200",
+        "subdivision": "02 41 19",
+        "division": "02",
+        "description": "Countertop demolition and removal",
+        "keywords": ["countertop", "demolition", "removal"],
+        "material_cost_per_unit": 1.0,
+        "labor_hours_per_unit": 0.15,
+        "primary_trade": "demolition",
+        "unit": "SF"
+    },
+    {
+        "code": "02-4119-0300",
+        "subdivision": "02 41 19",
+        "division": "02",
+        "description": "Flooring demolition and removal",
+        "keywords": ["flooring", "floor", "demolition", "removal", "vinyl", "tile"],
+        "material_cost_per_unit": 0.50,
+        "labor_hours_per_unit": 0.05,
+        "primary_trade": "demolition",
+        "unit": "SF"
+    },
+    {
+        "code": "02-4119-0400",
+        "subdivision": "02 41 19",
+        "division": "02",
+        "description": "Plumbing fixture disconnection",
+        "keywords": ["fixture", "disconnect", "plumbing", "sink"],
+        "material_cost_per_unit": 0.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "02-4100-0100",
+        "subdivision": "02 41 00",
+        "division": "02",
+        "description": "Dumpster rental - 10 yard",
+        "keywords": ["dumpster", "rental", "disposal", "debris"],
+        "material_cost_per_unit": 450.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "general_labor",
+        "unit": "EA"
+    },
+    
+    # Division 06 - Wood, Plastics, Composites (Cabinets, Trim)
+    {
+        "code": "06-4100-0100",
+        "subdivision": "06 41 00",
+        "division": "06",
+        "description": "Base cabinets - mid-range",
+        "keywords": ["base cabinet", "cabinet", "lower", "kitchen cabinet"],
+        "material_cost_per_unit": 175.0,
+        "labor_hours_per_unit": 1.0,
+        "primary_trade": "cabinet_installer",
+        "unit": "LF"
+    },
+    {
+        "code": "06-4100-0200",
+        "subdivision": "06 41 00",
+        "division": "06",
+        "description": "Upper/wall cabinets - mid-range",
+        "keywords": ["upper cabinet", "wall cabinet", "cabinet"],
+        "material_cost_per_unit": 150.0,
+        "labor_hours_per_unit": 0.85,
+        "primary_trade": "cabinet_installer",
+        "unit": "LF"
+    },
+    {
+        "code": "06-4100-0300",
+        "subdivision": "06 41 00",
+        "division": "06",
+        "description": "Island cabinet unit",
+        "keywords": ["island", "cabinet", "kitchen island"],
+        "material_cost_per_unit": 1200.0,
+        "labor_hours_per_unit": 4.0,
+        "primary_trade": "cabinet_installer",
+        "unit": "EA"
+    },
+    {
+        "code": "06-4100-0400",
+        "subdivision": "06 41 00",
+        "division": "06",
+        "description": "Tall pantry cabinet",
+        "keywords": ["pantry", "tall cabinet", "utility cabinet"],
+        "material_cost_per_unit": 800.0,
+        "labor_hours_per_unit": 2.0,
+        "primary_trade": "cabinet_installer",
+        "unit": "EA"
+    },
+    {
+        "code": "06-2200-0100",
+        "subdivision": "06 22 00",
+        "division": "06",
+        "description": "Crown molding",
+        "keywords": ["crown", "molding", "trim", "ceiling trim"],
+        "material_cost_per_unit": 4.50,
+        "labor_hours_per_unit": 0.15,
+        "primary_trade": "carpenter",
+        "unit": "LF"
+    },
+    {
+        "code": "06-2200-0200",
+        "subdivision": "06 22 00",
+        "division": "06",
+        "description": "Base/shoe molding",
+        "keywords": ["base", "shoe", "molding", "baseboard", "trim"],
+        "material_cost_per_unit": 3.50,
+        "labor_hours_per_unit": 0.12,
+        "primary_trade": "carpenter",
+        "unit": "LF"
+    },
+    {
+        "code": "06-1000-0100",
+        "subdivision": "06 10 00",
+        "division": "06",
+        "description": "Blocking for cabinet mounting",
+        "keywords": ["blocking", "framing", "support", "backing"],
+        "material_cost_per_unit": 2.50,
+        "labor_hours_per_unit": 0.25,
+        "primary_trade": "carpenter",
+        "unit": "LF"
+    },
+    
+    # Division 08 - Openings (Hardware)
+    {
+        "code": "08-7100-0100",
+        "subdivision": "08 71 00",
+        "division": "08",
+        "description": "Cabinet hardware - pulls",
+        "keywords": ["hardware", "pull", "handle", "cabinet pull"],
+        "material_cost_per_unit": 12.0,
+        "labor_hours_per_unit": 0.15,
+        "primary_trade": "carpenter",
+        "unit": "EA"
+    },
+    {
+        "code": "08-7100-0200",
+        "subdivision": "08 71 00",
+        "division": "08",
+        "description": "Cabinet hardware - knobs",
+        "keywords": ["hardware", "knob", "cabinet knob"],
+        "material_cost_per_unit": 8.0,
+        "labor_hours_per_unit": 0.1,
+        "primary_trade": "carpenter",
+        "unit": "EA"
+    },
+    
+    # Division 09 - Finishes (Flooring, Paint, Tile)
+    {
+        "code": "09-6400-0100",
+        "subdivision": "09 64 00",
+        "division": "09",
+        "description": "Engineered hardwood flooring",
+        "keywords": ["hardwood", "flooring", "engineered", "wood floor"],
+        "material_cost_per_unit": 7.50,
+        "labor_hours_per_unit": 0.08,
+        "primary_trade": "flooring_installer",
+        "unit": "SF"
+    },
+    {
+        "code": "09-6400-0200",
+        "subdivision": "09 64 00",
+        "division": "09",
+        "description": "Flooring underlayment",
+        "keywords": ["underlayment", "moisture barrier", "subfloor"],
+        "material_cost_per_unit": 0.75,
+        "labor_hours_per_unit": 0.02,
+        "primary_trade": "flooring_installer",
+        "unit": "SF"
+    },
+    {
+        "code": "09-6200-0100",
+        "subdivision": "09 62 00",
+        "division": "09",
+        "description": "Subfloor prep and leveling",
+        "keywords": ["subfloor", "leveling", "prep", "floor prep"],
+        "material_cost_per_unit": 150.0,
+        "labor_hours_per_unit": 4.0,
+        "primary_trade": "flooring_installer",
+        "unit": "allowance"
+    },
+    {
+        "code": "09-9100-0100",
+        "subdivision": "09 91 00",
+        "division": "09",
+        "description": "Wall paint - 2 coats",
+        "keywords": ["paint", "wall paint", "interior paint", "painting"],
+        "material_cost_per_unit": 0.45,
+        "labor_hours_per_unit": 0.02,
+        "primary_trade": "painter",
+        "unit": "SF"
+    },
+    {
+        "code": "09-9100-0200",
+        "subdivision": "09 91 00",
+        "division": "09",
+        "description": "Ceiling paint",
+        "keywords": ["ceiling", "paint", "ceiling paint"],
+        "material_cost_per_unit": 0.35,
+        "labor_hours_per_unit": 0.015,
+        "primary_trade": "painter",
+        "unit": "SF"
+    },
+    {
+        "code": "09-2900-0100",
+        "subdivision": "09 29 00",
+        "division": "09",
+        "description": "Drywall repair and patching",
+        "keywords": ["drywall", "repair", "patch", "wall repair"],
+        "material_cost_per_unit": 200.0,
+        "labor_hours_per_unit": 4.0,
+        "primary_trade": "drywall_installer",
+        "unit": "allowance"
+    },
+    {
+        "code": "09-3000-0100",
+        "subdivision": "09 30 00",
+        "division": "09",
+        "description": "Ceramic tile - subway backsplash",
+        "keywords": ["tile", "backsplash", "subway", "ceramic", "wall tile"],
+        "material_cost_per_unit": 8.0,
+        "labor_hours_per_unit": 0.15,
+        "primary_trade": "tile_setter",
+        "unit": "SF"
+    },
+    {
+        "code": "09-3000-0200",
+        "subdivision": "09 30 00",
+        "division": "09",
+        "description": "Tile setting materials",
+        "keywords": ["thinset", "grout", "tile mortar", "setting materials"],
+        "material_cost_per_unit": 2.50,
+        "labor_hours_per_unit": 0.0,
+        "primary_trade": "tile_setter",
+        "unit": "SF"
+    },
+    
+    # Division 10 - Specialties
+    {
+        "code": "10-2800-0100",
+        "subdivision": "10 28 00",
+        "division": "10",
+        "description": "Paper towel holder",
+        "keywords": ["paper towel", "holder", "accessory"],
+        "material_cost_per_unit": 35.0,
+        "labor_hours_per_unit": 0.25,
+        "primary_trade": "general_labor",
+        "unit": "EA"
+    },
+    
+    # Division 11 - Equipment (Appliances)
+    {
+        "code": "11-3100-0100",
+        "subdivision": "11 31 00",
+        "division": "11",
+        "description": "Refrigerator - mid-range",
+        "keywords": ["refrigerator", "fridge", "french door", "counter depth"],
+        "material_cost_per_unit": 1800.0,
+        "labor_hours_per_unit": 1.0,
+        "primary_trade": "appliance_installer",
+        "unit": "EA"
+    },
+    {
+        "code": "11-3100-0200",
+        "subdivision": "11 31 00",
+        "division": "11",
+        "description": "Gas range - mid-range",
+        "keywords": ["range", "stove", "gas range", "oven"],
+        "material_cost_per_unit": 900.0,
+        "labor_hours_per_unit": 1.5,
+        "primary_trade": "appliance_installer",
+        "secondary_trades": ["plumber"],
+        "unit": "EA"
+    },
+    {
+        "code": "11-3100-0300",
+        "subdivision": "11 31 00",
+        "division": "11",
+        "description": "Dishwasher - mid-range",
+        "keywords": ["dishwasher", "built-in"],
+        "material_cost_per_unit": 750.0,
+        "labor_hours_per_unit": 2.0,
+        "primary_trade": "appliance_installer",
+        "secondary_trades": ["plumber"],
+        "unit": "EA"
+    },
+    {
+        "code": "11-3100-0400",
+        "subdivision": "11 31 00",
+        "division": "11",
+        "description": "Range hood",
+        "keywords": ["range hood", "hood", "ventilation", "exhaust"],
+        "material_cost_per_unit": 450.0,
+        "labor_hours_per_unit": 2.5,
+        "primary_trade": "appliance_installer",
+        "secondary_trades": ["electrician"],
+        "unit": "EA"
+    },
+    {
+        "code": "11-3100-0500",
+        "subdivision": "11 31 00",
+        "division": "11",
+        "description": "Microwave - countertop",
+        "keywords": ["microwave", "countertop microwave"],
+        "material_cost_per_unit": 200.0,
+        "labor_hours_per_unit": 0.25,
+        "primary_trade": "appliance_installer",
+        "unit": "EA"
+    },
+    
+    # Division 12 - Furnishings (Countertops, Sink)
+    {
+        "code": "12-3600-0100",
+        "subdivision": "12 36 00",
+        "division": "12",
+        "description": "Granite countertops - level 2",
+        "keywords": ["granite", "countertop", "counter", "stone"],
+        "material_cost_per_unit": 55.0,
+        "labor_hours_per_unit": 0.2,
+        "primary_trade": "countertop_installer",
+        "unit": "SF"
+    },
+    {
+        "code": "12-3640-0100",
+        "subdivision": "12 36 40",
+        "division": "12",
+        "description": "Undermount kitchen sink - stainless",
+        "keywords": ["sink", "undermount", "kitchen sink", "stainless"],
+        "material_cost_per_unit": 350.0,
+        "labor_hours_per_unit": 2.0,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    
+    # Division 22 - Plumbing
+    {
+        "code": "22-4100-0100",
+        "subdivision": "22 41 00",
+        "division": "22",
+        "description": "Kitchen faucet",
+        "keywords": ["faucet", "kitchen faucet", "pull-down"],
+        "material_cost_per_unit": 275.0,
+        "labor_hours_per_unit": 1.5,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "22-4100-0200",
+        "subdivision": "22 41 00",
+        "division": "22",
+        "description": "Garbage disposal",
+        "keywords": ["disposal", "garbage disposal", "insinkerator"],
+        "material_cost_per_unit": 225.0,
+        "labor_hours_per_unit": 1.5,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "22-1300-0100",
+        "subdivision": "22 13 00",
+        "division": "22",
+        "description": "Sink drain assembly",
+        "keywords": ["drain", "p-trap", "tailpiece", "drain assembly"],
+        "material_cost_per_unit": 45.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "22-1100-0100",
+        "subdivision": "22 11 00",
+        "division": "22",
+        "description": "Water supply lines",
+        "keywords": ["supply line", "water line", "supply"],
+        "material_cost_per_unit": 25.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "22-1100-0200",
+        "subdivision": "22 11 00",
+        "division": "22",
+        "description": "Dishwasher supply line with valve",
+        "keywords": ["dishwasher supply", "supply line", "valve"],
+        "material_cost_per_unit": 45.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    {
+        "code": "22-1100-0300",
+        "subdivision": "22 11 00",
+        "division": "22",
+        "description": "Ice maker line",
+        "keywords": ["ice maker", "refrigerator line", "water line"],
+        "material_cost_per_unit": 35.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "plumber",
+        "unit": "EA"
+    },
+    
+    # Division 26 - Electrical
+    {
+        "code": "26-5100-0100",
+        "subdivision": "26 51 00",
+        "division": "26",
+        "description": "Recessed LED light fixture",
+        "keywords": ["recessed", "LED", "light", "can light", "downlight"],
+        "material_cost_per_unit": 75.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+    {
+        "code": "26-5100-0200",
+        "subdivision": "26 51 00",
+        "division": "26",
+        "description": "Pendant light rough-in",
+        "keywords": ["pendant", "light rough-in", "junction box"],
+        "material_cost_per_unit": 35.0,
+        "labor_hours_per_unit": 1.0,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+    {
+        "code": "26-5100-0300",
+        "subdivision": "26 51 00",
+        "division": "26",
+        "description": "Under-cabinet LED lighting",
+        "keywords": ["under-cabinet", "LED strip", "task light"],
+        "material_cost_per_unit": 15.0,
+        "labor_hours_per_unit": 0.25,
+        "primary_trade": "electrician",
+        "unit": "LF"
+    },
+    {
+        "code": "26-2700-0100",
+        "subdivision": "26 27 00",
+        "division": "26",
+        "description": "GFCI outlet",
+        "keywords": ["GFCI", "outlet", "receptacle", "countertop outlet"],
+        "material_cost_per_unit": 35.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+    {
+        "code": "26-2700-0200",
+        "subdivision": "26 27 00",
+        "division": "26",
+        "description": "Dedicated circuit verification",
+        "keywords": ["circuit", "dedicated", "range circuit", "appliance circuit"],
+        "material_cost_per_unit": 25.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+    {
+        "code": "26-2700-0300",
+        "subdivision": "26 27 00",
+        "division": "26",
+        "description": "Dimmer switch",
+        "keywords": ["dimmer", "switch", "light switch"],
+        "material_cost_per_unit": 45.0,
+        "labor_hours_per_unit": 0.5,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+    {
+        "code": "26-2700-0400",
+        "subdivision": "26 27 00",
+        "division": "26",
+        "description": "Disposal switch (air or wall)",
+        "keywords": ["disposal switch", "air switch", "garbage disposal"],
+        "material_cost_per_unit": 55.0,
+        "labor_hours_per_unit": 0.75,
+        "primary_trade": "electrician",
+        "unit": "EA"
+    },
+]
 

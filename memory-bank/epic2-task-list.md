@@ -1,8 +1,23 @@
 # Epic 2: Deep Agent Pipeline - Task List
 
 **Owner:** Dev 2
-**Total PRs:** 7
+**Total PRs:** 8
 **Estimated Duration:** 3-4 Sprints
+
+## Progress Summary
+
+| PR | Name | Status | Tests |
+|----|------|--------|-------|
+| #1 | Foundation & Project Setup | ✅ Complete | 58 |
+| #2 | ClarificationOutput Models | ✅ Complete | 7 |
+| #3 | Orchestrator & Pipeline | ✅ Complete | 15 |
+| #4 | Location Intelligence Agent | ✅ Complete | 26 |
+| #5 | Construction Scope Agent | ✅ Complete | 29 |
+| #6 | Cost Estimation Agent | 🔲 Pending | - |
+| #7 | Risk & Final Agents | 🔲 Pending | - |
+| #8 | Firestore Rules & Docs | 🔲 Pending | - |
+
+**Total Tests Passing:** 135
 
 ## Agent Framework: LangChain Deep Agents + A2A Protocol
 
@@ -507,118 +522,149 @@ truecost/
 
 ---
 
-## PR #4: Location Intelligence Agent
+## PR #4: Location Intelligence Agent ✅
 
-**Branch:** `epic2/location-agent`
+**Branch:** `ture-agent-pipeline`
 **Story:** 2.2
 **Goal:** Implement Location Agent that retrieves location-based cost factors.
+**Status:** ✅ COMPLETE (26 tests)
 
 ### Tasks
 
-- [ ] **4.1 Create location factor models**
-  - Create: `functions/models/location_factors.py`
+- [x] **4.1 Create location factor models**
+  - Created: `functions/models/location_factors.py`
     - `LaborRates` model (electrician, plumber, carpenter, hvac, etc.)
-    - `PermitCosts` model (percentage, fixed amounts)
-    - `WeatherFactors` model (seasonal impacts)
-    - `LocationFactors` model (laborRates, isUnion, permitCosts, weatherFactors, regionCode)
+    - `PermitCosts` model (percentage, fixed amounts, calculate_total_permit_cost)
+    - `WeatherFactors` model (seasonal impacts, frost line, extreme heat days)
+    - `MaterialCostAdjustments` model (transportation, availability, regional adjustments)
+    - `LocationFactors` model (complete location-based cost data)
+    - Enums: `Region`, `UnionStatus`, `WinterImpact`, `SeasonalAdjustmentReason`
 
-- [ ] **4.2 Create mock cost data service interface**
-  - Create: `functions/services/cost_data_service.py` (interface + mock)
+- [x] **4.2 Create mock cost data service interface**
+  - Created: `functions/services/cost_data_service.py` (interface + mock)
     - `get_location_factors(zip_code)` - returns LocationFactors
-    - Mock data for major metros (Denver, NYC, Chicago, LA, etc.)
-    - Regional defaults for unknown zip codes
-    - Cache mechanism (in-memory for now)
+    - Mock data for 6 major metros (Denver, NYC, Houston, LA, Chicago, Phoenix)
+    - Regional defaults for unknown zip codes (based on ZIP prefix)
+    - In-memory cache mechanism with `clear_cache()` method
+    - State-to-region mapping, union state detection, cost level detection
 
-- [ ] **4.3 Implement Location Agent**
-  - Edit: `functions/agents/location_agent.py`
-    - Inherit from `BaseAgent` (wraps Deep Agents)
-    - Use `create_deep_agent()` with custom system prompt for location analysis
-    - Add custom tools: `get_location_factors` tool for cost data service
-    - Read `projectBrief.location.zipCode` from ClarificationOutput
-    - Use Deep Agents' planning tool to break down analysis steps
-    - Call `cost_data_service.get_location_factors()` via tool
-    - Extract and structure labor rates
-    - Determine union vs non-union market
-    - Get permit cost estimates
-    - Get weather/seasonal factors
-    - Use file system tools to store intermediate results if needed
-    - Save `locationFactors` to estimate document
-    - Generate human-readable summary
+- [x] **4.3 Implement Location Agent**
+  - Replaced stub: `functions/agents/primary/location_agent.py`
+    - Inherits from `BaseA2AAgent`
+    - LLM-powered analysis with custom system prompt
+    - Extracts location from ClarificationOutput
+    - Calls CostDataService for location factors
+    - Generates analysis, key findings, recommendations, risk factors
+    - Fallback analysis when LLM unavailable
+    - Saves output to Firestore with confidence score
 
-- [ ] **4.4 Create mock location data fixtures**
-  - Create: `functions/tests/fixtures/mock_cost_data.py`
-    - Denver (80202) - mixed market
-    - NYC (10001) - union, high rates
-    - Houston (77001) - non-union, lower rates
-    - Unknown zip defaults
+- [x] **4.3a Implement Location Scorer**
+  - Replaced stub: `functions/agents/scorers/location_scorer.py`
+    - 7 scoring criteria with weights:
+      - labor_rates_completeness (weight: 3)
+      - location_data_accuracy (weight: 2)
+      - location_factor_validity (weight: 2)
+      - permit_costs_completeness (weight: 2)
+      - weather_factors_presence (weight: 1)
+      - analysis_quality (weight: 2)
+      - data_confidence (weight: 1)
+    - Score >= 80 = PASS, < 80 = triggers critic
 
-- [ ] **4.5 Add Location Agent tests**
-  - Create: `functions/tests/unit/test_location_agent.py`
-    - Test Denver zip returns correct data
-    - Test NYC returns union market
-    - Test unknown zip uses defaults
-    - Test output schema is correct
-    - Test Firestore update called
+- [x] **4.3b Implement Location Critic**
+  - Replaced stub: `functions/agents/critics/location_critic.py`
+    - Detailed analysis of each scoring criterion
+    - Specific issue identification with explanations
+    - Actionable fix suggestions
+    - State-based location factor suggestions
+
+- [x] **4.4 Create mock location data fixtures**
+  - Created: `functions/tests/fixtures/mock_cost_data.py`
+    - Denver (80202) - mixed market, location factor 1.05
+    - NYC (10001) - union, high rates, location factor 1.35
+    - Houston (77001) - non-union, lower rates, location factor 0.92
+    - Unknown zip defaults with national averages
+    - Helper functions for test inputs and outputs
+
+- [x] **4.5 Add Location Agent tests**
+  - Created: `functions/tests/unit/test_location_agent.py` (26 tests)
+    - TestLocationFactorsModel (5 tests)
+    - TestCostDataService (6 tests)
+    - TestLocationAgent (3 tests)
+    - TestLocationScorer (6 tests)
+    - TestLocationCritic (4 tests)
+    - TestLocationAgentIntegration (2 tests)
 
 ### Verification
-- [ ] Location Agent runs in pipeline without errors
-- [ ] Firestore `/estimates/{id}/agentOutputs/location` created
-- [ ] `locationFactors` field populated on estimate document
-- [ ] Labor rates match expected values for test zips
-- [ ] `pytest tests/unit/test_location_agent.py` passes
+- [x] Location Agent runs in pipeline without errors
+- [x] Firestore `/estimates/{id}/agentOutputs/location` created
+- [x] `locationFactors` field populated on estimate document
+- [x] Labor rates match expected values for test zips
+- [x] `pytest tests/unit/test_location_agent.py` passes (26 tests)
+- [x] Full test suite passes (106 tests total)
 
 ---
 
-## PR #5: Construction Scope Agent
+## PR #5: Construction Scope Agent ✅
 
 **Branch:** `epic2/scope-agent`
 **Story:** 2.3
+**Status:** ✅ Complete (Dec 11, 2025)
+**Tests:** 29 passing
 **Goal:** Implement Scope Agent that enriches Bill of Quantities with cost codes.
 
 ### Tasks
 
-- [ ] **5.1 Create Bill of Quantities models**
-  - Create: `functions/models/bill_of_quantities.py`
-    - `EnrichedLineItem` model (adds costCode, unitCost reference)
-    - `EnrichedDivision` model
-    - `BillOfQuantities` model (divisions array)
-    - Validation for quantity calculations
+- [x] **5.1 Create Bill of Quantities models**
+  - Created: `functions/models/bill_of_quantities.py`
+    - `CostCode` model - CSI MasterFormat code with description
+    - `UnitCostReference` model - Reference unit costs (mocked)
+    - `EnrichedLineItem` model (adds costCode, unitCost reference, primary trade)
+    - `EnrichedDivision` model with `calculate_subtotals()` method
+    - `BillOfQuantities` model (divisions array, metadata)
+    - `get_division_name()` and `get_primary_trade()` helpers
 
-- [ ] **5.2 Add cost code lookup to cost data service**
-  - Edit: `functions/services/cost_data_service.py`
-    - `get_cost_code(item_description, division)` - map to RSMeans code
-    - Mock cost code database
-    - Fuzzy matching for item descriptions
+- [x] **5.2 Add cost code lookup to cost data service**
+  - Edited: `functions/services/cost_data_service.py`
+    - `get_cost_code(item_description, division)` - map to CSI MasterFormat codes
+    - Mock cost code database with 50+ common construction items
+    - Fuzzy keyword matching for item descriptions
+    - Division-specific code lookup with fallback
 
-- [ ] **5.3 Implement Scope Agent**
-  - Edit: `functions/agents/scope_agent.py`
-    - Inherit from `BaseAgent` (wraps Deep Agents)
-    - Use `create_deep_agent()` with system prompt for scope enrichment
-    - Add custom tools: `get_cost_code`, `validate_quantities`, `check_completeness`
-    - Use Deep Agents' planning tool to organize work by CSI division
-    - Read `csiScope` from ClarificationOutput
-    - For each included division:
-      - Validate line items have quantities
-      - Map items to cost database codes via tool
-      - Add `costCode` to each line item
-    - Validate quantities against `cadData.spaceModel`:
-      - Check sqft totals match
-      - Flag discrepancies
-    - Use Deep Agent's LLM capabilities to:
-      - Verify completeness for project type
-      - Suggest missing items
-      - Validate material selections match finishLevel
-    - Use subagent tool for complex division validation if needed
-    - Save enriched `billOfQuantities` to estimate document
-    - Generate summary with item counts per division
+- [x] **5.3 Implement Scope Agent**
+  - Edited: `functions/agents/primary/scope_agent.py`
+    - Real LLM-powered agent (replaced stub)
+    - Reads `csiScope` from ClarificationOutput
+    - Enriches each line item with CSI cost codes
+    - Validates quantities against `cadData.spaceModel.rooms`
+    - Calculates division subtotals
+    - Generates human-readable scope summary
+    - Configurable confidence based on enrichment success rate
+  - Edited: `functions/agents/scorers/scope_scorer.py`
+    - 6 scoring criteria:
+      - `cost_code_coverage` - % of items with cost codes
+      - `quantity_validity` - quantities present and reasonable
+      - `division_coverage` - all included divisions have items
+      - `subtotals_calculated` - division subtotals computed
+      - `summary_quality` - summary is meaningful
+      - `line_item_count` - minimum items per project type
+  - Edited: `functions/agents/critics/scope_critic.py`
+    - Analyzes missing cost codes and suggests fixes
+    - Identifies quantity validation issues
+    - Checks for incomplete divisions
+    - Provides actionable feedback for retry
 
-- [ ] **5.4 Add Scope Agent tests**
-  - Create: `functions/tests/unit/test_scope_agent.py`
-    - Test kitchen remodel produces correct divisions
-    - Test cost codes assigned to line items
-    - Test quantity validation against CAD data
-    - Test finishLevel affects material selection
-    - Test incomplete scope generates warnings
+- [x] **5.4 Add Scope Agent tests**
+  - Created: `functions/tests/fixtures/mock_boq_data.py`
+    - Kitchen remodel test fixtures
+    - Valid/incomplete/invalid scope outputs
+    - A2A request builders
+  - Created: `functions/tests/unit/test_scope_agent.py` (29 tests)
+    - `TestBillOfQuantitiesModel` - Model validation (6 tests)
+    - `TestCostDataServiceCostCodes` - Cost code lookup (5 tests)
+    - `TestScopeAgent` - Agent run, enrichment, estimates (3 tests)
+    - `TestScopeScorer` - Scoring criteria evaluation (7 tests)
+    - `TestScopeCritic` - Critique generation (6 tests)
+    - `TestScopeAgentIntegration` - End-to-end flow (2 tests)
 
 ### Verification
 - [ ] Scope Agent runs after Location Agent completes
@@ -885,5 +931,5 @@ These services are mocked in this Epic. When Dev 4 delivers:
 
 ---
 
-_Last Updated: December 10, 2025_
+_Last Updated: December 11, 2025 (PR #5 Complete)_
 
