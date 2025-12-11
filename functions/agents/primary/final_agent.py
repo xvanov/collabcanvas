@@ -233,6 +233,19 @@ class FinalAgent(BaseA2AAgent):
         # Add status update flag
         output["estimateComplete"] = True
         
+        # Build Dev4 integration payload and persist to root estimate
+        integration_payload = self._build_integration_payload(
+            clarification,
+            scope_output,
+            cost_output,
+            risk_output,
+            timeline_output
+        )
+        try:
+            await self.firestore.update_estimate(estimate_id, integration_payload)
+        except Exception as e:
+            logger.warning("integration_payload_update_failed", estimate_id=estimate_id, error=str(e))
+        
         # Calculate overall confidence
         confidence = min(0.95, data_completeness + 0.1)
         
@@ -756,3 +769,358 @@ Please provide recommendations in the required JSON format."""
             f"({executive_summary.project_type.replace('_', ' ').title()}) "
             f"over {timeline_summary.total_weeks} weeks"
         )
+
+    # -------------------------------------------------------------------------
+    # Dev4 Integration Payload Builder
+    # -------------------------------------------------------------------------
+
+    def _build_integration_payload(
+        self,
+        clarification: Dict[str, Any],
+        scope_output: Dict[str, Any],
+        cost_output: Dict[str, Any],
+        risk_output: Dict[str, Any],
+        timeline_output: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build spec-compliant payload for Dev 4 (see dev2-integration-spec.md)."""
+        project_brief = clarification.get("projectBrief", {})
+        location = project_brief.get("location", {})
+        scope_summary = project_brief.get("scopeSummary", {})
+
+        project_type = project_brief.get("projectType", "Residential Renovation")
+        address = location.get("fullAddress") or self._join_address(location)
+        scope_desc = scope_summary.get("description", "")
+        sqft = scope_summary.get("totalSqft", 0)
+        project_name = project_brief.get("projectName") or project_brief.get("projectTitle")
+        if not project_name:
+            city = location.get("city")
+            proj_type_label = project_type.replace("_", " ").title()
+            project_name = f"{proj_type_label} - {city}" if city else proj_type_label
+
+        total = cost_output.get("total", {}) or {}
+        p50 = total.get("low", 0)
+        p80 = total.get("medium", p50 * 1.15 if p50 else 0)
+        p90 = total.get("high", p80 * 1.1 if p80 else 0)
+
+        contingency_pct = (
+            risk_output.get("contingency", {}).get("recommended", 10.0)
+        )
+        monte_carlo = risk_output.get("monteCarlo", {}) or {}
+        iterations = monte_carlo.get("iterations")
+
+        timeline_days = timeline_output.get("totalDuration", 30)
+        timeline_weeks = round(timeline_days / 5, 1)
+
+        cost_drivers = self._build_cost_drivers(cost_output, total_cost=p50)
+        risk_analysis = self._build_risk_analysis(monte_carlo, contingency_pct, risk_output)
+        schedule = self._build_schedule(timeline_output, timeline_weeks)
+        labor_analysis = self._build_labor_analysis(cost_output, total_cost=p50)
+        cost_breakdown = self._build_cost_breakdown_for_spec(cost_output, total_cost=p50)
+        boq = self._build_boq(scope_output)
+        assumptions = self._build_assumptions(clarification, risk_output)
+
+        return {
+            "projectName": project_brief.get("projectName") or f"{project_type.title()}",
+            "address": address,
+            "projectType": project_type,
+            "scope": scope_desc,
+            "squareFootage": sqft,
+            "totalCost": p50,
+            "p50": p50,
+            "p80": p80,
+            "p90": p90,
+            "contingencyPct": contingency_pct,
+            "timelineWeeks": timeline_weeks,
+            "monteCarloIterations": iterations,
+            "costDrivers": cost_drivers,
+            "laborAnalysis": labor_analysis,
+            "schedule": schedule,
+            "cost_breakdown": cost_breakdown,
+            "risk_analysis": risk_analysis,
+            "bill_of_quantities": boq,
+            "assumptions": assumptions,
+            "cad_data": clarification.get("cadData")
+        }
+
+    def _join_address(self, location: Dict[str, Any]) -> str:
+        parts = [
+            location.get("streetAddress"),
+            location.get("unit"),
+            location.get("city"),
+            location.get("state"),
+            location.get("zipCode"),
+        ]
+        return ", ".join([p for p in parts if p])
+
+    def _build_cost_drivers(self, cost_output: Dict[str, Any], total_cost: float) -> List[Dict[str, Any]]:
+        divisions = cost_output.get("divisions", []) or []
+        drivers = []
+        for d in divisions:
+            total = 0
+            if isinstance(d.get("total"), dict):
+                total = d["total"].get("low", 0)
+            elif isinstance(d.get("total"), (int, float)):
+                total = d["total"]
+            drivers.append({
+                "name": d.get("name") or d.get("code") or "Unknown",
+                "cost": round(total, 2),
+                "percentage": round((total / total_cost * 100), 1) if total_cost else None
+            })
+        drivers = sorted(drivers, key=lambda x: x["cost"], reverse=True)
+        return drivers[:6]
+
+    def _build_risk_analysis(
+        self,
+        monte_carlo: Dict[str, Any],
+        contingency_pct: float,
+        risk_output: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        bins = monte_carlo.get("histogram_bins") or []
+        counts = monte_carlo.get("histogram_counts") or []
+        histogram = []
+        total_iter = monte_carlo.get("iterations") or 0
+        for i in range(min(len(counts), len(bins) - 1)):
+            histogram.append({
+                "range_low": round(bins[i], 2),
+                "range_high": round(bins[i + 1], 2),
+                "count": counts[i],
+                "percentage": round(counts[i] / total_iter * 100, 2) if total_iter else 0
+            })
+
+        return {
+            "iterations": monte_carlo.get("iterations", 0),
+            "p50": monte_carlo.get("p50", 0),
+            "p80": monte_carlo.get("p80", 0),
+            "p90": monte_carlo.get("p90", 0),
+            "mean": monte_carlo.get("mean", monte_carlo.get("statistics", {}).get("mean") if isinstance(monte_carlo.get("statistics"), dict) else None),
+            "min": monte_carlo.get("min", monte_carlo.get("statistics", {}).get("min") if isinstance(monte_carlo.get("statistics"), dict) else None),
+            "max": monte_carlo.get("max", monte_carlo.get("statistics", {}).get("max") if isinstance(monte_carlo.get("statistics"), dict) else None),
+            "contingency_pct": contingency_pct,
+            "contingency_amount": monte_carlo.get("contingencyAmount"),
+            "histogram": histogram,
+            "top_risks": monte_carlo.get("topRisks") or risk_output.get("topRisks", [])
+        }
+
+    def _build_schedule(self, timeline_output: Dict[str, Any], timeline_weeks: float) -> Dict[str, Any]:
+        tasks = []
+        milestone_ids = {m.get("id") for m in (timeline_output.get("milestones") or []) if m.get("id")}
+        for idx, t in enumerate(timeline_output.get("tasks", []), start=1):
+            tasks.append({
+                "number": t.get("id") or idx,
+                "name": t.get("name", ""),
+                "duration": t.get("durationDays", t.get("duration", "")),
+                "start": t.get("startDate", ""),
+                "end": t.get("endDate", ""),
+                "is_milestone": t.get("isCritical", False) or (t.get("id") in milestone_ids),
+                "dependencies": t.get("dependencies", [])
+            })
+        notes = timeline_output.get("notes", [])
+        milestones = timeline_output.get("milestones", [])
+        return {
+            "total_weeks": timeline_weeks,
+            "start_date": timeline_output.get("startDate"),
+            "end_date": timeline_output.get("endDate"),
+            "tasks": tasks,
+            "milestones": milestones,
+            "notes": notes
+        }
+
+    def _build_labor_analysis(self, cost_output: Dict[str, Any], total_cost: float) -> Dict[str, Any]:
+        subtotals = cost_output.get("subtotals", {}) or {}
+        divisions = cost_output.get("divisions", []) or []
+
+        trades_map: Dict[str, Dict[str, Any]] = {}
+        for div in divisions:
+            for li in div.get("lineItems", div.get("line_items", [])):
+                qty = li.get("quantity") or 0
+                unit_hrs = (
+                    li.get("unitLaborHours")
+                    or li.get("unit_labor_hours")
+                    or li.get("laborHoursPerUnit")
+                    or 0
+                )
+                if unit_hrs is None:
+                    unit_hrs = 0
+                hours = qty * unit_hrs
+                if hours <= 0:
+                    continue
+                labor_rate = li.get("laborRate") or li.get("labor_rate") or {}
+                if isinstance(labor_rate, dict):
+                    rate = labor_rate.get("low") or labor_rate.get("median") or labor_rate.get("medium") or 0
+                else:
+                    rate = labor_rate or 0
+                trade_name = (
+                    li.get("primaryTrade")
+                    or li.get("primary_trade")
+                    or li.get("trade")
+                    or "General Labor"
+                )
+                base_cost = hours * rate
+                entry = trades_map.setdefault(trade_name, {"hours": 0, "base_cost": 0, "rate": rate})
+                entry["hours"] += hours
+                entry["base_cost"] += base_cost
+                # keep the latest non-zero rate
+                if rate:
+                    entry["rate"] = rate
+
+        trades_list = []
+        for trade, data in trades_map.items():
+            hours = data["hours"]
+            base_cost = data["base_cost"]
+            rate = data.get("rate") or (base_cost / hours if hours else 0)
+            burden = base_cost * 0.35
+            total = base_cost + burden
+            trades_list.append({
+                "name": trade,
+                "hours": round(hours, 2),
+                "rate": round(rate, 2),
+                "base_cost": round(base_cost, 2),
+                "burden": round(burden, 2),
+                "total": round(total, 2)
+            })
+
+        # Fallback to subtotal labor if no line items
+        labor_sub = subtotals.get("labor", {})
+        labor_total = labor_sub.get("low", labor_sub if isinstance(labor_sub, (int, float)) else 0)
+
+        total_hours = subtotals.get("totalLaborHours")
+        if not trades_list and labor_total:
+            burden = labor_total * 0.35
+            total_with_burden = labor_total + burden
+            labor_pct = round((total_with_burden / total_cost * 100), 1) if total_cost else None
+            est_days = round(total_hours / 8, 1) if total_hours else None
+            rate = round(labor_total / total_hours, 2) if total_hours and total_hours > 0 else None
+            trades_list.append({
+                "name": "General Labor",
+                "hours": total_hours,
+                "rate": rate,
+                "base_cost": labor_total,
+                "burden": burden,
+                "total": total_with_burden
+            })
+        else:
+            labor_total = sum(t["base_cost"] for t in trades_list)
+            burden = sum(t["burden"] for t in trades_list)
+            total_hours = sum(t["hours"] for t in trades_list) or total_hours
+            est_days = round(total_hours / 8, 1) if total_hours else None
+            total_with_burden = labor_total + burden
+            labor_pct = round((total_with_burden / total_cost * 100), 1) if total_cost else None
+
+        return {
+            "total_hours": total_hours,
+            "base_total": round(labor_total, 2) if labor_total else 0,
+            "burden_total": round(burden, 2) if labor_total else 0,
+            "total": round(total_with_burden, 2) if labor_total else 0,
+            "labor_pct": labor_pct,
+            "estimated_days": est_days,
+            "trades": trades_list,
+            "location_factors": {
+                "is_union": None,
+                "union_premium": None
+            }
+        }
+
+    def _build_cost_breakdown_for_spec(self, cost_output: Dict[str, Any], total_cost: float) -> Dict[str, Any]:
+        subtotals = cost_output.get("subtotals", {}) or {}
+        materials = subtotals.get("materials", {})
+        labor = subtotals.get("labor", {})
+        permits = subtotals.get("permits", subtotals.get("permitCosts", {}))
+
+        def _val(x):
+            if isinstance(x, dict):
+                return x.get("low", 0)
+            if isinstance(x, (int, float)):
+                return x
+            return 0
+
+        total_material = _val(materials)
+        total_labor = _val(labor)
+        permits_val = _val(permits)
+        overhead_val = _val(cost_output.get("adjustments", {}).get("overhead"))
+
+        divisions_out = []
+        for d in cost_output.get("divisions", []) or []:
+            total = _val(d.get("total"))
+            material_sub = _val(d.get("materials"))
+            labor_sub = _val(d.get("labor"))
+            items = []
+            for li in d.get("lineItems", d.get("line_items", [])):
+                items.append({
+                    "description": li.get("description", li.get("item", "")),
+                    "quantity": li.get("quantity"),
+                    "unit": li.get("unit"),
+                    "unit_cost": _val(li.get("unitCost")),
+                    "material_cost": _val(li.get("materialCost")),
+                    "labor_cost": _val(li.get("laborCost"))
+                })
+            divisions_out.append({
+                "code": d.get("code", ""),
+                "name": d.get("name", ""),
+                "total": total,
+                "material_subtotal": material_sub,
+                "labor_subtotal": labor_sub,
+                "percentage": round(total / total_cost * 100, 1) if total_cost else None,
+                "items": items
+            })
+
+        def _pct(part):
+            return round(part / total_cost * 100, 1) if total_cost else None
+
+        return {
+            "total_material": total_material,
+            "total_labor": total_labor,
+            "permits": permits_val,
+            "overhead": overhead_val,
+            "material_pct": _pct(total_material),
+            "labor_pct": _pct(total_labor),
+            "permits_pct": _pct(permits_val),
+            "overhead_pct": _pct(overhead_val),
+            "divisions": divisions_out
+        }
+
+    def _build_boq(self, scope_output: Dict[str, Any]) -> Dict[str, Any]:
+        items_out = []
+        for div in scope_output.get("divisions", []) or []:
+            division_code = div.get("code") or div.get("divisionCode") or div.get("csiDivision")
+            for idx, li in enumerate(div.get("lineItems", []), start=1):
+                items_out.append({
+                    "line_number": li.get("id") or idx,
+                    "description": li.get("item") or li.get("description", ""),
+                    "quantity": li.get("quantity"),
+                    "unit": li.get("unit"),
+                    "unit_cost": li.get("unitCost") or 0,
+                    "material_cost": li.get("materialCost") or 0,
+                    "labor_cost": li.get("laborCost") or 0,
+                    "total": li.get("totalCost") or 0,
+                    "csi_division": division_code
+                })
+        subtotal = sum([i.get("total", 0) or 0 for i in items_out])
+        permits = scope_output.get("permitsTotal") or 0
+        overhead = scope_output.get("overheadTotal") or 0
+        profit = scope_output.get("profitTotal") or 0
+        return {
+            "items": items_out,
+            "subtotal": subtotal,
+            "permits": permits,
+            "overhead": overhead,
+            "profit": profit
+        }
+
+    def _build_assumptions(
+        self,
+        clarification: Dict[str, Any],
+        risk_output: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        project_brief = clarification.get("projectBrief", {})
+        scope_summary = project_brief.get("scopeSummary", {})
+        special_reqs = project_brief.get("specialRequirements", []) or []
+        exclusions = project_brief.get("exclusions", []) or []
+        risk_assumptions = risk_output.get("assumptions", []) or []
+        return {
+            "items": special_reqs or ["Standard working conditions assumed"],
+            "inclusions": [],
+            "exclusions": [
+                {"category": "Scope", "items": exclusions}
+            ],
+            "notes": risk_assumptions
+        }

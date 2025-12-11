@@ -143,36 +143,33 @@ def start_deep_pipeline(req: https_fn.Request) -> https_fn.Response:
         
         # Validate required fields
         if not user_id:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.MISSING_FIELD,
                     "Missing userId in request"
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         if not clarification_output:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.MISSING_FIELD,
                     "Missing clarificationOutput in request"
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         # Validate ClarificationOutput schema
         validation_result = validate_clarification_output(clarification_output)
         if not validation_result.is_valid:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.VALIDATION_ERROR,
                     "Invalid clarificationOutput",
                     {"errors": validation_result.errors}
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         # Generate estimate ID or use provided one
@@ -191,34 +188,27 @@ def start_deep_pipeline(req: https_fn.Request) -> https_fn.Response:
             clarification_output=clarification_output
         ))
         
-        return https_fn.Response(
-            json.dumps(success_response(result)),
-            status=200,
-            mimetype="application/json"
-        )
+        return _json_response(success_response(result))
         
     except ValidationError as e:
-        return https_fn.Response(
-            json.dumps(error_response(e.code, e.message, e.details)),
-            status=400,
-            mimetype="application/json"
+        return _json_response(
+            error_response(e.code, e.message, e.details),
+            status=400
         )
     except TrueCostError as e:
         logger.error("pipeline_start_error", error=e.message, code=e.code)
-        return https_fn.Response(
-            json.dumps(error_response(e.code, e.message, e.details)),
-            status=500,
-            mimetype="application/json"
+        return _json_response(
+            error_response(e.code, e.message, e.details),
+            status=500
         )
     except Exception as e:
         logger.exception("pipeline_start_exception", error=str(e))
-        return https_fn.Response(
-            json.dumps(error_response(
+        return _json_response(
+            error_response(
                 ErrorCode.PIPELINE_FAILED,
                 f"Failed to start pipeline: {str(e)}"
-            )),
-            status=500,
-            mimetype="application/json"
+            ),
+            status=500
         )
 
 
@@ -310,38 +300,31 @@ def get_pipeline_status(req: https_fn.Request) -> https_fn.Response:
         estimate_id = data.get("estimateId")
         
         if not estimate_id:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.MISSING_FIELD,
                     "Missing estimateId in request"
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         result = asyncio.run(_get_status_async(estimate_id))
         
-        return https_fn.Response(
-            json.dumps(success_response(result)),
-            status=200,
-            mimetype="application/json"
-        )
+        return _json_response(success_response(result))
         
     except TrueCostError as e:
-        return https_fn.Response(
-            json.dumps(error_response(e.code, e.message, e.details)),
-            status=404 if e.code == ErrorCode.ESTIMATE_NOT_FOUND else 500,
-            mimetype="application/json"
+        return _json_response(
+            error_response(e.code, e.message, e.details),
+            status=404 if e.code == ErrorCode.ESTIMATE_NOT_FOUND else 500
         )
     except Exception as e:
         logger.exception("get_status_error", error=str(e))
-        return https_fn.Response(
-            json.dumps(error_response(
+        return _json_response(
+            error_response(
                 ErrorCode.FIRESTORE_ERROR,
                 f"Failed to get status: {str(e)}"
-            )),
-            status=500,
-            mimetype="application/json"
+            ),
+            status=500
         )
 
 
@@ -402,48 +385,40 @@ def delete_estimate(req: https_fn.Request) -> https_fn.Response:
         user_id = data.get("userId")
         
         if not estimate_id:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.MISSING_FIELD,
                     "Missing estimateId in request"
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         if not user_id:
-            return https_fn.Response(
-                json.dumps(error_response(
+            return _json_response(
+                error_response(
                     ErrorCode.MISSING_FIELD,
                     "Missing userId in request"
-                )),
-                status=400,
-                mimetype="application/json"
+                ),
+                status=400
             )
         
         asyncio.run(_delete_estimate_async(estimate_id, user_id))
         
-        return https_fn.Response(
-            json.dumps(success_response({"deleted": True})),
-            status=200,
-            mimetype="application/json"
-        )
+        return _json_response(success_response({"deleted": True}))
         
     except TrueCostError as e:
-        return https_fn.Response(
-            json.dumps(error_response(e.code, e.message, e.details)),
-            status=404 if e.code == ErrorCode.ESTIMATE_NOT_FOUND else 500,
-            mimetype="application/json"
+        return _json_response(
+            error_response(e.code, e.message, e.details),
+            status=404 if e.code == ErrorCode.ESTIMATE_NOT_FOUND else 500
         )
     except Exception as e:
         logger.exception("delete_estimate_error", error=str(e))
-        return https_fn.Response(
-            json.dumps(error_response(
+        return _json_response(
+            error_response(
                 ErrorCode.FIRESTORE_ERROR,
                 f"Failed to delete estimate: {str(e)}"
-            )),
-            status=500,
-            mimetype="application/json"
+            ),
+            status=500
         )
 
 
@@ -473,17 +448,30 @@ async def _delete_estimate_async(estimate_id: str, user_id: str) -> None:
     await firestore_service.delete_estimate(estimate_id)
 
 
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+    "Access-Control-Max-Age": "3600"
+}
+
+
 def _cors_response() -> https_fn.Response:
     """Return CORS preflight response."""
     return https_fn.Response(
         "",
         status=204,
-        headers={
-            "Access-Control-Allow-Origin": "*",
-            "Access-Control-Allow-Methods": "POST, OPTIONS",
-            "Access-Control-Allow-Headers": "Content-Type, Authorization",
-            "Access-Control-Max-Age": "3600"
-        }
+        headers=CORS_HEADERS
+    )
+
+
+def _json_response(data: dict, status: int = 200) -> https_fn.Response:
+    """Return JSON response with CORS headers."""
+    return https_fn.Response(
+        json.dumps(data),
+        status=status,
+        mimetype="application/json",
+        headers=CORS_HEADERS
     )
 
 
@@ -521,21 +509,16 @@ def _create_a2a_handler(agent_class, agent_name: str):
             data = get_request_json(req)
             result = asyncio.run(_handle_request(data))
             
-            return https_fn.Response(
-                json.dumps(result),
-                status=200,
-                mimetype="application/json"
-            )
+            return _json_response(result)
         except Exception as e:
             logger.exception(f"a2a_{agent_name}_error", error=str(e))
-            return https_fn.Response(
-                json.dumps({
+            return _json_response(
+                {
                     "jsonrpc": "2.0",
                     "id": data.get("id", "unknown"),
                     "error": {"code": -32603, "message": str(e)}
-                }),
-                status=500,
-                mimetype="application/json"
+                },
+                status=500
             )
     
     return handler
@@ -700,11 +683,7 @@ def _handle_a2a_request(
         
         result = asyncio.run(_process())
         
-        return https_fn.Response(
-            json.dumps(result),
-            status=200,
-            mimetype="application/json"
-        )
+        return _json_response(result)
         
     except Exception as e:
         logger.exception(f"a2a_{agent_name}_error", error=str(e))
@@ -714,13 +693,12 @@ def _handle_a2a_request(
         except Exception:
             pass
         
-        return https_fn.Response(
-            json.dumps({
+        return _json_response(
+            {
                 "jsonrpc": "2.0",
                 "id": request_id,
                 "error": {"code": -32603, "message": str(e)}
-            }),
-            status=500,
-            mimetype="application/json"
+            },
+            status=500
         )
 

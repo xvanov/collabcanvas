@@ -337,8 +337,8 @@ class MonteCarloService:
             reverse=True
         )[:5]
         
-        # Create histogram (10 bins)
-        num_bins = 10
+        # Create histogram (20 bins)
+        num_bins = 20
         bin_width = (max(results) - min(results)) / num_bins
         histogram_bins = [min(results) + i * bin_width for i in range(num_bins + 1)]
         histogram_counts = [0] * num_bins
@@ -346,6 +346,13 @@ class MonteCarloService:
         for value in results:
             bin_idx = min(int((value - min(results)) / bin_width), num_bins - 1)
             histogram_counts[bin_idx] += 1
+
+        # Build top risks list (by variance contribution, fallback to expected impact)
+        top_risks = sorted(
+            risk_factors,
+            key=lambda r: (r.variance_contribution, r.expected_impact()),
+            reverse=True
+        )[:5]
         
         logger.info(
             "monte_carlo_simulation_complete",
@@ -364,6 +371,15 @@ class MonteCarloService:
             histogram_bins=[round(b, 2) for b in histogram_bins],
             histogram_counts=histogram_counts,
             top_risk_contributors=top_risk_contributors,
+            top_risks=[
+                {
+                    "id": r.id,
+                    "name": r.name,
+                    "expected_impact": round(r.expected_impact(), 2),
+                    "variance_contribution": r.variance_contribution
+                }
+                for r in top_risks
+            ],
         )
     
     def calculate_contingency(

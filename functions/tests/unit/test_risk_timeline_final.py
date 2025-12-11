@@ -781,6 +781,42 @@ class TestPR7Integration:
         
         # Verify Firestore called for each agent
         assert firestore.save_agent_output.call_count == 3
+
+    @pytest.mark.asyncio
+    async def test_final_agent_integration_payload(self, mock_services):
+        """Ensure FinalAgent writes spec-aligned root fields."""
+        firestore, llm = mock_services
+        llm.generate_json.return_value = {"content": {}, "tokens_used": 10}
+
+        final_agent = FinalAgent(firestore_service=firestore, llm_service=llm)
+        final_input = {
+            "clarification_output": get_mock_clarification_output(),
+            "location_output": get_mock_location_output(),
+            "scope_output": get_mock_scope_output(),
+            "cost_output": get_mock_cost_output(),
+            "risk_output": get_valid_risk_output(),
+            "timeline_output": get_valid_timeline_output(),
+        }
+
+        await final_agent.run("est-123", final_input)
+
+        # ensure integration payload update executed
+        assert firestore.update_estimate.await_count >= 1
+        _, payload = firestore.update_estimate.await_args.args
+        for key in [
+            "projectName", "address", "projectType",
+            "totalCost", "p50", "p80", "p90",
+            "contingencyPct", "timelineWeeks", "risk_analysis",
+            "cost_breakdown", "bill_of_quantities"
+        ]:
+            assert key in payload
+
+        # laborAnalysis should include trades when possible
+        labor = payload["laborAnalysis"]
+        assert "trades" in labor
+        # risk_analysis should carry histogram/top_risks when present
+        ra = payload["risk_analysis"]
+        assert "histogram" in ra
     
     @pytest.mark.asyncio
     async def test_scorer_critic_integration(self, mock_services):

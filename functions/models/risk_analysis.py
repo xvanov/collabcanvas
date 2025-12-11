@@ -167,6 +167,9 @@ class MonteCarloResult(BaseModel):
     histogram_counts: List[int] = Field(
         default_factory=list, description="Histogram bin counts"
     )
+    top_risks: List[Dict[str, Any]] = Field(
+        default_factory=list, description="Top risks with impact/variance data"
+    )
     
     # Top risk contributors (by variance contribution)
     top_risk_contributors: List[str] = Field(
@@ -308,6 +311,10 @@ class RiskAnalysis(BaseModel):
                 "stdDev": self.monte_carlo.statistics.std_dev,
                 "min": self.monte_carlo.statistics.min,
                 "max": self.monte_carlo.statistics.max,
+                "histogram_bins": self.monte_carlo.histogram_bins,
+                "histogram_counts": self.monte_carlo.histogram_counts,
+                "topRisks": self.monte_carlo.top_risks,
+                "topRiskContributors": self.monte_carlo.top_risk_contributors,
             },
             "contingency": {
                 "recommended": self.contingency.recommended_percentage,

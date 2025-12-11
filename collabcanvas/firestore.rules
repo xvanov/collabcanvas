@@ -398,6 +398,76 @@ service cloud.firestore {
           && getProject().data.ownerId == request.auth.uid;
       }
     }
+
+    // Estimates collection - TrueCost deep pipeline
+    match /estimates/{estimateId} {
+      // Helper: require auth
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper: resolve ownerId from existing doc or incoming data
+      function ownerId() {
+        return (resource != null && resource.data.userId != null)
+          ? resource.data.userId
+          : request.resource.data.userId;
+      }
+
+      // Helper: check if requester owns the estimate
+      function isOwner() {
+        return isSignedIn() && ownerId() == request.auth.uid;
+      }
+
+      // Helper: fetch parent estimate
+      function getEstimate() {
+        return get(/databases/$(database)/documents/estimates/$(estimateId));
+      }
+
+      // Helper: allow writes while pipeline is mutable
+      function pipelineWritable() {
+        let est = getEstimate();
+        return est != null
+          && est.data.status in ['draft', 'clarifying', 'processing', 'plan_review'];
+      }
+
+      // Estimate document rules
+      allow read: if isOwner();
+
+      allow create: if isOwner()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.status is string;
+
+      allow update: if isOwner()
+        // owner cannot change
+        && request.resource.data.userId == resource.data.userId
+        // preserve creation time
+        && request.resource.data.createdAt == resource.data.createdAt
+        // updatedAt must be timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow delete: if isOwner();
+
+      // Agent outputs (per agent) - read-only after pipeline completion
+      match /agentOutputs/{agentId} {
+        allow read: if isOwner();
+        allow create, update: if isOwner() && pipelineWritable();
+        allow delete: if isOwner() && pipelineWritable();
+      }
+
+      // Conversations tied to an estimate
+      match /conversations/{msgId} {
+        allow read, create, update, delete: if isOwner();
+      }
+
+      // Version snapshots of an estimate
+      match /versions/{versionId} {
+        allow read: if isOwner();
+        allow create: if isOwner();
+        allow update, delete: if isOwner();
+      }
+    }
     
     // Deny all other paths
     match /{document=**} {

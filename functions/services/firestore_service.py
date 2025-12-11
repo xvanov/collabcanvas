@@ -8,7 +8,6 @@ from datetime import datetime
 import structlog
 
 from firebase_admin import firestore
-from google.cloud.firestore_v1 import AsyncClient
 
 from config.errors import TrueCostError, ErrorCode
 
@@ -20,6 +19,9 @@ class FirestoreService:
     
     Handles all database operations for estimates, agent outputs,
     and pipeline status updates.
+    
+    Note: Firebase Admin SDK for Python is synchronous. Methods are
+    marked async for interface compatibility but operations are sync.
     """
     
     COLLECTION_ESTIMATES = "estimates"
@@ -27,7 +29,7 @@ class FirestoreService:
     SUBCOLLECTION_CONVERSATIONS = "conversations"
     SUBCOLLECTION_VERSIONS = "versions"
     
-    def __init__(self, db: Optional[AsyncClient] = None):
+    def __init__(self, db=None):
         """Initialize FirestoreService.
         
         Args:
@@ -36,7 +38,7 @@ class FirestoreService:
         self._db = db
     
     @property
-    def db(self) -> AsyncClient:
+    def db(self):
         """Get Firestore client (lazy initialization)."""
         if self._db is None:
             self._db = firestore.client()
@@ -56,7 +58,7 @@ class FirestoreService:
         """
         try:
             doc_ref = self.db.collection(self.COLLECTION_ESTIMATES).document(estimate_id)
-            doc = await doc_ref.get()
+            doc = doc_ref.get()  # Synchronous call
             
             if doc.exists:
                 return {"id": doc.id, **doc.to_dict()}
@@ -90,7 +92,7 @@ class FirestoreService:
             # Add timestamp
             data["updatedAt"] = firestore.SERVER_TIMESTAMP
             
-            await doc_ref.update(data)
+            doc_ref.update(data)  # Synchronous call
             logger.info("estimate_updated", estimate_id=estimate_id, fields=list(data.keys()))
             
         except Exception as e:
@@ -178,7 +180,7 @@ class FirestoreService:
             # Remove None values
             agent_output_data = {k: v for k, v in agent_output_data.items() if v is not None}
             
-            await doc_ref.set(agent_output_data)
+            doc_ref.set(agent_output_data)  # Synchronous call
             
             # Also update the main estimate document with agent output
             await self.update_estimate(estimate_id, {
@@ -230,7 +232,7 @@ class FirestoreService:
                 .document(agent_name)
             )
             
-            doc = await doc_ref.get()
+            doc = doc_ref.get()  # Synchronous call
             if doc.exists:
                 return doc.to_dict()
             return None
@@ -265,12 +267,12 @@ class FirestoreService:
             
             for subcollection_name in subcollections:
                 subcollection = estimate_ref.collection(subcollection_name)
-                docs = subcollection.stream()
-                async for doc in docs:
-                    await doc.reference.delete()
+                docs = subcollection.stream()  # Synchronous generator
+                for doc in docs:
+                    doc.reference.delete()  # Synchronous call
             
             # Delete main document
-            await estimate_ref.delete()
+            estimate_ref.delete()  # Synchronous call
             
             logger.info("estimate_deleted", estimate_id=estimate_id)
             
@@ -317,7 +319,7 @@ class FirestoreService:
                 "updatedAt": firestore.SERVER_TIMESTAMP
             }
             
-            await doc_ref.set(estimate_data)
+            doc_ref.set(estimate_data)  # Synchronous call
             logger.info("estimate_created", estimate_id=estimate_id, user_id=user_id)
             
             return estimate_id
@@ -329,4 +331,3 @@ class FirestoreService:
                 message=f"Failed to create estimate: {str(e)}",
                 details={"estimate_id": estimate_id}
             )
-

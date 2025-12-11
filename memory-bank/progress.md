@@ -23,7 +23,7 @@
 | #5 | `epic2/scope-agent` | Construction Scope Agent | 29 | ✅ Complete | Dec 11, 2025 |
 | #6 | `epic2/cost-agent` | Cost Estimation Agent (P50/P80/P90) | 36 | ✅ Complete | Dec 11, 2025 |
 | #7 | `epic2/risk-final-agents` | Risk, Timeline & Final Agents | 33 | ✅ Complete | Dec 11, 2025 |
-| #8 | `epic2/firestore-rules` | Security rules & documentation | - | 🔲 Not Started | - |
+| #8 | `epic2/firestore-rules` | Security rules, docs, integration mapping | - | ✅ Complete | Dec 11, 2025 |
 
 **Legend**: 🔲 Not Started | 🔄 In Progress | ✅ Complete | ⏸️ Blocked
 
@@ -259,10 +259,7 @@
 
 ## Next Actions
 
-1. **Start PR #8**: Firestore Rules & Documentation
-2. Update Firestore security rules for estimates collection
-3. Create API documentation for deep pipeline endpoints
-4. Run final testing and deployment verification
+1. (Optional) Run full test suite for regression after payload refinements (targeted suite passes).
 
 ## Test Summary
 

@@ -63,7 +63,7 @@ The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and
 | **PR #5** | `epic2/scope-agent` | 2.3 | ✅ Complete | 29 | Construction Scope Agent (BoQ enrichment) |
 | **PR #6** | `epic2/cost-agent` | 2.4 | ✅ Complete | 36 | Cost Estimation Agent (P50/P80/P90) |
 | **PR #7** | `epic2/risk-final-agents` | 2.5 | ✅ Complete | 33 | Risk, Timeline & Final Agents |
-| **PR #8** | `epic2/firestore-rules` | - | 🔲 Not Started | - | Security rules & documentation |
+| **PR #8** | `epic2/firestore-rules` | - | ✅ Complete | - | Security rules, docs, integration mapping |
 
 **Total Tests: 204 passing**
 
@@ -270,9 +270,12 @@ functions/
 
 ## Next Action
 
-**Start PR #8: Firestore Rules & Documentation**
-
-See `memory-bank/epic2-task-list.md` (PR #8 section) for detailed tasks.
+Refine Dev4 integration payload:
+- Enrich `laborAnalysis` with trades, hours, rates, base/burden/total, labor_pct, estimated_days.
+- Add cost_breakdown percentages (material_pct, labor_pct, permits_pct, overhead_pct) and per-division percentages.
+- Emit risk histogram + top_risks from MonteCarloService mock and include in `risk_analysis`.
+- Implement per `docs/setup/pipeline-output-mapping.md` and `memory-bank/dev2-output-mapping-plan.md`.
+- Optional: rerun full suite (205 tests currently passing).
 
 ---
 

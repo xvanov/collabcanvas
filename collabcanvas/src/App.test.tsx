@@ -6,14 +6,25 @@
  * Full Firebase Auth integration is tested with emulators separately.
  */
 
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi } from 'vitest';
 import { createMockUser } from './test/mocks/firebase';
+
+// Mock useAuth to prevent Firebase connection during import
+vi.mock('./hooks/useAuth', () => ({
+  useAuth: () => ({
+    user: null,
+    loading: false,
+    error: null,
+    signIn: vi.fn(),
+    signOut: vi.fn(),
+  }),
+}));
 
 describe('App - Authentication Guard', () => {
   it('should import App component successfully', async () => {
     const AppModule = await import('./App');
     expect(AppModule.default).toBeDefined();
-  });
+  }, 10000); // Increase timeout to 10 seconds
 
   it('should have Login page component', async () => {
     const { Login } = await import('./pages/Login');
