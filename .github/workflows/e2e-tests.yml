@@ -14,7 +14,6 @@ concurrency:
 
 env:
   NODE_VERSION: '22.20.0'
-  CACHE_KEY: ${{ runner.os }}-node-${{ hashFiles('collabcanvas/package-lock.json') }}
 
 jobs:
   # Fast path: Install dependencies once, cache everything
@@ -39,7 +38,7 @@ jobs:
           path: |
             collabcanvas/node_modules
             ~/.cache/ms-playwright
-          key: ${{ env.CACHE_KEY }}
+          key: ${{ runner.os }}-node-${{ hashFiles('collabcanvas/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
@@ -79,7 +78,7 @@ jobs:
           path: |
             collabcanvas/node_modules
             ~/.cache/ms-playwright
-          key: ${{ env.CACHE_KEY }}
+          key: ${{ runner.os }}-node-${{ hashFiles('collabcanvas/package-lock.json') }}
           restore-keys: |
             ${{ runner.os }}-node-
 
