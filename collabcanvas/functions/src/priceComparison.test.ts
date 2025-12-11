@@ -116,29 +116,29 @@ describe('parseMatchResult', () => {
   });
 
   describe('returns fallback on invalid JSON', () => {
-    it('returns default values for completely invalid JSON', () => {
+    it('returns no-match values for completely invalid JSON', () => {
       const input = 'This is not JSON at all';
       const result = parseMatchResult(input);
 
-      expect(result.index).toBe(0);
-      expect(result.confidence).toBe(0.5);
+      expect(result.index).toBe(-1);
+      expect(result.confidence).toBe(0);
       expect(result.reasoning).toContain('Fallback');
     });
 
-    it('returns default values for partial JSON', () => {
+    it('returns no-match values for partial JSON', () => {
       const input = '{"index": 1, "confidence":';
       const result = parseMatchResult(input);
 
-      expect(result.index).toBe(0);
-      expect(result.confidence).toBe(0.5);
+      expect(result.index).toBe(-1);
+      expect(result.confidence).toBe(0);
     });
 
-    it('returns default values for empty string', () => {
+    it('returns no-match values for empty string', () => {
       const input = '';
       const result = parseMatchResult(input);
 
-      expect(result.index).toBe(0);
-      expect(result.confidence).toBe(0.5);
+      expect(result.index).toBe(-1);
+      expect(result.confidence).toBe(0);
     });
 
     it('returns default values for empty object', () => {
@@ -192,7 +192,9 @@ describe('comparePrices caching logic', () => {
     const shouldReturnCached = !forceRefresh && existingDoc.exists && existingDoc.data()?.status === 'complete';
 
     expect(shouldReturnCached).toBe(true);
-    expect({ cached: true }).toEqual({ cached: true });
+    // When shouldReturnCached is true, function returns { cached: true }
+    const expectedResponse = shouldReturnCached ? { cached: true } : { cached: false };
+    expect(expectedResponse).toEqual({ cached: true });
   });
 
   it('runs full comparison when forceRefresh is true', () => {
@@ -467,27 +469,35 @@ describe('determineBestPrice', () => {
 // ============ FUNCTION CONFIGURATION TESTS ============
 
 describe('Cloud Function configuration', () => {
-  it('has correct CORS origins configured', () => {
-    const corsOrigins = [
-      'http://localhost:5173',
-      'http://127.0.0.1:5173',
-      'http://localhost:4173',
-      'http://127.0.0.1:4173',
-    ];
+  it('has correct CORS origins configured', async () => {
+    // Import the actual function configuration to test it
+    const { comparePricesConfig } = await import('./priceComparison');
+    const corsOrigins = comparePricesConfig.cors;
 
+    // Should always include localhost origins for development
+    expect(corsOrigins).toBeDefined();
     expect(corsOrigins).toContain('http://localhost:5173');
     expect(corsOrigins).toContain('http://127.0.0.1:5173');
-    expect(corsOrigins.length).toBe(4);
+    expect(corsOrigins).toContain('http://localhost:4173');
+    expect(corsOrigins).toContain('http://127.0.0.1:4173');
+    // Should have at least 4 origins (dev) + production if PRODUCTION_DOMAIN is set
+    expect(corsOrigins.length).toBeGreaterThanOrEqual(4);
   });
 
-  it('has correct timeout for 2nd gen functions', () => {
-    const timeoutSeconds = 540;
-    expect(timeoutSeconds).toBe(540); // Max for 2nd gen
+  it('has correct timeout for 2nd gen functions', async () => {
+    // Import the actual function configuration to test it
+    const { comparePricesConfig } = await import('./priceComparison');
+
+    expect(comparePricesConfig.timeoutSeconds).toBeDefined();
+    expect(comparePricesConfig.timeoutSeconds).toBe(540); // Max for 2nd gen
   });
 
-  it('has appropriate memory for LLM calls', () => {
-    const memory = '1GiB';
-    expect(memory).toBe('1GiB');
+  it('has appropriate memory for LLM calls', async () => {
+    // Import the actual function configuration to test it
+    const { comparePricesConfig } = await import('./priceComparison');
+
+    expect(comparePricesConfig.memory).toBeDefined();
+    expect(comparePricesConfig.memory).toBe('1GiB');
   });
 });
 

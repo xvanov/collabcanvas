@@ -1,12 +1,13 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.comparePrices = exports.parseMatchResult = exports.normalizeCacheKey = void 0;
+exports.comparePrices = exports.comparePricesConfig = exports.parseMatchResult = exports.normalizeCacheKey = void 0;
 const https_1 = require("firebase-functions/v2/https");
 const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
 const dotenv = require("dotenv");
 const path = require("path");
 const openai_1 = require("openai");
+const corsConfig_1 = require("./corsConfig");
 // Load environment variables - try multiple locations
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -571,17 +572,14 @@ async function compareOneProduct(productName, zipCode, db) {
     };
 }
 // ============ MAIN CLOUD FUNCTION ============
-exports.comparePrices = (0, https_1.onCall)({
-    cors: [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:4173',
-        'http://127.0.0.1:4173',
-    ],
+// Export configuration for testing - changes here are detected by tests
+exports.comparePricesConfig = {
+    cors: (0, corsConfig_1.getCorsOrigins)(),
     maxInstances: 10,
     memory: '1GiB',
     timeoutSeconds: 540, // Max for 2nd gen - handles large product lists
-}, async (req) => {
+};
+exports.comparePrices = (0, https_1.onCall)(exports.comparePricesConfig, async (req) => {
     var _a, _b, _c;
     console.log('[PRICE_COMPARISON] Function invoked');
     console.log('[PRICE_COMPARISON] Request data:', JSON.stringify(req.data));

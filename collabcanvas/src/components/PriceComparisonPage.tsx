@@ -88,7 +88,7 @@ export function PriceComparisonPage() {
               <div
                 className="bg-blue-600 h-3 rounded-full transition-all duration-300"
                 style={{
-                  width: `${(progress.completedProducts / progress.totalProducts) * 100}%`
+                  width: `${progress.totalProducts > 0 ? Math.min((progress.completedProducts / progress.totalProducts) * 100, 100) : 0}%`
                 }}
               />
             </div>

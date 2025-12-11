@@ -383,24 +383,30 @@ Return ONLY JSON: { "index": number, "confidence": number (0-1), "reasoning": "b
 });
 // ============ FUNCTION CONFIGURATION TESTS ============
 (0, vitest_1.describe)('Cloud Function configuration', () => {
-    (0, vitest_1.it)('has correct CORS origins configured', () => {
-        const corsOrigins = [
-            'http://localhost:5173',
-            'http://127.0.0.1:5173',
-            'http://localhost:4173',
-            'http://127.0.0.1:4173',
-        ];
+    (0, vitest_1.it)('has correct CORS origins configured', async () => {
+        // Import the actual function configuration to test it
+        const { comparePricesConfig } = await Promise.resolve().then(() => require('./priceComparison'));
+        const corsOrigins = comparePricesConfig.cors;
+        // Should always include localhost origins for development
+        (0, vitest_1.expect)(corsOrigins).toBeDefined();
         (0, vitest_1.expect)(corsOrigins).toContain('http://localhost:5173');
         (0, vitest_1.expect)(corsOrigins).toContain('http://127.0.0.1:5173');
-        (0, vitest_1.expect)(corsOrigins.length).toBe(4);
+        (0, vitest_1.expect)(corsOrigins).toContain('http://localhost:4173');
+        (0, vitest_1.expect)(corsOrigins).toContain('http://127.0.0.1:4173');
+        // Should have at least 4 origins (dev) + production if PRODUCTION_DOMAIN is set
+        (0, vitest_1.expect)(corsOrigins.length).toBeGreaterThanOrEqual(4);
     });
-    (0, vitest_1.it)('has correct timeout for 2nd gen functions', () => {
-        const timeoutSeconds = 540;
-        (0, vitest_1.expect)(timeoutSeconds).toBe(540); // Max for 2nd gen
+    (0, vitest_1.it)('has correct timeout for 2nd gen functions', async () => {
+        // Import the actual function configuration to test it
+        const { comparePricesConfig } = await Promise.resolve().then(() => require('./priceComparison'));
+        (0, vitest_1.expect)(comparePricesConfig.timeoutSeconds).toBeDefined();
+        (0, vitest_1.expect)(comparePricesConfig.timeoutSeconds).toBe(540); // Max for 2nd gen
     });
-    (0, vitest_1.it)('has appropriate memory for LLM calls', () => {
-        const memory = '1GiB';
-        (0, vitest_1.expect)(memory).toBe('1GiB');
+    (0, vitest_1.it)('has appropriate memory for LLM calls', async () => {
+        // Import the actual function configuration to test it
+        const { comparePricesConfig } = await Promise.resolve().then(() => require('./priceComparison'));
+        (0, vitest_1.expect)(comparePricesConfig.memory).toBeDefined();
+        (0, vitest_1.expect)(comparePricesConfig.memory).toBe('1GiB');
     });
 });
 // ============ PRODUCT CACHE TESTS ============

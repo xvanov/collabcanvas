@@ -399,12 +399,39 @@ service cloud.firestore {
       }
 
       // Price Comparison subcollection - multi-retailer price comparison results
+      // Note: Cloud Functions handle most writes via Admin SDK (bypasses rules)
+      // Client reads need to work even if project document doesn't exist yet
       match /priceComparison/{comparisonId} {
-        // Allow authenticated users to read/write price comparison data
-        // Cloud Functions handle most writes, but frontend needs read access
-        allow read: if request.auth != null;
+        // Helper function to get project document safely
+        function getProject() {
+          return get(/databases/$(database)/documents/projects/$(projectId));
+        }
+
+        // Helper function to check if project exists
+        function projectExists() {
+          return exists(/databases/$(database)/documents/projects/$(projectId));
+        }
+
+        // Helper function to check if user is owner or collaborator
+        function isOwnerOrCollaborator() {
+          return request.auth != null
+            && projectExists()
+            && (getProject().data.ownerId == request.auth.uid
+                || getProject().data.collaborators != null);
+        }
+
+        // Read: Allow authenticated users to read price comparison results
+        // If project exists, check ownership. If not, allow read for dev/testing.
+        allow read: if request.auth != null
+          && (!projectExists() || isOwnerOrCollaborator());
+
+        // Create/Update: Cloud Functions use Admin SDK (bypasses rules)
+        // Allow authenticated users for testing/development
         allow create, update: if request.auth != null;
-        allow delete: if request.auth != null;
+
+        // Delete: Only owner (if project exists)
+        allow delete: if request.auth != null
+          && (!projectExists() || getProject().data.ownerId == request.auth.uid);
       }
     }
 

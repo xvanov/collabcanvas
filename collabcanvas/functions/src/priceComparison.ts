@@ -4,6 +4,7 @@ import { getFirestore } from 'firebase-admin/firestore';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import OpenAI from 'openai';
+import { getCorsOrigins } from './corsConfig';
 
 // Load environment variables - try multiple locations
 dotenv.config();
@@ -28,9 +29,9 @@ try {
 // Configure Firestore to use emulator if running locally
 if (process.env.FIRESTORE_EMULATOR_HOST) {
   console.log('[PRICE_COMPARISON] Using Firestore emulator:', process.env.FIRESTORE_EMULATOR_HOST);
-} else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATOR) {
+} else if (process.env.NODE_ENV === 'development' && !process.env.FUNCTIONS_EMULATOR) {
   process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081';
-  console.log('[PRICE_COMPARISON] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
+  console.log('[PRICE_COMPARISON] Local development detected - setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
 }
 
 // ============ TYPES (duplicated - can't import from src/) ============
@@ -420,10 +421,10 @@ export function parseMatchResult(content: string): { index: number; confidence: 
       confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
       reasoning: parsed.reasoning || 'No reasoning provided',
     };
-  } catch {
-    // Fallback if JSON parsing fails
-    console.warn('[PRICE_COMPARISON] JSON parse failed, using fallback');
-    return { index: 0, confidence: 0.5, reasoning: 'Fallback to first result (JSON parse failed)' };
+  } catch (err) {
+    // Fallback if JSON parsing fails - return no match rather than guessing
+    console.warn('[PRICE_COMPARISON] JSON parse failed for content:', cleaned.substring(0, 100), 'Error:', err);
+    return { index: -1, confidence: 0, reasoning: 'Fallback - no match (JSON parse failed)' };
   }
 }
 
@@ -734,17 +735,15 @@ async function compareOneProduct(
 
 // ============ MAIN CLOUD FUNCTION ============
 
-export const comparePrices = onCall<{ request: CompareRequest }>({
-  cors: [
-    'http://localhost:5173',
-    'http://127.0.0.1:5173',
-    'http://localhost:4173',
-    'http://127.0.0.1:4173',
-  ],
+// Export configuration for testing - changes here are detected by tests
+export const comparePricesConfig = {
+  cors: getCorsOrigins(),
   maxInstances: 10,
-  memory: '1GiB',
+  memory: '1GiB' as const,
   timeoutSeconds: 540, // Max for 2nd gen - handles large product lists
-}, async (req) => {
+};
+
+export const comparePrices = onCall<{ request: CompareRequest }>(comparePricesConfig, async (req) => {
   console.log('[PRICE_COMPARISON] Function invoked');
   console.log('[PRICE_COMPARISON] Request data:', JSON.stringify(req.data));
 
@@ -813,10 +812,11 @@ export const comparePrices = onCall<{ request: CompareRequest }>({
     return { cached: false };
 
   } catch (error) {
-    // Handle errors gracefully
+    // Handle errors gracefully - preserve partial results
     console.error('[PRICE_COMPARISON] Error during comparison:', error);
     await docRef.update({
       status: 'error' as ComparisonStatus,
+      results: results, // Preserve any partial results completed before error
       error: error instanceof Error ? error.message : 'Unknown error',
     });
     throw new HttpsError('internal', 'Price comparison failed');

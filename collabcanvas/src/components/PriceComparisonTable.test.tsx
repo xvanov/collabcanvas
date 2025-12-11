@@ -7,7 +7,7 @@ import React from 'react'
 import { describe, it, expect } from 'vitest'
 import { render, screen } from '@testing-library/react'
 import { PriceComparisonTable } from './PriceComparisonTable'
-import type { ComparisonResult, Retailer, RetailerProduct } from '../types/priceComparison'
+import type { ComparisonResult, RetailerProduct } from '../types/priceComparison'
 
 // Helper to create a mock retailer product
 function createMockProduct(overrides: Partial<RetailerProduct> = {}): RetailerProduct {
@@ -48,11 +48,10 @@ describe('PriceComparisonTable', () => {
     const results = [createMockResult()]
     render(<PriceComparisonTable results={results} />)
 
-    // Check headers
+    // Check headers (only homeDepot and lowes are displayed)
     expect(screen.getByText('Product')).toBeInTheDocument()
     expect(screen.getByText('Home Depot')).toBeInTheDocument()
     expect(screen.getByText("Lowe's")).toBeInTheDocument()
-    expect(screen.getByText('Ace Hardware')).toBeInTheDocument()
 
     // Check product name
     expect(screen.getByText('2x4 lumber 8ft')).toBeInTheDocument()
@@ -62,9 +61,9 @@ describe('PriceComparisonTable', () => {
     const results = [createMockResult()]
     render(<PriceComparisonTable results={results} />)
 
+    // Only homeDepot ($10.99) and lowes ($9.99) are displayed
     expect(screen.getByText('$10.99')).toBeInTheDocument()
     expect(screen.getByText('$9.99')).toBeInTheDocument()
-    expect(screen.getByText('$11.99')).toBeInTheDocument()
   })
 
   it('highlights best price with BEST badge', () => {
@@ -78,7 +77,7 @@ describe('PriceComparisonTable', () => {
 
   it('shows "No match found" for null matches', () => {
     const result = createMockResult()
-    result.matches.aceHardware = {
+    result.matches.lowes = {
       selectedProduct: null,
       confidence: 0,
       reasoning: 'No products found',
@@ -134,7 +133,7 @@ describe('PriceComparisonTable', () => {
 
   it('applies bg-gray-50 to no-match cells', () => {
     const result = createMockResult()
-    result.matches.aceHardware = {
+    result.matches.lowes = {
       selectedProduct: null,
       confidence: 0,
       reasoning: 'No products found',
