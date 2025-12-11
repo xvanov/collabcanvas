@@ -12,6 +12,7 @@ import { Board } from './Board';
 import { ScopeView } from '../components/scope/ScopeView';
 import { TimeView } from '../components/time/TimeView';
 import { MoneyView } from '../components/money/MoneyView';
+import { EstimationView } from '../components/estimation/EstimationView';
 import { ViewIndicator } from '../components/shared/ViewIndicator';
 import { PresenceIndicator } from '../components/shared/PresenceIndicator';
 import { getDoc, doc } from 'firebase/firestore';
@@ -306,6 +307,18 @@ export function Project() {
               Space
             </NavLink>
             <NavLink
+              to={`${basePath}/estimate`}
+              className={({ isActive }) =>
+                `px-6 py-4 font-medium transition-colors ${
+                  isActive
+                    ? 'border-b-2 border-green-600 text-green-600'
+                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                }`
+              }
+            >
+              Estimate
+            </NavLink>
+            <NavLink
               to={`${basePath}/time`}
               className={({ isActive }) =>
                 `px-6 py-4 font-medium transition-colors ${
@@ -342,8 +355,9 @@ export function Project() {
         <div className="flex-1 overflow-hidden">
           <Routes>
             <Route path="scope" element={<ScopeView />} />
-            <Route path="time" element={<TimeView />} />
             <Route path="space" element={<Board />} />
+            <Route path="estimate" element={<EstimationView />} />
+            <Route path="time" element={<TimeView />} />
             <Route path="money" element={<MoneyView />} />
             <Route path="*" element={<ScopeView />} />
           </Routes>
@@ -388,6 +402,23 @@ export function Project() {
             <PresenceIndicator view="space" />
           </NavLink>
           <NavLink
+            to={`${basePath}/estimate`}
+            className={({ isActive }) =>
+              `px-6 py-4 font-medium transition-colors ${
+                isActive
+                  ? 'border-b-2 border-green-600 text-green-600'
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+              }`
+            }
+          >
+            <span className="flex items-center">
+              <svg className="w-4 h-4 mr-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+              </svg>
+              Estimate
+            </span>
+          </NavLink>
+          <NavLink
             to={`${basePath}/time`}
             className={({ isActive }) =>
               `px-6 py-4 font-medium transition-colors ${
@@ -430,8 +461,9 @@ export function Project() {
       <div className="flex-1 overflow-hidden">
         <Routes>
           <Route path="scope" element={<ScopeView />} />
-          <Route path="time" element={<TimeView />} />
           <Route path="space" element={<Board />} />
+          <Route path="estimate" element={<EstimationView />} />
+          <Route path="time" element={<TimeView />} />
           <Route path="money" element={<MoneyView />} />
           <Route path="*" element={<ScopeView />} />
         </Routes>

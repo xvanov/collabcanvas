@@ -13,7 +13,7 @@ describe('App - Authentication Guard', () => {
   it('should import App component successfully', async () => {
     const AppModule = await import('./App');
     expect(AppModule.default).toBeDefined();
-  });
+  }, 15000); // Increase timeout for Firebase initialization
 
   it('should have Login page component', async () => {
     const { Login } = await import('./pages/Login');

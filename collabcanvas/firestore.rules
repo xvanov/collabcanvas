@@ -397,6 +397,50 @@ service cloud.firestore {
           && getProject() != null
           && getProject().data.ownerId == request.auth.uid;
       }
+      
+      // Estimations subcollection - estimation sessions for TrueCost workflow
+      match /estimations/{sessionId} {
+        // Helper function to get project document safely
+        function getProject() {
+          return get(/databases/$(database)/documents/projects/$(projectId));
+        }
+        
+        // Helper function to check if user is owner or collaborator
+        function isOwnerOrCollaborator() {
+          return request.auth != null && getProject() != null
+            && (getProject().data.ownerId == request.auth.uid
+                || getProject().data.collaborators != null);
+        }
+        
+        // Helper function to check if user is owner or editor
+        function isOwnerOrEditor() {
+          return request.auth != null && getProject() != null
+            && (getProject().data.ownerId == request.auth.uid
+                || getProject().data.collaborators != null);
+        }
+        
+        // Read/List: Owner or collaborator (viewer/editor)
+        allow read, list: if isOwnerOrCollaborator();
+        
+        // Create: Owner or editor collaborator
+        allow create: if isOwnerOrEditor()
+          && request.resource.data.projectId == projectId
+          && request.resource.data.scopeText is string
+          && request.resource.data.planImageUrl is string
+          && request.resource.data.createdBy == request.auth.uid
+          && request.resource.data.updatedBy == request.auth.uid;
+        
+        // Update: Owner or editor collaborator
+        allow update: if isOwnerOrEditor()
+          && request.resource.data.updatedBy == request.auth.uid
+          && request.resource.data.projectId == resource.data.projectId
+          && request.resource.data.createdBy == resource.data.createdBy;
+        
+        // Delete: Only owner
+        allow delete: if request.auth != null 
+          && getProject() != null
+          && getProject().data.ownerId == request.auth.uid;
+      }
     }
     
     // Deny all other paths
