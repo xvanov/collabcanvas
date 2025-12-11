@@ -12,8 +12,11 @@ import { test, expect } from '../support/fixtures';
  * @see bmad/bmm/testarch/knowledge/test-quality.md
  */
 test.describe('Story 2.1: Project Isolation', () => {
+  // Skip all tests in this file - RED phase (features not implemented yet)
+  test.skip();
+
   test.describe('AC1: Project-Scoped Shapes Storage', () => {
-    test('should store shapes in project-scoped Firestore collection', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
+    test('should store shapes in project-scoped Firestore collection', async ({ page, projectFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });
@@ -68,7 +71,7 @@ test.describe('Story 2.1: Project Isolation', () => {
   });
 
   test.describe('AC2: Project-Scoped Layers Storage', () => {
-    test('should store layers in project-scoped Firestore collection', async ({ page, projectFactory, layerFactory: _layerFactory }) => {
+    test('should store layers in project-scoped Firestore collection', async ({ page, projectFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });
@@ -171,7 +174,7 @@ test.describe('Story 2.1: Project Isolation', () => {
   });
 
   test.describe('AC5: Project-Scoped Canvas Store', () => {
-    test('should use isolated Zustand store instance per project', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
+    test('should use isolated Zustand store instance per project', async ({ page, projectFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });

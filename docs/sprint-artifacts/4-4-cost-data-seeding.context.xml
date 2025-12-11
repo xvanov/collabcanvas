@@ -1,0 +1,173 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4</storyId>
+    <title>Cost Data Seeding &amp; Maintenance</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-4-cost-data-seeding.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>developer (setting up the system)</asA>
+    <iWant>to seed Firestore with comprehensive mock cost data</iWant>
+    <soThat>the estimation pipeline has realistic material costs, labor rates, and location data to work with during development and demo</soThat>
+    <tasks>
+      <task id="1" title="Create Material Data" acs="4.4.1, 4.4.2, 4.4.8">
+        <subtask>1.1 Create functions/data/materials.json with 100+ items</subtask>
+        <subtask>1.2-1.14 Include all 13 CSI divisions (03, 04, 05, 06, 07, 08, 09, 10, 22, 23, 26, 31, 32)</subtask>
+        <subtask>1.15 Ensure each item has costLow, costLikely, costHigh for Monte Carlo</subtask>
+      </task>
+      <task id="2" title="Create Labor Rate Data" acs="4.4.3">
+        <subtask>2.1 Create functions/data/labor_rates.json</subtask>
+        <subtask>2.2 Include rates for 8 trades: electrician, plumber, carpenter, hvac_tech, roofer, painter, tile_setter, general_labor</subtask>
+        <subtask>2.3 Include regional variations: northeast, midwest, south, west</subtask>
+        <subtask>2.4 Include benefits burden calculation (35% typical)</subtask>
+      </task>
+      <task id="3" title="Create Location Data" acs="4.4.4, 4.4.5">
+        <subtask>3.1 Create functions/data/location_factors.json</subtask>
+        <subtask>3.2 Include 50+ zip codes covering major metros</subtask>
+        <subtask>3.3-3.5 Include all 8 major metros and suburban/rural examples</subtask>
+        <subtask>3.6 Include union status, permit costs, weather factors</subtask>
+      </task>
+      <task id="4" title="Create Sample BoQ Data" acs="4.4.6, 4.4.7">
+        <subtask>4.1 Create functions/data/sample_boq_kitchen.json (~50 line items)</subtask>
+        <subtask>4.2 Create functions/data/sample_boq_bathroom.json (~30 line items)</subtask>
+        <subtask>4.3 Ensure all item codes reference existing materials</subtask>
+      </task>
+      <task id="5" title="Implement Seeding Script" acs="all">
+        <subtask>5.1 Create functions/scripts/seed_cost_data.py</subtask>
+        <subtask>5.2-5.5 Load JSON files and write to Firestore collections</subtask>
+        <subtask>5.6-5.8 Add --dry-run, --verify flags and progress reporting</subtask>
+      </task>
+      <task id="6" title="Create Verification Script" acs="all">
+        <subtask>6.1 Create functions/scripts/verify_cost_data.py</subtask>
+        <subtask>6.2-6.7 Implement counts, schema validation, and coverage reports</subtask>
+      </task>
+      <task id="7" title="Write Unit Tests" acs="4.4.1-4.4.5, 4.4.8">
+        <subtask>7.1 Create functions/tests/unit/test_cost_data_schema.py</subtask>
+        <subtask>7.2-7.7 Test all counts, coverage, and schema requirements</subtask>
+      </task>
+      <task id="8" title="Write Integration Tests" acs="4.4.6, 4.4.7">
+        <subtask>8.1 Create functions/tests/integration/test_cost_data_coverage.py</subtask>
+        <subtask>8.2-8.3 Test kitchen and bathroom BoQ 100% coverage</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="4.4.1">Firestore /costData/materials/ has 100+ documents</criterion>
+    <criterion id="4.4.2">All MVP-scope CSI divisions have material data (03, 04, 05, 06, 07, 08, 09, 10, 22, 23, 26, 31, 32)</criterion>
+    <criterion id="4.4.3">Labor rates exist for all 8 trades across regions</criterion>
+    <criterion id="4.4.4">Location factors exist for 50+ zip codes</criterion>
+    <criterion id="4.4.5">Major metros covered (NYC, LA, Chicago, Houston, Phoenix, Denver, Atlanta, Seattle)</criterion>
+    <criterion id="4.4.6">Kitchen remodel BoQ can be fully costed from seeded data (100% coverage)</criterion>
+    <criterion id="4.4.7">Bathroom remodel BoQ can be fully costed from seeded data (100% coverage)</criterion>
+    <criterion id="4.4.8">Each material has RSMeans schema: unitCost, laborHours, crew, productivity, costLow/Likely/High</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc path="docs/sprint-artifacts/tech-spec-epic-4.md" title="Epic 4 Technical Specification" section="Story 4.4: Cost Data Seeding">
+        Defines Firestore schema for /costData/materials/, /costData/laborRates/, /costData/locationFactors/.
+        Specifies RSMeans-compatible schema with fields: unitCost, laborHours, crew, crewDailyOutput,
+        productivityFactor, costLow, costLikely, costHigh, csiDivision, subdivision.
+      </doc>
+      <doc path="docs/architecture.md" title="TrueCost Architecture" section="Data Architecture / ADR-005">
+        ADR-005 mandates Firestore for cost data storage (auto-scaling, Firebase-native).
+        Collections: /costData/materials/{itemCode}, /costData/laborRates/{rateId}, /costData/locationFactors/{zipCode}.
+      </doc>
+      <doc path="docs/prd.md" title="Product Requirements Document" section="CSI MasterFormat Divisions">
+        Defines MVP-scope CSI divisions for residential: 03 (Concrete), 04 (Masonry), 05 (Metals),
+        06 (Wood/Plastics), 07 (Thermal/Moisture), 08 (Openings), 09 (Finishes), 10 (Specialties),
+        22 (Plumbing), 23 (HVAC), 26 (Electrical), 31 (Earthwork), 32 (Exterior).
+      </doc>
+      <doc path="docs/epics.md" title="Epic Breakdown" section="Epic 4: Data Services">
+        Dev 4 exclusive ownership of: functions/services/cost_data_service.py, functions/templates/**,
+        Firestore /costData/** collections. Story 4.4 provides foundation data for Stories 4.1 and 4.2.
+      </doc>
+    </docs>
+    <code>
+      <file path="functions/services/cost_data_service.py" kind="service" symbol="MaterialCost, LocationFactors, LaborRate, MATERIAL_DATA, LOCATION_DATA" lines="1-1443" reason="Defines existing RSMeans schema dataclasses and in-memory data dictionaries. New JSON data files must match these schemas. Contains REQUIRED_TRADES list with 8 trades."/>
+      <file path="functions/services/cost_data_service.py" kind="constants" symbol="REQUIRED_TRADES, ZIP_PREFIX_TO_REGION, REGIONAL_DEFAULTS" lines="176-318" reason="Lists required trades and regional defaults to align new data with existing patterns"/>
+      <file path="functions/services/cost_data_service.py" kind="data" symbol="LOCATION_DATA" lines="321-592" reason="9 existing location entries for major metros - extend pattern to 50+ locations"/>
+      <file path="functions/services/cost_data_service.py" kind="data" symbol="MATERIAL_DATA" lines="601-849" reason="18 existing material entries - extend to 100+ following same RSMeans schema"/>
+      <file path="functions/tests/unit/test_cost_data_service.py" kind="test" symbol="test_get_material_cost_*, test_search_materials_*" lines="1-295" reason="Existing unit tests showing test patterns for cost data service"/>
+      <file path="functions/tests/unit/test_location_service.py" kind="test" symbol="TestLocationFactors" reason="Existing location service tests showing test patterns"/>
+    </code>
+    <dependencies>
+      <python>
+        <package name="firebase-admin" version="&gt;=6.0.0,&lt;7.0.0" purpose="Firestore writes for seeding"/>
+        <package name="structlog" version="&gt;=23.0.0,&lt;25.0.0" purpose="Structured logging"/>
+        <package name="pytest" version="&gt;=7.0.0,&lt;9.0.0" purpose="Unit testing"/>
+        <package name="pytest-asyncio" version="&gt;=0.21.0,&lt;1.0.0" purpose="Async test support"/>
+        <package name="tqdm" version="&gt;=4.0.0" purpose="Progress bars for seeding (optional, add if used)"/>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="Architecture">Dev 4 exclusive ownership of functions/data/*, functions/scripts/*, Firestore /costData/** collections</constraint>
+    <constraint source="Tech Spec">RSMeans-compatible schema required: unitCost, laborHours, crew, crewDailyOutput, productivityFactor, costLow, costLikely, costHigh, csiDivision, subdivision</constraint>
+    <constraint source="Tech Spec">Material schema must support triangular distribution for Monte Carlo: costLow &lt;= costLikely &lt;= costHigh</constraint>
+    <constraint source="Architecture">8 required trades: electrician, plumber, carpenter, hvac_tech, roofer, painter, tile_setter, general_labor</constraint>
+    <constraint source="Architecture">4 required regions: northeast, midwest, south, west</constraint>
+    <constraint source="Architecture">Firestore collection paths: /costData/materials/{itemCode}, /costData/laborRates/{rateId}, /costData/locationFactors/{zipCode}</constraint>
+    <constraint source="Story">JSON data files stored in functions/data/ directory</constraint>
+    <constraint source="Story">Scripts stored in functions/scripts/ directory</constraint>
+    <constraint source="Existing Code">Match existing MATERIAL_DATA and LOCATION_DATA dictionary structures in cost_data_service.py</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="MaterialCost" kind="dataclass" path="functions/services/cost_data_service.py">
+      @dataclass with fields: item_code, description, unit, unit_cost, labor_hours, crew,
+      crew_daily_output, productivity_factor, cost_low, cost_likely, cost_high, csi_division, subdivision
+    </interface>
+    <interface name="LocationFactors" kind="dataclass" path="functions/services/cost_data_service.py">
+      @dataclass with fields: zip_code, region_code, city, state, labor_rates (Dict[str,float]),
+      is_union, union_premium, permit_costs (PermitCosts), weather_factors (WeatherFactors), is_default, data_source
+    </interface>
+    <interface name="PermitCosts" kind="dataclass" path="functions/services/cost_data_service.py">
+      @dataclass with fields: base_percentage, minimum, maximum (Optional), inspection_fee
+    </interface>
+    <interface name="WeatherFactors" kind="dataclass" path="functions/services/cost_data_service.py">
+      @dataclass with fields: winter_slowdown, summer_premium, rainy_season_months (List[int]), outdoor_work_adjustment
+    </interface>
+    <interface name="LaborRate" kind="dataclass" path="functions/services/cost_data_service.py">
+      @dataclass with fields: trade, base_rate, benefits_burden, total_rate
+    </interface>
+    <interface name="Firestore /costData/materials/{itemCode}" kind="document">
+      JSON document matching MaterialCost schema minus item_code (used as document ID)
+    </interface>
+    <interface name="Firestore /costData/locationFactors/{zipCode}" kind="document">
+      JSON document with: region_code, city, state, labor_rates, is_union, union_premium, permit_costs, weather_factors
+    </interface>
+    <interface name="Firestore /costData/laborRates/{rateId}" kind="document">
+      JSON document with: trade, region, baseRate, benefitsBurden, totalRate. rateId format: {trade}_{region}
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Testing uses pytest with pytest-asyncio for async functions. Tests are organized into
+      functions/tests/unit/ for unit tests and functions/tests/integration/ for Firestore integration tests.
+      Use @pytest.mark.asyncio decorator for async test functions. Clear cache before each test with fixtures.
+      Follow existing patterns in test_cost_data_service.py and test_location_service.py.
+    </standards>
+    <locations>
+      <location>functions/tests/unit/test_cost_data_schema.py</location>
+      <location>functions/tests/integration/test_cost_data_coverage.py</location>
+    </locations>
+    <ideas>
+      <idea ac="4.4.1">Test materials count: load materials.json, assert len &gt;= 100</idea>
+      <idea ac="4.4.2">Test CSI coverage: for each division in [03,04,05,06,07,08,09,10,22,23,26,31,32], assert at least 1 material exists</idea>
+      <idea ac="4.4.3">Test labor rates: for each trade in REQUIRED_TRADES, for each region in [northeast,midwest,south,west], assert rate exists</idea>
+      <idea ac="4.4.4">Test location count: load location_factors.json, assert len &gt;= 50</idea>
+      <idea ac="4.4.5">Test major metros: for each zip in [10001,90001,60601,77001,85001,80202,98101,30301], assert document exists</idea>
+      <idea ac="4.4.6">Test kitchen coverage: load sample_boq_kitchen.json, for each item_code, assert get_material_cost succeeds</idea>
+      <idea ac="4.4.7">Test bathroom coverage: load sample_boq_bathroom.json, for each item_code, assert get_material_cost succeeds</idea>
+      <idea ac="4.4.8">Test RSMeans schema: for each material, assert all required fields present and costLow &lt;= costLikely &lt;= costHigh</idea>
+    </ideas>
+  </tests>
+</story-context>

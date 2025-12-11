@@ -1,0 +1,165 @@
+{# Labor Analysis Section - AC 4.3.4
+   Shows trades, hours, and labor costs
+#}
+<div class="section page-break">
+    <h2>Labor Analysis</h2>
+
+    <p class="text-muted">
+        Detailed breakdown of labor requirements by trade, including estimated hours
+        and costs based on local market rates for {{ project.address | default('the project location') }}.
+    </p>
+
+    <div class="card">
+        <div class="card-header">Labor Summary by Trade</div>
+        <table class="table-striped">
+            <thead>
+                <tr>
+                    <th style="width: 25%;">Trade</th>
+                    <th class="text-right" style="width: 15%;">Hours</th>
+                    <th class="text-right" style="width: 15%;">Rate/Hr</th>
+                    <th class="text-right" style="width: 15%;">Base Cost</th>
+                    <th class="text-right" style="width: 15%;">Burden</th>
+                    <th class="text-right" style="width: 15%;">Total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for trade in labor_analysis.get('trades', []) %}
+                <tr>
+                    <td>{{ trade.name }}</td>
+                    <td class="text-right">{{ "{:,.1f}".format(trade.hours) }}</td>
+                    <td class="currency">${{ "{:,.2f}".format(trade.rate) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(trade.base_cost) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(trade.burden) }}</td>
+                    <td class="currency">${{ "{:,.0f}".format(trade.total) }}</td>
+                </tr>
+                {% else %}
+                {# Default data for demo #}
+                <tr>
+                    <td>Carpenter</td>
+                    <td class="text-right">80.0</td>
+                    <td class="currency">$52.00</td>
+                    <td class="currency">$4,160</td>
+                    <td class="currency">$1,456</td>
+                    <td class="currency">$5,616</td>
+                </tr>
+                <tr>
+                    <td>Electrician</td>
+                    <td class="text-right">32.0</td>
+                    <td class="currency">$65.00</td>
+                    <td class="currency">$2,080</td>
+                    <td class="currency">$728</td>
+                    <td class="currency">$2,808</td>
+                </tr>
+                <tr>
+                    <td>Plumber</td>
+                    <td class="text-right">24.0</td>
+                    <td class="currency">$62.00</td>
+                    <td class="currency">$1,488</td>
+                    <td class="currency">$521</td>
+                    <td class="currency">$2,009</td>
+                </tr>
+                <tr>
+                    <td>Painter</td>
+                    <td class="text-right">40.0</td>
+                    <td class="currency">$40.00</td>
+                    <td class="currency">$1,600</td>
+                    <td class="currency">$560</td>
+                    <td class="currency">$2,160</td>
+                </tr>
+                <tr>
+                    <td>Tile Setter</td>
+                    <td class="text-right">16.0</td>
+                    <td class="currency">$48.00</td>
+                    <td class="currency">$768</td>
+                    <td class="currency">$269</td>
+                    <td class="currency">$1,037</td>
+                </tr>
+                <tr>
+                    <td>General Labor</td>
+                    <td class="text-right">48.0</td>
+                    <td class="currency">$30.00</td>
+                    <td class="currency">$1,440</td>
+                    <td class="currency">$504</td>
+                    <td class="currency">$1,944</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr class="summary-row">
+                    <td><strong>Total Labor</strong></td>
+                    <td class="text-right"><strong>{{ "{:,.1f}".format(labor_analysis.total_hours | default(240)) }}</strong></td>
+                    <td></td>
+                    <td class="currency"><strong>${{ "{:,.0f}".format(labor_analysis.base_total | default(11536)) }}</strong></td>
+                    <td class="currency"><strong>${{ "{:,.0f}".format(labor_analysis.burden_total | default(4038)) }}</strong></td>
+                    <td class="currency"><strong>${{ "{:,.0f}".format(labor_analysis.total | default(15574)) }}</strong></td>
+                </tr>
+            </tfoot>
+        </table>
+    </div>
+
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value">{{ "{:,.0f}".format(labor_analysis.total_hours | default(240)) }}</div>
+            <div class="stat-label">Total Labor Hours</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">${{ "{:,.0f}".format(labor_analysis.total | default(15574)) }}</div>
+            <div class="stat-label">Total Labor Cost</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ labor_analysis.labor_pct | default(35) }}%</div>
+            <div class="stat-label">Labor % of Total</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value">{{ labor_analysis.estimated_days | default(6) }}</div>
+            <div class="stat-label">Crew Days (8hr)</div>
+        </div>
+    </div>
+
+    {% if labor_analysis.location_factors %}
+    <h3>Location Factors</h3>
+    <table>
+        <tr>
+            <td style="width: 40%;"><strong>Market Type:</strong></td>
+            <td>{{ 'Union' if labor_analysis.location_factors.is_union else 'Non-Union' }}</td>
+        </tr>
+        {% if labor_analysis.location_factors.is_union %}
+        <tr>
+            <td><strong>Union Premium:</strong></td>
+            <td>{{ "{:.0%}".format(labor_analysis.location_factors.union_premium - 1) }} applied to labor rates</td>
+        </tr>
+        {% endif %}
+        <tr>
+            <td><strong>Benefits Burden:</strong></td>
+            <td>35% (includes taxes, insurance, benefits)</td>
+        </tr>
+        {% if labor_analysis.location_factors.weather_adjustment %}
+        <tr>
+            <td><strong>Weather Adjustment:</strong></td>
+            <td>{{ "{:.0%}".format(labor_analysis.location_factors.weather_adjustment - 1) }} productivity factor applied</td>
+        </tr>
+        {% endif %}
+    </table>
+    {% endif %}
+
+    <h3>Crew Composition</h3>
+    <p class="text-muted">
+        Typical crew sizes and configurations for this project type:
+    </p>
+    <ul>
+        {% for crew in labor_analysis.get('crews', []) %}
+        <li><strong>{{ crew.name }}:</strong> {{ crew.composition }}</li>
+        {% else %}
+        <li><strong>Carpentry Crew:</strong> 2 Carpenters + 1 Laborer</li>
+        <li><strong>Electrical Crew:</strong> 1 Electrician + 1 Helper</li>
+        <li><strong>Plumbing Crew:</strong> 1 Plumber + 1 Helper</li>
+        <li><strong>Painting Crew:</strong> 2 Painters</li>
+        {% endfor %}
+    </ul>
+
+    {% if not client_ready and labor_analysis.internal_notes %}
+    <div class="internal-only">
+        {{ labor_analysis.internal_notes }}
+    </div>
+    {% endif %}
+</div>

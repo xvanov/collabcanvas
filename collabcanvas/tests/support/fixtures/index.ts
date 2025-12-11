@@ -1,4 +1,4 @@
-/* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable react-hooks/rules-of-hooks, no-empty-pattern */
 import { test as base } from '@playwright/test';
 import { UserFactory } from './factories/user-factory';
 import { ProjectFactory } from './factories/project-factory';
@@ -47,18 +47,18 @@ export const test = base.extend<TestFixtures>({
     await use(factory);
   },
 
-  authenticatedProject: async ({ page: _page, projectFactory, userFactory }, _use) => {
+  authenticatedProject: async ({ projectFactory, userFactory }, use) => {
     // Setup: Create user and project
     const user = userFactory.createUser();
     const project = projectFactory.createProject({ ownerId: user.id });
-    
+
     // TODO: When authentication is implemented, authenticate user and create project via API
     // For now, track project for cleanup
     projectFactory.trackProject(project.id);
-    
+
     // Provide project to test
     await use(project);
-    
+
     // Cleanup handled by projectFactory.cleanup()
   },
 });

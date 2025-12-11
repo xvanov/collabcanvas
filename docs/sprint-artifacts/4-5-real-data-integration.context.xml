@@ -1,0 +1,256 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>5</storyId>
+    <title>Real Data Integration (BLS Labor + Weather API + Agent Tools)</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-5-real-data-integration.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system (Location Intelligence Service)</asA>
+    <iWant>to fetch real labor rates from BLS and weather data from a weather API, and expose this data as callable tools for LLM agents</iWant>
+    <soThat>estimates are based on actual government labor statistics and historical weather patterns, and clarification/estimation agents can query deterministic data directly</soThat>
+    <tasks>
+      <task id="1" name="BLS API Integration" ac="4.5.1-4.5.3, 4.5.9">
+        <subtask id="1.1">Register for BLS API key at https://www.bls.gov/developers/</subtask>
+        <subtask id="1.2">Create functions/services/bls_service.py</subtask>
+        <subtask id="1.3">Implement SOC code mapping for 8 construction trades</subtask>
+        <subtask id="1.4">Implement MSA (metro area) to zip code mapping</subtask>
+        <subtask id="1.5">Parse BLS OES (Occupational Employment Statistics) response</subtask>
+        <subtask id="1.6">Add benefits burden calculation (base rate → total rate)</subtask>
+        <subtask id="1.7">Store API key in Cloud Functions environment config</subtask>
+      </task>
+      <task id="2" name="Weather API Integration" ac="4.5.4-4.5.6">
+        <subtask id="2.1">Create functions/services/weather_service.py</subtask>
+        <subtask id="2.2">Integrate Open-Meteo historical weather API (free, no key required)</subtask>
+        <subtask id="2.3">Implement winter_slowdown calculation from freeze days</subtask>
+        <subtask id="2.4">Implement summer_premium calculation from extreme heat days</subtask>
+        <subtask id="2.5">Implement rainy_season_months detection from precipitation data</subtask>
+        <subtask id="2.6">Implement outdoor_work_adjustment from combined factors</subtask>
+      </task>
+      <task id="3" name="Data Refresh Pipeline" ac="4.5.7-4.5.8">
+        <subtask id="3.1">Create functions/jobs/refresh_location_data.py</subtask>
+        <subtask id="3.2">Implement batch update for all tracked zip codes</subtask>
+        <subtask id="3.3">Add retry logic with exponential backoff</subtask>
+        <subtask id="3.4">Implement graceful fallback on API failure</subtask>
+        <subtask id="3.5">Add Cloud Scheduler trigger (monthly refresh)</subtask>
+        <subtask id="3.6">Log refresh results with structlog</subtask>
+      </task>
+      <task id="4" name="Agent Tool Definitions" ac="4.5.10-4.5.16">
+        <subtask id="4.1">Create functions/tools/data_tools.py with tool definitions</subtask>
+        <subtask id="4.2">Implement get_labor_rates(zip_code, trades) tool</subtask>
+        <subtask id="4.3">Implement get_weather_factors(zip_code) tool</subtask>
+        <subtask id="4.4">Implement get_location_factors(zip_code) tool</subtask>
+        <subtask id="4.5">Implement run_monte_carlo(line_items, zip_code, iterations) tool</subtask>
+        <subtask id="4.6">Define OpenAI-compatible function schemas for each tool</subtask>
+        <subtask id="4.7">Create functions/tools/__init__.py exporting tool list for agent registration</subtask>
+        <subtask id="4.8">Integrate tools into Story 4-2 agent graph (clarification_agent, estimation_agent)</subtask>
+      </task>
+      <task id="5" name="Write Tests" ac="all">
+        <subtask id="5.1">Unit tests for SOC code → trade mapping</subtask>
+        <subtask id="5.2">Unit tests for MSA → zip code mapping</subtask>
+        <subtask id="5.3">Unit tests for weather factor calculations</subtask>
+        <subtask id="5.4">Unit tests for tool response schemas</subtask>
+        <subtask id="5.5">Unit tests for Monte Carlo tool (verify p10/p50/p90 output)</subtask>
+        <subtask id="5.6">Integration tests with real BLS API (skip in CI)</subtask>
+        <subtask id="5.7">Integration tests with real Weather API (skip in CI)</subtask>
+        <subtask id="5.8">Mock API failure scenarios</subtask>
+        <subtask id="5.9">Agent tool invocation test (mock agent calls get_labor_rates, run_monte_carlo)</subtask>
+      </task>
+      <task id="6" name="Create Demo Script" ac="all">
+        <subtask id="6.1">Create functions/demo_real_data.py</subtask>
+        <subtask id="6.2">Accept --zip argument for location</subtask>
+        <subtask id="6.3">Fetch real BLS labor rates for specified metro area</subtask>
+        <subtask id="6.4">Fetch real weather data from Open-Meteo</subtask>
+        <subtask id="6.5">Display side-by-side comparison: Mock Data vs Real API Data</subtask>
+        <subtask id="6.6">Show percentage difference for each trade rate</subtask>
+        <subtask id="6.7">Show calculated weather factors vs mock weather factors</subtask>
+        <subtask id="6.8">Add --update-firestore flag to update location with real data</subtask>
+        <subtask id="6.9">Add --test-tools flag to demonstrate agent tool calls</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="4.5.1">BLS API integration retrieves hourly wage data for construction occupations (SOC codes 47-xxxx)</criterion>
+    <criterion id="4.5.2">Labor rates map to all 8 required trades (electrician, plumber, carpenter, hvac_tech, roofer, painter, tile_setter, general_labor)</criterion>
+    <criterion id="4.5.3">BLS data is fetched by metro area (MSA codes) and mapped to zip codes</criterion>
+    <criterion id="4.5.4">Weather API integration retrieves historical precipitation and temperature data</criterion>
+    <criterion id="4.5.5">Weather data calculates winter_slowdown factor based on historical freeze days</criterion>
+    <criterion id="4.5.6">Weather data identifies rainy_season_months from precipitation patterns</criterion>
+    <criterion id="4.5.7">Data refresh job can update Firestore /costData/locationFactors/ from APIs</criterion>
+    <criterion id="4.5.8">API failures gracefully fall back to cached/default data</criterion>
+    <criterion id="4.5.9">BLS API key stored securely in Cloud Functions environment</criterion>
+    <criterion id="4.5.10">get_labor_rates tool returns hourly rates for specified trade(s) and zip code</criterion>
+    <criterion id="4.5.11">get_weather_factors tool returns seasonal adjustments for specified zip code</criterion>
+    <criterion id="4.5.12">get_location_factors tool returns complete location cost modifiers</criterion>
+    <criterion id="4.5.13">Tool definitions follow OpenAI function calling schema for LangChain/LangGraph compatibility</criterion>
+    <criterion id="4.5.14">Agents from Story 4-2 can invoke data tools during execution</criterion>
+    <criterion id="4.5.15">run_monte_carlo tool executes cost simulation with configurable iterations and returns distribution stats</criterion>
+    <criterion id="4.5.16">Monte Carlo tool accepts line items + location and returns confidence intervals</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/prd.md</path>
+        <title>TrueCost PRD</title>
+        <section>MVP - Minimum Viable Product / Data Strategy</section>
+        <snippet>MVP uses mocked RSMeans-schema data with plan for real API integration post-MVP. Location Intelligence Agent gathers zip-code specific labor rates, permits, weather, soil data.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>Data Architecture / Firestore Schema</section>
+        <snippet>Firestore /costData/ collections: materials/{itemCode}, laborRates/{rateId}, locationFactors/{zipCode}. Location Intelligence service at cost_data_service.py handles zip-code lookups.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.5: Real Data Integration</section>
+        <snippet>AC 4.5.1-4.5.9 define BLS API integration for hourly wages (SOC 47-xxxx), MSA-to-zip mapping, weather API for freeze days/precipitation, and secure API key storage.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>functions/services/cost_data_service.py</path>
+        <kind>service</kind>
+        <symbol>get_location_factors, LocationFactors, WeatherFactors, LaborRate</symbol>
+        <lines>1-1443</lines>
+        <reason>Core service this story extends. Contains mock labor rates, weather factors, and location data. New BLS/Weather services will update this data in Firestore.</reason>
+      </file>
+      <file>
+        <path>functions/services/monte_carlo.py</path>
+        <kind>service</kind>
+        <symbol>run_simulation, LineItemInput, MonteCarloResult</symbol>
+        <lines>1-395</lines>
+        <reason>Monte Carlo service to be wrapped as an agent tool. AC 4.5.15-4.5.16 require run_monte_carlo tool exposing this service.</reason>
+      </file>
+      <file>
+        <path>functions/services/__init__.py</path>
+        <kind>module</kind>
+        <symbol>exports</symbol>
+        <lines>all</lines>
+        <reason>Service module exports - new tools module will follow similar pattern.</reason>
+      </file>
+      <file>
+        <path>functions/tests/unit/test_location_service.py</path>
+        <kind>test</kind>
+        <symbol>test fixtures, AC validation tests</symbol>
+        <lines>1-575</lines>
+        <reason>Existing test patterns for location service. New BLS/Weather tests should follow same structure with pytest-asyncio.</reason>
+      </file>
+      <file>
+        <path>functions/tests/unit/test_monte_carlo.py</path>
+        <kind>test</kind>
+        <symbol>test_simulation, performance tests</symbol>
+        <lines>1-486</lines>
+        <reason>Existing Monte Carlo test patterns. Tool wrapper tests should verify same functionality exposed via tool interface.</reason>
+      </file>
+    </code>
+    <dependencies>
+      <python>
+        <package name="firebase-admin" version=">=6.0.0,<7.0.0">Firestore/Storage access</package>
+        <package name="firebase-functions" version=">=0.4.0,<1.0.0">Cloud Functions framework</package>
+        <package name="structlog" version=">=23.0.0,<25.0.0">Structured logging</package>
+        <package name="pytest" version=">=7.0.0,<9.0.0">Testing framework</package>
+        <package name="pytest-asyncio" version=">=0.21.0,<1.0.0">Async test support</package>
+        <package name="numpy" version=">=1.26.0,<2.0.0">Monte Carlo simulation</package>
+        <package name="weasyprint" version=">=60.0,<62.0">PDF generation (existing)</package>
+        <package name="jinja2" version=">=3.1.0,<4.0.0">PDF templates (existing)</package>
+        <package name="httpx" version="0.25.x" status="to-add">Async HTTP client for BLS/Weather API calls</package>
+        <package name="tenacity" version="8.x" status="to-add">Retry logic with exponential backoff</package>
+        <package name="langchain-core" version="latest" status="to-add">Tool decorator and schemas for agent tools</package>
+        <package name="pydantic" version=">=2.0" status="to-add">Input schema definitions for tools</package>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="pattern">Follow existing service pattern in cost_data_service.py: dataclasses for models, async functions, structlog logging</constraint>
+    <constraint type="pattern">Tools must use @tool decorator from langchain_core.tools with Pydantic args_schema</constraint>
+    <constraint type="pattern">All tools return structured dicts with zip_code, source, cached fields for traceability</constraint>
+    <constraint type="security">BLS API key must be stored in Cloud Functions environment (os.environ), never hardcoded</constraint>
+    <constraint type="security">Open-Meteo API is free and requires no authentication</constraint>
+    <constraint type="fallback">All API calls must gracefully fall back to cached/mock data on failure (AC 4.5.8)</constraint>
+    <constraint type="naming">Python: snake_case functions, PascalCase classes (per architecture.md)</constraint>
+    <constraint type="testing">Integration tests with real APIs should be marked with @pytest.mark.skip in CI</constraint>
+    <constraint type="performance">API calls should use httpx async client with appropriate timeouts</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="BLS OES API">
+      <kind>REST API</kind>
+      <signature>POST https://api.bls.gov/publicAPI/v2/timeseries/data/</signature>
+      <path>External</path>
+      <notes>Request body: {seriesid: [...], startyear, endyear, registrationkey}. Response contains hourly wage data for SOC codes.</notes>
+    </interface>
+    <interface name="Open-Meteo Historical API">
+      <kind>REST API</kind>
+      <signature>GET https://archive-api.open-meteo.com/v1/archive</signature>
+      <path>External</path>
+      <notes>Query params: latitude, longitude, start_date, end_date, daily=temperature_2m_min,precipitation_sum. Free, no auth required.</notes>
+    </interface>
+    <interface name="get_labor_rates tool">
+      <kind>LangChain Tool</kind>
+      <signature>get_labor_rates(zip_code: str, trades: list[str] | None = None) -> dict</signature>
+      <path>functions/tools/data_tools.py</path>
+      <notes>Returns {zip_code, metro_area, rates: {trade: {hourly_rate, source, soc_code}}, data_date, cached}</notes>
+    </interface>
+    <interface name="get_weather_factors tool">
+      <kind>LangChain Tool</kind>
+      <signature>get_weather_factors(zip_code: str) -> dict</signature>
+      <path>functions/tools/data_tools.py</path>
+      <notes>Returns {zip_code, winter_slowdown, summer_premium, rainy_season_months, outdoor_work_adjustment, freeze_days, extreme_heat_days, source}</notes>
+    </interface>
+    <interface name="get_location_factors tool">
+      <kind>LangChain Tool</kind>
+      <signature>get_location_factors(zip_code: str) -> dict</signature>
+      <path>functions/tools/data_tools.py</path>
+      <notes>Returns combined labor_rates, weather_factors, regional_modifier, cost_of_living_index, combined_adjustment</notes>
+    </interface>
+    <interface name="run_monte_carlo tool">
+      <kind>LangChain Tool</kind>
+      <signature>run_monte_carlo(line_items: list[dict], zip_code: str, iterations: int = 10000) -> dict</signature>
+      <path>functions/tools/simulation_tools.py</path>
+      <notes>Returns {distribution: {p10, p25, p50, p75, p90, mean, std_dev}, confidence_interval_90, risk_factors_applied, execution_time_ms}</notes>
+    </interface>
+    <interface name="LocationFactors">
+      <kind>Dataclass</kind>
+      <signature>@dataclass LocationFactors</signature>
+      <path>functions/services/cost_data_service.py:127-156</path>
+      <notes>Existing model: zip_code, region_code, city, state, labor_rates, is_union, union_premium, permit_costs, weather_factors, is_default, data_source</notes>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Tests use pytest with pytest-asyncio for async support. Follow existing test structure in functions/tests/unit/.
+      Use fixtures for common test data. Mark integration tests with @pytest.mark.skip("Requires real API") for CI.
+      All services use structlog for logging; tests can verify log output using structlog.testing.
+    </standards>
+    <locations>
+      <location>functions/tests/unit/test_bls_service.py</location>
+      <location>functions/tests/unit/test_weather_service.py</location>
+      <location>functions/tests/unit/test_data_tools.py</location>
+      <location>functions/tests/integration/test_real_api.py</location>
+    </locations>
+    <ideas>
+      <idea ac="4.5.1">Test BLS API response parsing with mock response matching real BLS format</idea>
+      <idea ac="4.5.2">Verify SOC_CODE_MAP contains all 8 trades: electrician=47-2111, plumber=47-2152, etc.</idea>
+      <idea ac="4.5.3">Test MSA_CODE_MAP with NYC (35620), LA (31080), Chicago (16980)</idea>
+      <idea ac="4.5.4">Mock Open-Meteo response with known temperature/precipitation data</idea>
+      <idea ac="4.5.5">Test winter_slowdown formula: freeze_days=45 should produce slowdown ~1.15-1.20</idea>
+      <idea ac="4.5.6">Test Seattle (more rainy months) vs Phoenix (fewer rainy months)</idea>
+      <idea ac="4.5.7">Integration test with Firebase emulator updating locationFactors collection</idea>
+      <idea ac="4.5.8">Test API timeout scenario returns cached data with source="cached"</idea>
+      <idea ac="4.5.10">Test get_labor_rates tool schema matches OpenAI function calling format</idea>
+      <idea ac="4.5.11">Test get_weather_factors returns valid WeatherFactors-like dict</idea>
+      <idea ac="4.5.15">Test run_monte_carlo tool returns p10 < p50 < p90 percentiles</idea>
+      <idea ac="4.5.16">Test Monte Carlo with sample line_items verifies confidence_interval_90 format</idea>
+    </ideas>
+  </tests>
+</story-context>

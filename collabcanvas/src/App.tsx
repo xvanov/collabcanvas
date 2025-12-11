@@ -18,6 +18,7 @@ import { EstimateView } from './pages/estimate/EstimateView';
 import { PlanView } from './pages/estimate/PlanView';
 import { FinalView } from './pages/estimate/FinalView';
 import { Board } from './pages/Board';
+import { PriceComparisonPage } from './components/PriceComparisonPage';
 
 /**
  * Protected Route Component
@@ -142,8 +143,14 @@ function App() {
             </ProtectedRoute>
           }
         />
-
-        {/* Fallback */}
+        <Route
+          path="/compare-prices"
+          element={
+            <ProtectedRoute>
+              <PriceComparisonPage />
+            </ProtectedRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

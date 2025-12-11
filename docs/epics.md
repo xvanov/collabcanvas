@@ -15,71 +15,100 @@ This document provides the complete epic and story breakdown for TrueCost MVP, o
 | Developer | Epic | Exclusive Ownership |
 |-----------|------|---------------------|
 | Dev 1 | UI/Frontend | `src/components/estimate/**`, `src/hooks/**`, `src/stores/useEstimateStore.ts`, `src/pages/Estimate.tsx` |
-| Dev 2 | Agent Pipeline | `functions/agents/**`, `functions/main.py`, Firestore schema |
-| Dev 3 | CAD/Voice Services | `functions/services/cad_parser.py`, `functions/services/vision_service.py`, `functions/services/whisper_service.py` |
+| Dev 2 | Deep Agent Pipeline | `functions/agents/location_agent.py`, `functions/agents/scope_agent.py`, `functions/agents/cost_agent.py`, `functions/agents/risk_agent.py`, `functions/agents/final_agent.py`, `functions/agents/orchestrator.py` |
+| Dev 3 | User Input & Clarification | `functions/agents/clarification_agent.py`, `functions/services/cad_parser.py`, `functions/services/vision_service.py`, `functions/services/whisper_service.py`, `functions/services/storage_service.py` |
 | Dev 4 | Data/PDF Services | `functions/services/cost_data_service.py`, `functions/services/monte_carlo.py`, `functions/services/pdf_generator.py`, `functions/templates/**` |
 | Dev 5 | Stretch Goals | Enhancement features after MVP core |
 
+**Handoff Architecture:**
+```
+┌─────────────────────────────────────────────────────────────────┐
+│                        Dev 3 Produces                           │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐ │
+│  │ CAD Upload  │  │   Voice/    │  │    Clarification        │ │
+│  │  & Parse    │→ │   Text      │→ │       Agent             │ │
+│  └─────────────┘  └─────────────┘  └───────────┬─────────────┘ │
+└────────────────────────────────────────────────┼───────────────┘
+                                                 │
+                                                 ▼
+                                    ┌────────────────────────┐
+                                    │  ClarificationOutput   │
+                                    │    (Schema v3.0.0)     │
+                                    └────────────┬───────────┘
+                                                 │
+┌────────────────────────────────────────────────┼───────────────┐
+│                        Dev 2 Consumes                          │
+│                                                ▼               │
+│  ┌─────────────┐  ┌─────────────┐  ┌─────────────────────────┐│
+│  │  Location   │→ │   Scope     │→ │  Cost → Risk → Final    ││
+│  │   Agent     │  │   Agent     │  │       Agents            ││
+│  └─────────────┘  └─────────────┘  └─────────────────────────┘│
+└────────────────────────────────────────────────────────────────┘
+```
+
+**Interface Contract:** See [ClarificationOutput Schema](/docs/clarification-output-schema.md)
+
 **Parallel Work Pattern:**
 - Dev 1 builds UI with **mock data** - doesn't need agents working
-- Dev 2 builds agents that **call service interfaces** - doesn't need services implemented
-- Dev 3 & 4 build services to **defined interfaces** - independent of each other
+- Dev 3 builds user input handling (CAD, voice, clarification) → produces `ClarificationOutput`
+- Dev 2 builds deep agent pipeline → consumes `ClarificationOutput`
+- Dev 4 builds data services to **defined interfaces** - independent of agents
 - Dev 5 enhances after core is integrated
 
 ---
 
 ## Epics Summary
 
-| Epic | Title | Stories | FRs Covered |
-|------|-------|---------|-------------|
-| 1 | Frontend Experience | 4 | FR6-8, FR15-16, FR18, FR20-22, FR27-29, FR33-36, FR41, FR47, FR52-58, FR62, FR65-67, FR69-70, FR72 |
-| 2 | Agent Pipeline | 4 | FR5, FR9, FR11, FR23-26, FR30-32, FR34, FR42-46, FR68, FR71, FR73-74, FR77 |
-| 3 | CAD & Voice Processing | 3 | FR12-14, FR17, FR19 |
-| 4 | Data Services & PDF Output | 4 | FR37-40, FR48-51, FR59-61, FR75 |
-| 5 | Stretch Goals | 4 | FR10, FR63-64, FR76, FR78 |
+| Epic | Title | Stories | FRs Covered | Owner |
+|------|-------|---------|-------------|-------|
+| 1 | Frontend Experience | 4 | FR6-8, FR15-16, FR18, FR20-22, FR27-29, FR33-36, FR41, FR47, FR52-58, FR62, FR65-67, FR69-70, FR72 | Dev 1 |
+| 2 | Deep Agent Pipeline | 5 | FR5, FR9, FR11, FR30-32, FR42-46, FR68, FR71, FR73-74, FR77 | Dev 2 |
+| 3 | User Input & Clarification | 4 | FR12-14, FR17, FR19, FR23-26 | Dev 3 |
+| 4 | Data Services & PDF Output | 4 | FR37-40, FR48-51, FR59-61, FR75 | Dev 4 |
+| 5 | Stretch Goals | 5 | FR10, FR63-64, FR76, FR78 | Dev 5 |
 
 ---
 
 ## FR Coverage Map
 
-| FR | Description | Epic | Story |
-|----|-------------|------|-------|
-| FR5 | Create new estimate | 2 | 2.1 |
-| FR6 | View estimate list | 1 | 1.1 |
-| FR7 | Filter/sort estimates | 5 | 5.3 |
-| FR8 | Open existing estimate | 1 | 1.1 |
-| FR9 | Delete estimates | 2 | 2.1 |
-| FR10 | Duplicate estimate | 5 | 5.1 |
-| FR11 | Auto-save progress | 2 | 2.1 |
-| FR12-14 | CAD upload & parsing | 3 | 3.1 |
-| FR15-16 | Display/correct measurements | 1 | 1.2 |
-| FR17 | Store CAD in Firebase Storage | 3 | 3.1 |
-| FR18 | Text input chatbox | 1 | 1.1 |
-| FR19 | Voice input | 3 | 3.3 |
-| FR20-22 | Voice feedback & transcription | 1 | 1.1 |
-| FR23-26 | Clarification Agent | 2 | 2.2 |
-| FR27-28 | Review/modify project brief | 1 | 1.1 |
-| FR29 | Display CAD measurements | 1 | 1.2 |
-| FR30-32 | Scope Agent (BoQ) | 2 | 2.3 |
-| FR33-36 | Plan section UI | 1 | 1.2 |
-| FR37-40 | Location intelligence | 4 | 4.1 |
-| FR41 | Override location params | 1 | 1.2 |
-| FR42-46 | Cost Agent | 2 | 2.3 |
-| FR47 | Adjust margins | 1 | 1.3 |
-| FR48-51 | Risk/Monte Carlo | 4 | 4.2 |
-| FR52-58 | Final estimate UI | 1 | 1.3 |
-| FR59-61 | PDF generation | 4 | 4.3 |
-| FR62 | Download PDF | 1 | 1.3 |
-| FR63-64 | PDF customization | 5 | 5.2 |
-| FR65-67 | Pipeline visibility | 1 | 1.4 |
-| FR68 | Agent failure handling | 2 | 2.4 |
-| FR69-70 | Feedback input/variance | 1 | 1.4 |
-| FR71, FR73 | Feedback processing | 2 | 2.4 |
-| FR72 | Accuracy metrics | 1 | 1.4 |
-| FR74 | Firestore persistence | 2 | 2.1 |
-| FR75 | Firebase Storage | 4 | 4.3 |
-| FR76 | JSON export | 5 | 5.4 |
-| FR77-78 | Version history | 5 | 5.4 |
+| FR | Description | Epic | Story | Owner |
+|----|-------------|------|-------|-------|
+| FR5 | Create new estimate | 2 | 2.1 | Dev 2 |
+| FR6 | View estimate list | 1 | 1.1 | Dev 1 |
+| FR7 | Filter/sort estimates | 5 | 5.3 | Dev 5 |
+| FR8 | Open existing estimate | 1 | 1.1 | Dev 1 |
+| FR9 | Delete estimates | 2 | 2.1 | Dev 2 |
+| FR10 | Duplicate estimate | 5 | 5.1 | Dev 5 |
+| FR11 | Auto-save progress | 2 | 2.1 | Dev 2 |
+| FR12-14 | CAD upload & parsing | 3 | 3.1, 3.2 | Dev 3 |
+| FR15-16 | Display/correct measurements | 1 | 1.2 | Dev 1 |
+| FR17 | Store CAD in Firebase Storage | 3 | 3.1 | Dev 3 |
+| FR18 | Text input chatbox | 1 | 1.1 | Dev 1 |
+| FR19 | Voice input | 3 | 3.3 | Dev 3 |
+| FR20-22 | Voice feedback & transcription | 1 | 1.1 | Dev 1 |
+| FR23-26 | Clarification Agent | 3 | 3.4 | **Dev 3** |
+| FR27-28 | Review/modify project brief | 1 | 1.1 | Dev 1 |
+| FR29 | Display CAD measurements | 1 | 1.2 | Dev 1 |
+| FR30-32 | Scope Agent (BoQ) | 2 | 2.2 | Dev 2 |
+| FR33-36 | Plan section UI | 1 | 1.2 | Dev 1 |
+| FR37-40 | Location intelligence | 4 | 4.1 | Dev 4 |
+| FR41 | Override location params | 1 | 1.2 | Dev 1 |
+| FR42-46 | Cost Agent | 2 | 2.3 | Dev 2 |
+| FR47 | Adjust margins | 1 | 1.3 | Dev 1 |
+| FR48-51 | Risk/Monte Carlo | 4 | 4.2 | Dev 4 |
+| FR52-58 | Final estimate UI | 1 | 1.3 | Dev 1 |
+| FR59-61 | PDF generation | 4 | 4.3 | Dev 4 |
+| FR62 | Download PDF | 1 | 1.3 | Dev 1 |
+| FR63-64 | PDF customization | 5 | 5.2 | Dev 5 |
+| FR65-67 | Pipeline visibility | 1 | 1.4 | Dev 1 |
+| FR68 | Agent failure handling | 2 | 2.5 | Dev 2 |
+| FR69-70 | Feedback input/variance | 1 | 1.4 | Dev 1 |
+| FR71, FR73 | Feedback processing | 2 | 2.5 | Dev 2 |
+| FR72 | Accuracy metrics | 1 | 1.4 | Dev 1 |
+| FR74 | Firestore persistence | 2 | 2.1 | Dev 2 |
+| FR75 | Firebase Storage | 4 | 4.3 | Dev 4 |
+| FR76 | JSON export | 5 | 5.4 | Dev 5 |
+| FR77-78 | Version history | 5 | 5.4 | Dev 5 |
 
 ---
 
@@ -373,14 +402,21 @@ So that **I trust the system and help improve accuracy**.
 
 ---
 
-## Epic 2: Agent Pipeline
+## Epic 2: Deep Agent Pipeline
 
 **Owner:** Dev 2
-**Goal:** Build the 7-agent Deep Agents pipeline with orchestration, state management, and Firestore persistence. Each agent is implemented as a separate story for focused development and testing.
+**Goal:** Build the deep agent pipeline that transforms a `ClarificationOutput` into a complete cost estimate. This pipeline consumes the output from Dev 3's Clarification Agent and runs: Location → Scope → Cost → Risk → Final agents.
+
+**Input Contract:** `ClarificationOutput` v3.0.0 (see [schema](/docs/clarification-output-schema.md))
 
 **Exclusive Files:**
-- `functions/agents/**`
-- `functions/main.py`
+- `functions/agents/orchestrator.py`
+- `functions/agents/location_agent.py`
+- `functions/agents/scope_agent.py`
+- `functions/agents/cost_agent.py`
+- `functions/agents/risk_agent.py`
+- `functions/agents/final_agent.py`
+- `functions/main.py` (shared with Dev 3 for entry points)
 - `functions/config/**`
 - Firestore schema design and rules
 
@@ -389,22 +425,18 @@ So that **I trust the system and help improve accuracy**.
 ### Story 2.1: Pipeline Foundation & Orchestrator
 
 As a **system**,
-I want to **create the pipeline infrastructure and orchestration framework**,
-So that **agents can be plugged in and executed in sequence**.
+I want to **create the pipeline infrastructure that consumes ClarificationOutput**,
+So that **deep agents can be plugged in and executed in sequence**.
 
 **Acceptance Criteria:**
 
-**Given** a user calls `start_estimate` Cloud Function
-**When** I receive project description and CAD file URL
-**Then** I create a new estimate document in Firestore with status "draft"
-
-**Given** an estimate exists
-**When** pipeline starts
-**Then** I update status to "processing" and initialize `/agentOutputs` subcollection
+**Given** Dev 3's Clarification Agent produces a `ClarificationOutput`
+**When** I receive the validated output
+**Then** I start the deep agent pipeline with status "processing"
 
 **Given** the orchestrator is configured
-**When** I define AGENT_SEQUENCE
-**Then** it contains all 7 agents in correct order: clarification → cad_analysis → location → scope → cost → risk → final
+**When** I define DEEP_AGENT_SEQUENCE
+**Then** it contains 5 agents in correct order: location → scope → cost → risk → final
 
 **Given** agents are processing
 **When** each agent completes a step
@@ -414,158 +446,45 @@ So that **agents can be plugged in and executed in sequence**.
 **When** I receive estimate ID
 **Then** I delete estimate and all subcollections
 
-**Prerequisites:** None (first story)
+**Given** `ClarificationOutput` validation fails
+**When** required fields are missing or schema version mismatches
+**Then** I reject the input and return validation errors
+
+**Prerequisites:** None (first story for Dev 2)
 
 **Technical Notes:**
-- `functions/main.py` - Cloud Function entry points: `start_estimate`, `delete_estimate`
-- `functions/agents/orchestrator.py` - pipeline runner with AGENT_SEQUENCE
+- `functions/main.py` - Cloud Function entry points: `start_deep_pipeline`, `delete_estimate`
+- `functions/agents/orchestrator.py` - pipeline runner with DEEP_AGENT_SEQUENCE
 - `functions/services/firestore_service.py` - Firestore CRUD helpers
-- Firestore schema: `/estimates/{id}`, `/estimates/{id}/agentOutputs/{agent}`
-- Status enum: draft → clarifying → processing → plan_review → final → exported
-- Set up Python Cloud Functions 2nd gen with firebase-functions-python
-- Create base `Agent` class that all agents inherit from
+- Validate incoming `ClarificationOutput` against schema v3.0.0
+- Status enum: processing → plan_review → final → exported
+- Create base `Agent` class that all deep agents inherit from
+- Input: `ClarificationOutput` with full CSI scope, CAD data, and project brief
 
 **FRs Covered:** FR5, FR9, FR11, FR74
 
 **Verification Checklist:**
 - [ ] **Deploy Test:** `firebase deploy --only functions` completes without errors
 - [ ] **Emulator Test:** `firebase emulators:start` - functions emulator starts on port 5001
-- [ ] Call `start_estimate` with `{projectDescription: "Kitchen remodel", cadFileUrl: "gs://..."}` via emulator
-- [ ] Verify response: `{success: true, data: {estimateId: "xxx", status: "draft"}}`
-- [ ] **Firestore Check:** `/estimates/{estimateId}` document created with fields: userId, projectName, status, createdAt
-- [ ] **Firestore Check:** Document has `status: "draft"` initially
-- [ ] Trigger pipeline start - verify status updates to "processing"
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/` subcollection initialized (empty or with pending entries)
-- [ ] Verify `pipelineStatus` field shows: `{currentAgent: "clarification", completedAgents: [], progress: 0}`
-- [ ] Verify AGENT_SEQUENCE contains 7 agents in order: clarification, cad_analysis, location, scope, cost, risk, final
+- [ ] Call `start_deep_pipeline` with valid `ClarificationOutput` JSON
+- [ ] Verify response: `{success: true, data: {estimateId: "xxx", status: "processing"}}`
+- [ ] **Firestore Check:** `/estimates/{estimateId}` document updated with `clarificationOutput` field
+- [ ] **Firestore Check:** Document has `status: "processing"`
+- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/` subcollection initialized
+- [ ] Verify `pipelineStatus` field shows: `{currentAgent: "location", completedAgents: [], progress: 0}`
+- [ ] Verify DEEP_AGENT_SEQUENCE contains 5 agents: location, scope, cost, risk, final
+- [ ] **Schema Validation Test:** Send `ClarificationOutput` missing required CSI divisions - returns validation error
+- [ ] **Schema Validation Test:** Send `ClarificationOutput` with wrong schemaVersion - returns error
+- [ ] **Schema Validation Test:** Send valid `ClarificationOutput` - passes validation
 - [ ] Call `delete_estimate` with valid estimateId - returns `{success: true}`
 - [ ] **Firestore Check:** Estimate document deleted
 - [ ] **Firestore Check:** All subcollections (agentOutputs, conversations) also deleted
-- [ ] **Error Case:** Call `start_estimate` with missing required fields - returns appropriate error
-- [ ] **Error Case:** Call `delete_estimate` with non-existent ID - returns 404-style error
+- [ ] **Error Case:** Call `start_deep_pipeline` with missing `ClarificationOutput` - returns appropriate error
 - [ ] **Console Check:** Cloud Logging shows structured logs for each operation
 
 ---
 
-### Story 2.2: Clarification Agent
-
-As a **system**,
-I want to **understand the project through natural conversation**,
-So that **I have structured project requirements for estimation**.
-
-**Acceptance Criteria:**
-
-**Given** a new estimate with project description
-**When** Clarification Agent runs
-**Then** it analyzes input and identifies missing information
-
-**Given** input is ambiguous or incomplete
-**When** I process the description
-**Then** I generate clarifying questions for the user
-
-**Given** user provides answers to clarifying questions
-**When** I process the response
-**Then** I extract structured project data (location, type, scope, finishes, size)
-
-**Given** user answers are sufficient
-**When** Clarification Agent completes
-**Then** I output a complete `projectBrief` object with all required fields
-
-**Given** clarification is complete
-**When** outputs are saved to Firestore
-**Then** pipeline proceeds to CAD Analysis Agent
-
-**Prerequisites:** Story 2.1
-
-**Technical Notes:**
-- `functions/agents/clarification_agent.py` - Deep Agent with conversation handling
-- Store conversation in `/estimates/{id}/conversations`
-- `send_clarification_message` Cloud Function for ongoing chat
-- Project brief schema: `{location, projectType, scope, finishes, sqft, specialRequirements}`
-- Use GPT-4.1 for natural language understanding
-- Handle both text and transcribed voice input
-
-**FRs Covered:** FR23-26
-
-**Verification Checklist:**
-- [ ] Create estimate with description: "Kitchen remodel in Denver" - Clarification Agent starts
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/clarification` shows `status: "running"`
-- [ ] Verify agent identifies missing info and generates questions (e.g., "What's the square footage?")
-- [ ] Call `send_clarification_message` with `{estimateId, message: "About 200 sqft"}` - agent processes response
-- [ ] Verify agent extracts: location="Denver", sqft=200, projectType="kitchen remodel"
-- [ ] Continue conversation until agent indicates clarification complete (`isComplete: true`)
-- [ ] **Firestore Check:** `/estimates/{id}` has `projectBrief` field with all required keys
-- [ ] Verify `projectBrief` contains: `{location, projectType, scope, finishes, sqft, specialRequirements}`
-- [ ] **Firestore Check:** `/estimates/{id}/conversations` has all messages with role and timestamp
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/clarification` shows `status: "completed"`
-- [ ] Verify pipeline proceeds to CAD Analysis Agent (next agent starts)
-- [ ] **Ambiguous Input Test:** Send vague description "fix my house" - agent asks clarifying questions
-- [ ] **Complete Input Test:** Send detailed description with all info - agent skips to brief generation
-- [ ] **Voice Input Test:** Send transcribed voice text - processed same as typed text
-- [ ] **Console Check:** Logs show GPT-4.1 API calls with token usage
-
----
-
-### Story 2.3: CAD Analysis Agent
-
-As a **system**,
-I want to **extract structured data from CAD files**,
-So that **quantities can be automatically calculated from plans**.
-
-**Acceptance Criteria:**
-
-**Given** CAD file URL is provided in the estimate
-**When** CAD Analysis Agent runs
-**Then** it calls the CAD parsing service with file URL and type
-
-**Given** CAD service returns extracted measurements
-**When** I process the data
-**Then** I structure it into rooms, walls, areas with dimensions
-
-**Given** extraction has confidence scores
-**When** confidence is below threshold
-**Then** I flag items for user verification
-
-**Given** project description exists
-**When** I have CAD data
-**Then** I correlate measurements with described scope and store `extractedData`
-
-**Given** CAD analysis is complete
-**When** outputs are saved to Firestore
-**Then** pipeline proceeds to Location Agent
-
-**Prerequisites:** Story 2.2
-
-**Technical Notes:**
-- `functions/agents/cad_analysis_agent.py` - calls `cad_parser.extract()` (interface only)
-- CAD data schema: `{rooms[], walls[], areas[], scale, confidence}`
-- Handle both programmatic (ezdxf) and vision-based extraction results
-- Store raw extraction + processed/structured data
-- Flag low-confidence extractions for user review
-
-**FRs Covered:** FR13-14 (agent side)
-
-**Verification Checklist:**
-- [ ] Create estimate with CAD file URL - CAD Analysis Agent starts after Clarification
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/cad_analysis` shows `status: "running"`
-- [ ] Verify agent calls `cad_parser.extract()` service with correct file URL and type
-- [ ] **Mock Service Test:** With mock parser returning rooms data - agent processes correctly
-- [ ] Verify agent structures data into: `{rooms: [], walls: [], areas: [], scale: {...}}`
-- [ ] **Firestore Check:** `/estimates/{id}` has `extractedData` field populated
-- [ ] Verify `extractedData.rooms` contains room objects with name and dimensions
-- [ ] Verify `extractedData.walls` contains wall objects with length
-- [ ] Verify `extractedData.areas` contains calculated square footages
-- [ ] **Confidence Test:** Mock low-confidence extraction (< 80%) - agent flags items for review
-- [ ] **Firestore Check:** Low-confidence items have `needsVerification: true` flag
-- [ ] Verify agent correlates CAD data with project description (e.g., "kitchen" matches kitchen room)
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/cad_analysis` shows `status: "completed"`
-- [ ] Verify pipeline proceeds to Location Agent
-- [ ] **Error Case:** CAD parser returns error - agent handles gracefully, sets error status
-- [ ] **Console Check:** Logs show extraction metrics (entity counts, confidence scores)
-
----
-
-### Story 2.4: Location Intelligence Agent
+### Story 2.2: Location Intelligence Agent
 
 As a **system**,
 I want to **gather location-specific cost factors**,
@@ -593,18 +512,19 @@ So that **estimates are adjusted for regional variations**.
 **When** outputs are saved to Firestore
 **Then** pipeline proceeds to Scope Agent
 
-**Prerequisites:** Story 2.3
+**Prerequisites:** Story 2.1
 
 **Technical Notes:**
 - `functions/agents/location_agent.py` - calls `cost_data_service.get_location_factors()`
 - Location factors schema: `{laborRates: {}, isUnion: bool, permitCosts: {}, weatherFactors: {}, regionCode}`
+- **Input:** Reads `projectBrief.location.zipCode` from `ClarificationOutput`
 - Handle missing zip codes gracefully with regional fallbacks
 - Cache location data to reduce API calls
 
 **FRs Covered:** FR37-40 (agent side)
 
 **Verification Checklist:**
-- [ ] Pipeline reaches Location Agent after CAD Analysis completes
+- [ ] Pipeline reaches Location Agent as first agent after receiving `ClarificationOutput`
 - [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/location` shows `status: "running"`
 - [ ] Verify agent calls `cost_data_service.get_location_factors("80202")` for Denver zip
 - [ ] **Mock Service Test:** Mock returns labor rates, union status, permit costs - agent processes
@@ -622,49 +542,50 @@ So that **estimates are adjusted for regional variations**.
 
 ---
 
-### Story 2.5: Construction Scope Agent
+### Story 2.3: Construction Scope Agent
 
 As a **system**,
-I want to **generate a Bill of Quantities from project data**,
+I want to **refine the Bill of Quantities from ClarificationOutput with cost database lookups**,
 So that **all materials and labor can be accurately costed**.
 
 **Acceptance Criteria:**
 
-**Given** project brief and CAD data are available
+**Given** `ClarificationOutput.csiScope` contains initial scope breakdown
 **When** Scope Agent runs
-**Then** it generates Bill of Quantities organized by CSI MasterFormat divisions
+**Then** it validates and enriches the BoQ with cost database item codes
 
-**Given** CAD measurements exist
-**When** I calculate quantities
-**Then** I derive material quantities (e.g., sqft of drywall, linear feet of trim)
+**Given** CAD measurements exist in `ClarificationOutput.cadData`
+**When** I validate quantities
+**Then** I verify material quantities match spatial data (e.g., sqft of drywall matches room areas)
 
-**Given** project type and finishes are specified
-**When** I select materials
-**Then** I choose appropriate items from the cost database
+**Given** CSI divisions are marked as included
+**When** I process each division
+**Then** I map line items to cost database entries with unit costs
 
-**Given** BoQ is generated
-**When** I validate completeness
-**Then** all required divisions for the project type are included
+**Given** BoQ is validated
+**When** I check completeness
+**Then** all required divisions for the project type are included per the schema
 
 **Given** scope analysis is complete
 **When** outputs are saved to Firestore
-**Then** `billOfQuantities` is stored and pipeline proceeds to Cost Agent
+**Then** enriched `billOfQuantities` is stored and pipeline proceeds to Cost Agent
 
-**Prerequisites:** Story 2.4
+**Prerequisites:** Story 2.2
 
 **Technical Notes:**
-- `functions/agents/scope_agent.py` - CSI MasterFormat BoQ generation
-- BoQ schema: `{divisions: [{code, name, lineItems: [{item, quantity, unit, description}]}]}`
-- Support CSI divisions: 03, 04, 05, 06, 07, 08, 09, 10, 22, 23, 26, 31, 32
-- Use project type templates for common residential projects
-- Calculate quantities from CAD areas + standard factors
+- `functions/agents/scope_agent.py` - CSI MasterFormat BoQ enrichment
+- **Input:** Reads `csiScope` from `ClarificationOutput` (already has 24 divisions)
+- BoQ schema: `{divisions: [{code, name, lineItems: [{item, quantity, unit, description, costCode}]}]}`
+- Map line items to RSMeans-style cost codes
+- Validate quantities against `cadData.spaceModel` measurements
+- Flag discrepancies between user-stated quantities and CAD-extracted quantities
 
 **FRs Covered:** FR30-32
 
 **Verification Checklist:**
 - [ ] Pipeline reaches Scope Agent after Location completes
 - [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/scope` shows `status: "running"`
-- [ ] Verify agent uses `projectBrief` and `extractedData` to generate BoQ
+- [ ] Verify agent reads `csiScope` from `ClarificationOutput` and enriches with cost codes
 - [ ] **Firestore Check:** `/estimates/{id}` has `billOfQuantities` field populated
 - [ ] Verify `billOfQuantities.divisions` is an array of CSI divisions
 - [ ] Verify kitchen remodel includes divisions: 06 (Wood), 09 (Finishes), 22 (Plumbing), 26 (Electrical)
@@ -681,7 +602,7 @@ So that **all materials and labor can be accurately costed**.
 
 ---
 
-### Story 2.6: Cost Estimation Agent
+### Story 2.4: Cost Estimation Agent
 
 As a **system**,
 I want to **calculate material, labor, and equipment costs**,
@@ -689,7 +610,7 @@ So that **a detailed cost estimate is produced**.
 
 **Acceptance Criteria:**
 
-**Given** Bill of Quantities exists
+**Given** enriched Bill of Quantities exists from Scope Agent
 **When** Cost Agent runs
 **Then** it retrieves unit costs for each line item from cost database
 
@@ -697,7 +618,7 @@ So that **a detailed cost estimate is produced**.
 **When** I calculate material costs
 **Then** total = quantity × unit cost for each item
 
-**Given** labor rates are available from Location Agent
+**Given** labor rates are available from Location Agent output
 **When** I calculate labor costs
 **Then** I compute man-hours × labor rates by trade
 
@@ -713,7 +634,7 @@ So that **a detailed cost estimate is produced**.
 **When** outputs are saved to Firestore
 **Then** `costEstimate` is stored and pipeline proceeds to Risk Agent
 
-**Prerequisites:** Story 2.5
+**Prerequisites:** Story 2.3
 
 **Technical Notes:**
 - `functions/agents/cost_agent.py` - cost calculations using mock RSMeans data
@@ -745,11 +666,11 @@ So that **a detailed cost estimate is produced**.
 
 ---
 
-### Story 2.7: Risk Analysis Agent
+### Story 2.5: Risk Analysis & Final Estimator Agent
 
 As a **system**,
-I want to **assess estimation uncertainty with Monte Carlo simulation**,
-So that **contractors understand the range of possible costs**.
+I want to **assess estimation uncertainty and synthesize all outputs into a final estimate**,
+So that **contractors get a complete, professional estimate with confidence ranges**.
 
 **Acceptance Criteria:**
 
@@ -770,19 +691,30 @@ So that **contractors understand the range of possible costs**.
 **Then** I list top 5 risk factors driving cost uncertainty
 
 **Given** risk analysis is complete
-**When** outputs are saved to Firestore
-**Then** `riskAnalysis` is stored and pipeline proceeds to Final Agent
+**When** Final Agent runs
+**Then** it aggregates outputs from all preceding agents into `finalEstimate`
 
-**Prerequisites:** Story 2.6
+**Given** all data is aggregated
+**When** I generate the executive summary
+**Then** I create a concise overview with total cost, timeline, and confidence range
+
+**Given** final estimate is complete
+**When** outputs are saved to Firestore
+**Then** `finalEstimate` is stored and estimate status becomes "complete"
+
+**Prerequisites:** Story 2.4
 
 **Technical Notes:**
 - `functions/agents/risk_agent.py` - calls `monte_carlo.run_simulation()`
+- `functions/agents/final_agent.py` - synthesis and summary generation
 - Risk analysis schema: `{p50, p80, p90, recommendedContingency, topRisks: [], distribution: []}`
-- Use triangular distributions for cost uncertainty
-- Identify items with highest variance contribution
-- Generate risk narrative for report
+- Final estimate schema: `{summary: {}, timeline: {}, breakdown: {}, recommendations: []}`
+- Generate executive summary with key metrics
+- Create timeline with task dependencies
+- Prepare data structure optimized for PDF generation
+- Handle error states and partial completions gracefully
 
-**FRs Covered:** FR48-51
+**FRs Covered:** FR48-51, FR53 (data), FR68, FR71, FR73, FR77
 
 **Verification Checklist:**
 - [ ] Pipeline reaches Risk Agent after Cost completes
@@ -800,87 +732,36 @@ So that **contractors understand the range of possible costs**.
 - [ ] Verify `riskAnalysis.distribution` has histogram data for charting
 - [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/risk` shows `status: "completed"`
 - [ ] Verify `agentOutputs/risk` has narrative summary for report
-- [ ] Verify pipeline proceeds to Final Agent
-- [ ] **Console Check:** Logs show simulation iterations (1000+) and duration
-
----
-
-### Story 2.8: Final Estimator Agent
-
-As a **system**,
-I want to **synthesize all agent outputs into a final estimate**,
-So that **a complete, professional estimate is delivered**.
-
-**Acceptance Criteria:**
-
-**Given** all previous agents have completed
-**When** Final Agent runs
-**Then** it aggregates outputs from all 6 preceding agents
-
-**Given** all data is aggregated
-**When** I generate the executive summary
-**Then** I create a concise overview with total cost, timeline, and confidence range
-
-**Given** risk analysis provides contingency recommendation
-**When** I calculate final totals
-**Then** I present base estimate + recommended contingency
-
-**Given** timeline data is available
-**When** I generate schedule
-**Then** I create task sequence with dependencies and critical path
-
-**Given** final estimate is complete
-**When** outputs are saved to Firestore
-**Then** `finalEstimate` is stored and estimate status becomes "complete"
-
-**Given** pipeline completes or fails
-**When** final state is reached
-**Then** estimate status updates appropriately and user is notified
-
-**Prerequisites:** Story 2.7
-
-**Technical Notes:**
-- `functions/agents/final_agent.py` - synthesis and summary generation
-- Final estimate schema: `{summary: {}, timeline: {}, breakdown: {}, recommendations: []}`
-- Generate executive summary with key metrics
-- Create timeline with task dependencies
-- Prepare data structure optimized for PDF generation
-- Handle error states and partial completions gracefully
-
-**FRs Covered:** FR53 (data), FR68, FR71, FR73, FR77
-
-**Verification Checklist:**
-- [ ] Pipeline reaches Final Agent after Risk completes
+- [ ] **Final Agent:** Pipeline proceeds to Final Agent after Risk completes
 - [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/final` shows `status: "running"`
-- [ ] Verify agent aggregates outputs from all 6 preceding agents
+- [ ] Verify agent aggregates outputs from all preceding agents (Location, Scope, Cost, Risk)
 - [ ] **Firestore Check:** `/estimates/{id}` has `finalEstimate` field populated
 - [ ] Verify `finalEstimate.summary` contains: total, timeline, confidenceRange
 - [ ] Verify summary total matches `costEstimate.total` + recommended contingency
 - [ ] Verify `finalEstimate.timeline` has: totalDuration, tasks[], criticalPath[]
-- [ ] Verify tasks have dependencies (predecessorId references)
 - [ ] Verify `finalEstimate.breakdown` mirrors `costEstimate` structure
-- [ ] Verify `finalEstimate.recommendations` array has improvement suggestions
 - [ ] **Firestore Check:** `/estimates/{id}` status changes to "complete"
-- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/final` shows `status: "completed"`
-- [ ] Verify all 7 agent outputs are marked completed in `agentOutputs` subcollection
-- [ ] **Pipeline Duration Test:** Total pipeline time < 5 minutes for standard project
+- [ ] **Firestore Check:** All 5 deep agent outputs marked completed in `agentOutputs` subcollection
+- [ ] **Pipeline Duration Test:** Total deep pipeline time < 3 minutes for standard project
 - [ ] **Error Handling Test:** Simulate agent failure mid-pipeline - estimate shows partial results
-- [ ] **Version Test:** Final estimate creates version snapshot in `versions` subcollection
-- [ ] **Notification Test:** Pipeline completion triggers notification (if implemented)
 - [ ] **Console Check:** Logs show final synthesis and estimate completion event
 
 ---
 
-## Epic 3: CAD & Voice Processing
+## Epic 3: User Input & Clarification
 
 **Owner:** Dev 3
-**Goal:** Build services for CAD file parsing, vision-based extraction, and voice input processing. These are independent services called by the agent pipeline.
+**Goal:** Handle all user input (CAD upload, voice, text) and run the Clarification Agent to produce a validated `ClarificationOutput` artifact. This output is the handoff to Dev 2's Deep Agent Pipeline.
+
+**Output Contract:** `ClarificationOutput` v3.0.0 (see [schema](/docs/clarification-output-schema.md))
 
 **Exclusive Files:**
+- `functions/agents/clarification_agent.py`
 - `functions/services/cad_parser.py`
 - `functions/services/vision_service.py`
 - `functions/services/whisper_service.py`
 - `functions/services/storage_service.py`
+- `functions/main.py` (shared with Dev 2 - owns `start_estimate`, `send_clarification_message`)
 
 ---
 
@@ -1060,6 +941,91 @@ So that **users can describe projects hands-free**.
 - [ ] **Error Test:** Invalid audio format - returns error response
 - [ ] Verify confidence score reflects transcription quality
 - [ ] **Console Check:** Logs show Whisper API latency and audio duration
+
+---
+
+### Story 3.4: Clarification Agent & ClarificationOutput Generation
+
+As a **system**,
+I want to **understand the project through natural conversation and produce a validated ClarificationOutput**,
+So that **Dev 2's Deep Agent Pipeline has everything needed to generate estimates**.
+
+**Acceptance Criteria:**
+
+**Given** a new estimate with CAD file upload (mandatory)
+**When** Clarification Agent starts
+**Then** it processes the CAD file and analyzes the project description
+
+**Given** input is ambiguous or incomplete
+**When** I process the description
+**Then** I generate clarifying questions for the user (via text or voice)
+
+**Given** user provides answers to clarifying questions
+**When** I process the response
+**Then** I extract structured project data including full address, scope by all 24 CSI divisions, and spatial relationships
+
+**Given** CAD extraction is complete
+**When** I build the spatial model
+**Then** I generate a detailed `layoutNarrative` describing what's next to what (min 200 characters)
+
+**Given** user answers are sufficient and CAD is processed
+**When** Clarification Agent completes
+**Then** I output a validated `ClarificationOutput` v3.0.0 with all required fields
+
+**Given** `ClarificationOutput` is generated
+**When** I validate against schema
+**Then** all 24 CSI divisions are present, all excluded divisions have reasons, and CAD data is populated
+
+**Given** validation passes
+**When** outputs are saved to Firestore
+**Then** pipeline hands off to Dev 2's Deep Agent Pipeline via `start_deep_pipeline`
+
+**Prerequisites:** Stories 3.1, 3.2, 3.3
+
+**Technical Notes:**
+- `functions/agents/clarification_agent.py` - Deep Agent with conversation handling
+- Store conversation in `/estimates/{id}/conversations`
+- Cloud Functions: `start_estimate`, `send_clarification_message`
+- Integrates CAD parsing (ezdxf or vision) based on file type
+- Builds complete `ClarificationOutput` including:
+  - `projectBrief` with full address
+  - `csiScope` with all 24 divisions explicitly listed
+  - `cadData.spatialRelationships.layoutNarrative`
+  - Project-type-specific data (kitchenSpecific, bathroomSpecific, etc.)
+- Validates output against schema v3.0.0 before handoff
+- Use GPT-4.1 for natural language understanding
+
+**FRs Covered:** FR23-26
+
+**Output Schema:** See [ClarificationOutput Schema](/docs/clarification-output-schema.md)
+
+**Verification Checklist:**
+- [ ] **Emulator Test:** Call `start_estimate` with CAD file URL and description
+- [ ] Verify response: `{success: true, data: {estimateId: "xxx", status: "clarifying"}}`
+- [ ] **Firestore Check:** `/estimates/{estimateId}` document created with status "clarifying"
+- [ ] Verify Clarification Agent starts and processes CAD file
+- [ ] **CAD Integration Test:** DWG file triggers ezdxf extraction, PDF triggers vision extraction
+- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/clarification` shows `status: "running"`
+- [ ] Verify agent identifies missing info and generates questions
+- [ ] Call `send_clarification_message` with `{estimateId, message: "answer"}` - agent processes response
+- [ ] **Voice Input Test:** Send transcribed voice text - processed same as typed text
+- [ ] Verify agent extracts full address including street, city, state, zip
+- [ ] Continue conversation until agent indicates clarification complete (`isComplete: true`)
+- [ ] **ClarificationOutput Validation:**
+  - [ ] `schemaVersion` equals "3.0.0"
+  - [ ] `projectBrief.location.fullAddress` is populated
+  - [ ] All 24 CSI divisions present in `csiScope`
+  - [ ] Each excluded division has `exclusionReason`
+  - [ ] `cadData.fileUrl` is populated (CAD is mandatory)
+  - [ ] `cadData.spatialRelationships.layoutNarrative` >= 200 characters
+  - [ ] Project-specific data populated (e.g., `kitchenSpecific` for kitchen remodel)
+- [ ] **Firestore Check:** `/estimates/{id}` has `clarificationOutput` field with full schema
+- [ ] **Firestore Check:** `/estimates/{id}/agentOutputs/clarification` shows `status: "completed"`
+- [ ] Verify handoff to Dev 2: `start_deep_pipeline` called with `ClarificationOutput`
+- [ ] **Ambiguous Input Test:** Send vague description "fix my house" - agent asks clarifying questions
+- [ ] **Complete Input Test:** Send detailed description with all info - agent proceeds faster
+- [ ] **Schema Validation Error Test:** Missing CSI division - validation fails before handoff
+- [ ] **Console Check:** Logs show GPT-4.1 API calls, CAD extraction, and schema validation
 
 ---
 
@@ -1646,17 +1612,23 @@ So that **I can efficiently purchase materials**.
 | Epic | Developer | Stories | Key Deliverables |
 |------|-----------|---------|------------------|
 | 1 | Dev 1 (UI) | 4 | Complete React frontend with all three sections |
-| 2 | Dev 2 (Agents) | 8 | 7-agent pipeline (1 story per agent) + orchestrator |
-| 3 | Dev 3 (CAD/Voice) | 3 | CAD parsing (ezdxf + Vision) and voice services |
+| 2 | Dev 2 (Deep Pipeline) | 5 | 5-agent deep pipeline (Location → Scope → Cost → Risk → Final) + orchestrator |
+| 3 | Dev 3 (Input & Clarification) | 4 | CAD parsing, voice services, Clarification Agent, `ClarificationOutput` |
 | 4 | Dev 4 (Data/PDF) | 4 | Cost data, Monte Carlo, PDF generation |
 | 5 | Dev 5 (Price) | 5 | Unrawngle API integration, fuzzy matching, price optimization |
 
-**Total:** 5 Epics, 24 Stories
+**Total:** 5 Epics, 22 Stories
+
+**Handoff Architecture:**
+- Dev 3 produces `ClarificationOutput` v3.0.0 (see [schema](/docs/clarification-output-schema.md))
+- Dev 2 consumes `ClarificationOutput` and runs deep agent pipeline
 
 **Parallel Work Pattern:**
 - All 5 developers can start immediately
 - Dev 1 uses mock data/APIs
-- Dev 2 defines service interfaces, Dev 3 & 4 implement them
+- Dev 3 builds input handling + Clarification Agent → produces `ClarificationOutput`
+- Dev 2 builds deep pipeline → consumes `ClarificationOutput`
+- Dev 4 builds data services to defined interfaces
 - Dev 5 works on enhancements that don't block MVP
 
 ---
@@ -1668,7 +1640,7 @@ So that **I can efficiently purchase materials**.
 | FR | Description | Epic | Story | Developer |
 |----|-------------|------|-------|-----------|
 | FR1-4 | User authentication (existing) | N/A | Existing | N/A |
-| FR5 | Create new estimate | 2 | 2.1 | Dev 2 |
+| FR5 | Create new estimate | 3 | 3.4 | **Dev 3** |
 | FR6 | View estimate list | 1 | 1.1 | Dev 1 |
 | FR7 | Filter/sort estimates | 1 | 1.1 | Dev 1 |
 | FR8 | Open existing estimate | 1 | 1.1 | Dev 1 |
@@ -1686,16 +1658,16 @@ So that **I can efficiently purchase materials**.
 | FR20 | Visual feedback during recording | 1 | 1.1 | Dev 1 |
 | FR21 | Display transcribed voice | 1 | 1.1 | Dev 1 |
 | FR22 | Edit transcription | 1 | 1.1 | Dev 1 |
-| FR23 | Clarification Agent asks questions | 2 | 2.2 | Dev 2 |
-| FR24 | Process user answers | 2 | 2.2 | Dev 2 |
-| FR25 | Extract structured data | 2 | 2.2 | Dev 2 |
-| FR26 | Correlate description with CAD | 2 | 2.3 | Dev 2 |
+| FR23 | Clarification Agent asks questions | 3 | 3.4 | **Dev 3** |
+| FR24 | Process user answers | 3 | 3.4 | **Dev 3** |
+| FR25 | Extract structured data | 3 | 3.4 | **Dev 3** |
+| FR26 | Correlate description with CAD | 3 | 3.4 | **Dev 3** |
 | FR27 | Review project brief | 1 | 1.1 | Dev 1 |
 | FR28 | Modify inputs | 1 | 1.1 | Dev 1 |
 | FR29 | Display CAD measurements | 1 | 1.2 | Dev 1 |
-| FR30 | Generate BoQ | 2 | 2.5 | Dev 2 |
-| FR31 | Calculate material quantities | 2 | 2.5 | Dev 2 |
-| FR32 | Identify required trades | 2 | 2.5 | Dev 2 |
+| FR30 | Generate BoQ | 2 | 2.3 | Dev 2 |
+| FR31 | Calculate material quantities | 2 | 2.3 | Dev 2 |
+| FR32 | Identify required trades | 2 | 2.3 | Dev 2 |
 | FR33 | View scope breakdown | 1 | 1.2 | Dev 1 |
 | FR34 | Discuss with agent | 1 + 2 | 1.2, 2.3 | Dev 1, Dev 2 |
 | FR35 | Adjust quantities | 1 | 1.2 | Dev 1 |
@@ -1705,11 +1677,11 @@ So that **I can efficiently purchase materials**.
 | FR39 | Retrieve permit costs | 4 | 4.1 | Dev 4 |
 | FR40 | Retrieve weather factors | 4 | 4.1 | Dev 4 |
 | FR41 | Override location params | 1 | 1.2 | Dev 1 |
-| FR42 | Calculate material costs | 2 | 2.6 | Dev 2 |
-| FR43 | Calculate labor costs | 2 | 2.6 | Dev 2 |
-| FR44 | Calculate equipment costs | 2 | 2.6 | Dev 2 |
-| FR45 | Apply location adjustments | 2 | 2.6 | Dev 2 |
-| FR46 | Calculate overhead/profit | 2 | 2.6 | Dev 2 |
+| FR42 | Calculate material costs | 2 | 2.4 | Dev 2 |
+| FR43 | Calculate labor costs | 2 | 2.4 | Dev 2 |
+| FR44 | Calculate equipment costs | 2 | 2.4 | Dev 2 |
+| FR45 | Apply location adjustments | 2 | 2.4 | Dev 2 |
+| FR46 | Calculate overhead/profit | 2 | 2.4 | Dev 2 |
 | FR47 | Adjust margins | 1 | 1.3 | Dev 1 |
 | FR48 | Monte Carlo simulation | 4 | 4.2 | Dev 4 |
 | FR49 | Calculate confidence intervals | 4 | 4.2 | Dev 4 |
@@ -1731,12 +1703,12 @@ So that **I can efficiently purchase materials**.
 | FR65 | View pipeline progress | 1 | 1.4 | Dev 1 |
 | FR66 | See current agent | 1 | 1.4 | Dev 1 |
 | FR67 | View intermediate outputs | 1 | 1.4 | Dev 1 |
-| FR68 | Handle agent failures | 2 | 2.8 | Dev 2 |
+| FR68 | Handle agent failures | 2 | 2.5 | Dev 2 |
 | FR69 | Input actual costs | 1 | 1.4 | Dev 1 |
 | FR70 | View variance analysis | 1 | 1.4 | Dev 1 |
-| FR71 | Categorize variance | 2 | 2.8 | Dev 2 |
+| FR71 | Categorize variance | 2 | 2.5 | Dev 2 |
 | FR72 | View accuracy metrics | 1 | 1.4 | Dev 1 |
-| FR73 | Use feedback for improvement | 2 | 2.8 | Dev 2 |
+| FR73 | Use feedback for improvement | 2 | 2.5 | Dev 2 |
 | FR74 | Firestore persistence | 2 | 2.1 | Dev 2 |
 | FR75 | Firebase Storage | 4 | 4.3 | Dev 4 |
 | FR76 | Export JSON | 1 | 1.3 | Dev 1 |
@@ -1753,8 +1725,8 @@ So that **I can efficiently purchase materials**.
 | Developer | FRs Covered | Count |
 |-----------|-------------|-------|
 | Dev 1 (UI) | FR6-8, FR10, FR15-16, FR18, FR20-22, FR27-29, FR33, FR35-36, FR41, FR47, FR52-58, FR62, FR65-67, FR69-70, FR72, FR76 | 32 |
-| Dev 2 (Agents) | FR5, FR9, FR11, FR23-26, FR30-32, FR34, FR42-46, FR68, FR71, FR73-74, FR77-78 | 21 |
-| Dev 3 (CAD/Voice) | FR12-14, FR17, FR19 | 5 |
+| Dev 2 (Deep Pipeline) | FR9, FR11, FR30-32, FR34, FR42-46, FR68, FR71, FR73-74, FR77-78 | 17 |
+| Dev 3 (Input & Clarification) | FR5, FR12-14, FR17, FR19, FR23-26 | 10 |
 | Dev 4 (Data/PDF) | FR37-40, FR48-51, FR59-61, FR63-64, FR75 | 14 |
 | Dev 5 (Price) | NEW: Unrawngle integration, fuzzy matching, price optimization, UI, shopping lists | 5 new features |
 | Existing | FR1-4 | 4 |
@@ -1765,54 +1737,77 @@ So that **I can efficiently purchase materials**.
 
 ## Integration Points
 
-### Service Interfaces (Dev 2 defines, Dev 3 & 4 implement)
+### Handoff Contract: Dev 3 → Dev 2
 
-**CAD Parser Interface (Dev 3 implements):**
-```python
-def extract(file_url: str, file_type: str) -> ExtractionResult:
-    """Returns {rooms: [], walls: [], areas: [], scale: {}, confidence: float}"""
+**ClarificationOutput v3.0.0** (see [full schema](/docs/clarification-output-schema.md))
+
+Dev 3 produces and validates this artifact. Dev 2 consumes it.
+
+```typescript
+interface ClarificationOutput {
+  estimateId: string;
+  schemaVersion: "3.0.0";
+  projectBrief: {
+    projectType: ProjectType;
+    location: { fullAddress, city, state, zipCode };
+    scopeSummary: { totalSqft, rooms, finishLevel };
+  };
+  csiScope: {
+    // All 24 CSI divisions explicitly listed
+    div01_general_requirements: CSIDivision;
+    // ... div02 through div33
+  };
+  cadData: {
+    fileUrl: string;  // REQUIRED
+    spaceModel: { rooms, walls, openings };
+    spatialRelationships: { layoutNarrative: string }; // min 200 chars
+    kitchenSpecific?: {...};
+    bathroomSpecific?: {...};
+  };
+  conversation: {...};
+  flags: {...};
+}
 ```
 
-**Voice Service Interface (Dev 3 implements):**
-```python
-def transcribe(audio_bytes: bytes) -> TranscriptionResult:
-    """Returns {text: str, confidence: float}"""
-```
+### Service Interfaces (Dev 4 implements)
 
-**Location Service Interface (Dev 4 implements):**
+**Location Service Interface:**
 ```python
 def get_location_factors(zip_code: str) -> LocationFactors:
     """Returns {laborRates: {}, isUnion: bool, permitCosts: {}, weatherFactors: {}}"""
 ```
 
-**Cost Data Interface (Dev 4 implements):**
+**Cost Data Interface:**
 ```python
 def get_material_cost(item_code: str) -> MaterialCost:
     """Returns {unitCost: float, laborHours: float, crew: str, productivity: float}"""
 ```
 
-**Monte Carlo Interface (Dev 4 implements):**
+**Monte Carlo Interface:**
 ```python
 def run_simulation(line_items: list, iterations: int = 1000) -> MonteCarloResult:
     """Returns {p50: float, p80: float, p90: float, contingency: float, topRisks: []}"""
 ```
 
-**PDF Generator Interface (Dev 4 implements):**
+**PDF Generator Interface:**
 ```python
 def generate_pdf(estimate_id: str, sections: list = None) -> str:
     """Returns PDF download URL"""
 ```
 
-### API Contracts (Dev 2 exposes, Dev 1 consumes)
+### API Contracts
 
-**Cloud Functions:**
-- `start_estimate(projectDescription, cadFileUrl)` → `{estimateId, status}`
-- `send_clarification_message(estimateId, message)` → `{response, isComplete}`
+**Dev 3 Cloud Functions (Input & Clarification):**
+- `start_estimate(projectDescription, cadFileUrl)` → `{estimateId, status: "clarifying"}`
+- `send_clarification_message(estimateId, message)` → `{response, isComplete, clarificationOutput?}`
+
+**Dev 2 Cloud Functions (Deep Pipeline):**
+- `start_deep_pipeline(clarificationOutput)` → `{estimateId, status: "processing"}`
 - `delete_estimate(estimateId)` → `{success}`
 - `get_estimate_pdf(estimateId, sections?)` → `{pdfUrl}`
 
 **Firestore Real-time:**
-- `/estimates/{id}` - estimate document
+- `/estimates/{id}` - estimate document with `clarificationOutput` and `finalEstimate`
 - `/estimates/{id}/agentOutputs/{agent}` - pipeline status
 - `/estimates/{id}/conversations/{msgId}` - chat history
 
@@ -1839,8 +1834,15 @@ _This document is the source of truth for TrueCost MVP scope and team assignment
 
 ---
 
-**Document Version:** 1.1
+**Document Version:** 2.0
 **Created:** 2025-12-09
 **Last Updated:** 2025-12-10
 **Change Log:**
+- v2.0 (2025-12-10): **Major restructure** - Split responsibilities between Dev 2 and Dev 3:
+  - Dev 3 now owns: CAD parsing, voice services, AND Clarification Agent (Story 3.4)
+  - Dev 2 now owns: Deep Agent Pipeline only (Location → Scope → Cost → Risk → Final)
+  - Created `ClarificationOutput` v3.0.0 schema as handoff contract between Dev 3 → Dev 2
+  - Schema includes: full address, all 24 CSI divisions with explicit status, spatial relationships, project-specific data
+  - CAD upload is now mandatory (not optional)
+  - See [ClarificationOutput Schema](/docs/clarification-output-schema.md) for full interface contract
 - v1.1 (2025-12-10): Added Verification Checklists to all 24 stories for human-testable QA
