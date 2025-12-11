@@ -13,7 +13,7 @@ import { test, expect } from '../support/fixtures';
  */
 test.describe('Story 2.1: Project Isolation', () => {
   test.describe('AC1: Project-Scoped Shapes Storage', () => {
-    test('should store shapes in project-scoped Firestore collection', async ({ page, projectFactory, _shapeFactory }) => {
+    test('should store shapes in project-scoped Firestore collection', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });
@@ -45,7 +45,7 @@ test.describe('Story 2.1: Project Isolation', () => {
       expect(shapesInProjectB).toBe(0);
     });
 
-    test('should not show shapes from Project A in Project B', async ({ page, projectFactory, shapeFactory }) => {
+    test('should not show shapes from Project A in Project B', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
       // GIVEN: I have Project A with a shape
       const _projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });
@@ -68,7 +68,7 @@ test.describe('Story 2.1: Project Isolation', () => {
   });
 
   test.describe('AC2: Project-Scoped Layers Storage', () => {
-    test('should store layers in project-scoped Firestore collection', async ({ page, projectFactory, _layerFactory }) => {
+    test('should store layers in project-scoped Firestore collection', async ({ page, projectFactory, layerFactory: _layerFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });
@@ -171,7 +171,7 @@ test.describe('Story 2.1: Project Isolation', () => {
   });
 
   test.describe('AC5: Project-Scoped Canvas Store', () => {
-    test('should use isolated Zustand store instance per project', async ({ page, projectFactory, _shapeFactory }) => {
+    test('should use isolated Zustand store instance per project', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
       // GIVEN: I have multiple projects
       const projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });

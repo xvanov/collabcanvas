@@ -24,6 +24,7 @@
     "deploy:rules": "firebase deploy --only firestore:rules,database:rules"
   },
   "dependencies": {
+    "chromium": "^3.0.3",
     "firebase": "^12.4.0",
     "jspdf": "^3.0.3",
     "konva": "^10.0.2",

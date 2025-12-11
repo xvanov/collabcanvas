@@ -1,8 +1,21 @@
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { useEffect } from 'react';
+import { BrowserRouter, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from './hooks/useAuth';
+
+// Public pages
+import { Landing } from './pages/Landing';
 import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
+
+// Authenticated pages
 import { Dashboard } from './pages/Dashboard';
 import { Project } from './pages/Project';
+import { Account } from './pages/Account';
+import { NewEstimate } from './pages/estimate/NewEstimate';
+import { EstimateView } from './pages/estimate/EstimateView';
+import { PlanView } from './pages/estimate/PlanView';
+import { FinalView } from './pages/estimate/FinalView';
+import { Board } from './pages/Board';
 
 /**
  * Protected Route Component
@@ -30,22 +43,93 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 /**
+ * ScrollToTop - ensures each route change starts at the top of the page.
+ */
+function ScrollToTop() {
+  const { pathname } = useLocation();
+
+  useEffect(() => {
+    window.scrollTo({ top: 0, left: 0, behavior: 'auto' });
+  }, [pathname]);
+
+  return null;
+}
+
+/**
  * Main App component
  * Handles routing and authentication guards
  */
 function App() {
   return (
     <BrowserRouter>
+      <ScrollToTop />
       <Routes>
+        {/* Public routes */}
+        <Route path="/" element={<Landing />} />
         <Route path="/login" element={<Login />} />
+        <Route path="/signup" element={<Signup />} />
+
+        {/* Authenticated app routes */}
         <Route
-          path="/"
+          path="/dashboard"
           element={
             <ProtectedRoute>
               <Dashboard />
             </ProtectedRoute>
           }
         />
+        <Route
+          path="/account"
+          element={
+            <ProtectedRoute>
+              <Account />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Estimate routes (placeholders for now) */}
+        <Route
+          path="/estimate/new"
+          element={
+            <ProtectedRoute>
+              <NewEstimate />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/estimate/:id"
+          element={
+            <ProtectedRoute>
+              <EstimateView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/estimate/:id/plan"
+          element={
+            <ProtectedRoute>
+              <PlanView />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/estimate/:id/canvas"
+          element={
+            <ProtectedRoute>
+              <Board />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/estimate/:id/final"
+          element={
+            <ProtectedRoute>
+              <FinalView />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Legacy route preserved during transition */}
         <Route
           path="/projects/:projectId/*"
           element={
@@ -54,6 +138,8 @@ function App() {
             </ProtectedRoute>
           }
         />
+
+        {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>

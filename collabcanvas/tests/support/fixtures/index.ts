@@ -23,28 +23,28 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  userFactory: async (_fixtures, useFixture) => {
+  userFactory: async ({}, use) => {
     const factory = new UserFactory();
-    await useFixture(factory);
+    await use(factory);
     // Auto-cleanup: Delete all users created during test
     await factory.cleanup();
   },
 
-  projectFactory: async (_fixtures, useFixture) => {
+  projectFactory: async ({}, use) => {
     const factory = new ProjectFactory();
-    await useFixture(factory);
+    await use(factory);
     // Auto-cleanup: Delete all projects created during test
     await factory.cleanup();
   },
 
-  shapeFactory: async (_fixtures, useFixture) => {
+  shapeFactory: async ({}, use) => {
     const factory = new ShapeFactory();
-    await useFixture(factory);
+    await use(factory);
   },
 
-  layerFactory: async (_fixtures, useFixture) => {
+  layerFactory: async ({}, use) => {
     const factory = new LayerFactory();
-    await useFixture(factory);
+    await use(factory);
   },
 
   authenticatedProject: async ({ page: _page, projectFactory, userFactory }, _use) => {
