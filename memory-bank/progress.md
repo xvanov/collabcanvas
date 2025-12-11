@@ -8,7 +8,7 @@
 **Branch**: `ture-agent-pipeline`
 **Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed PR breakdown
 **Local Dev**: ✅ Running (Firebase emulators + Vite dev server)
-**Total Tests**: 135 passing
+**Total Tests**: 171 passing
 
 ---
 
@@ -21,7 +21,7 @@
 | #3 | `epic2/orchestrator` | Pipeline orchestrator & entry points | 15 | ✅ Complete | Dec 10, 2025 |
 | #4 | `ture-agent-pipeline` | Location Intelligence Agent | 26 | ✅ Complete | Dec 11, 2025 |
 | #5 | `epic2/scope-agent` | Construction Scope Agent | 29 | ✅ Complete | Dec 11, 2025 |
-| #6 | `epic2/cost-agent` | Cost Estimation Agent | - | 🔲 Ready | - |
+| #6 | `epic2/cost-agent` | Cost Estimation Agent (P50/P80/P90) | 36 | ✅ Complete | Dec 11, 2025 |
 | #7 | `epic2/risk-final-agents` | Risk, Timeline & Final Agents | - | 🔲 Not Started | - |
 | #8 | `epic2/firestore-rules` | Security rules & documentation | - | 🔲 Not Started | - |
 
@@ -162,15 +162,35 @@
 - `functions/tests/unit/test_scope_agent.py` - 29 unit tests
 
 ### Story 2.4: Cost Estimation Agent
-**Status**: 🔲 Ready to Start
+**Status**: ✅ Complete
 **PR**: #6
+**Tests**: 36 passing
 
 | Task | Status |
 |------|--------|
-| Create cost estimate models | 🔲 |
-| Add material cost lookup to service | 🔲 |
-| Implement Cost Agent (real logic) | 🔲 |
-| Unit tests | 🔲 |
+| Create `models/cost_estimate.py` with CostRange (P50/P80/P90) | ✅ |
+| Add `get_material_cost()` with cost ranges | ✅ |
+| Add `get_labor_rate()` with cost ranges | ✅ |
+| Implement Cost Agent (real logic) | ✅ |
+| Implement Cost Scorer (range validation) | ✅ |
+| Implement Cost Critic (cost feedback) | ✅ |
+| Create mock cost estimate fixtures | ✅ |
+| Unit tests (36) | ✅ |
+
+**Files Created/Modified**:
+- `functions/models/cost_estimate.py` - CostRange (P50/P80/P90), LineItemCost, CostSubtotals, CostAdjustments, CostEstimate, CostSummary
+- `functions/services/cost_data_service.py` - Added `get_material_cost()`, `get_labor_rate()`, `get_equipment_cost()` with P50/P80/P90 ranges
+- `functions/agents/primary/cost_agent.py` - Real LLM-powered agent with 3-tier cost output (replaced stub)
+- `functions/agents/scorers/cost_scorer.py` - 6-criteria scoring for range validation (replaced stub)
+- `functions/agents/critics/cost_critic.py` - Actionable feedback for cost issues (replaced stub)
+- `functions/tests/fixtures/mock_cost_estimate_data.py` - Test fixtures
+- `functions/tests/unit/test_cost_agent.py` - 36 unit tests
+
+**Key Feature: 3-Tier Cost Output (P50/P80/P90)**:
+- P50 (low): Median estimate - 50th percentile
+- P80 (medium): Conservative estimate - 80th percentile  
+- P90 (high): Pessimistic estimate - 90th percentile
+- Uses variance multipliers (1.0/1.15/1.25) for Monte Carlo compatibility
 
 ### Story 2.5: Risk Analysis, Timeline & Final Estimator Agent
 **Status**: 🔲 Not Started
@@ -214,13 +234,13 @@
 
 ## Next Actions
 
-1. **Start PR #6**: Cost Estimation Agent
-2. Create `models/cost_estimate.py` with Pydantic models
-3. Add `get_material_cost()` to cost data service
-4. Implement real CostAgent logic (replace stub)
-5. Implement real CostScorer logic (replace stub)
-6. Implement real CostCritic logic (replace stub)
-7. Create mock cost estimate fixtures
+1. **Start PR #7**: Risk, Timeline & Final Agents
+2. Create `models/risk_analysis.py` with risk factor models
+3. Create mock Monte Carlo service stub
+4. Implement real RiskAgent logic (replace stub)
+5. Implement real TimelineAgent logic (replace stub)  
+6. Implement real FinalAgent logic (replace stub)
+7. Implement scorers and critics for all three agents
 8. Add unit tests
 9. Submit PR for review
 
@@ -233,7 +253,8 @@
 | PR #3 | 15 | ✅ All passing |
 | PR #4 | 26 | ✅ All passing |
 | PR #5 | 29 | ✅ All passing |
-| **Total** | **135** | ✅ All passing |
+| PR #6 | 36 | ✅ All passing |
+| **Total** | **171** | ✅ All passing |
 
 ## Local Development Setup
 
@@ -246,4 +267,4 @@
 
 ---
 
-_Last Updated: December 11, 2025 (PR #5 Complete)_
+_Last Updated: December 11, 2025 (PR #6 Complete)_

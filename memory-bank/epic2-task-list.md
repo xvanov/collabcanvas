@@ -13,11 +13,11 @@
 | #3 | Orchestrator & Pipeline | ✅ Complete | 15 |
 | #4 | Location Intelligence Agent | ✅ Complete | 26 |
 | #5 | Construction Scope Agent | ✅ Complete | 29 |
-| #6 | Cost Estimation Agent | 🔲 Pending | - |
+| #6 | Cost Estimation Agent (P50/P80/P90) | ✅ Complete | 36 |
 | #7 | Risk & Final Agents | 🔲 Pending | - |
 | #8 | Firestore Rules & Docs | 🔲 Pending | - |
 
-**Total Tests Passing:** 135
+**Total Tests Passing:** 171
 
 ## Agent Framework: LangChain Deep Agents + A2A Protocol
 
@@ -675,72 +675,94 @@ truecost/
 
 ---
 
-## PR #6: Cost Estimation Agent
+## PR #6: Cost Estimation Agent ✅
 
 **Branch:** `epic2/cost-agent`
 **Story:** 2.4
-**Goal:** Implement Cost Agent that calculates material, labor, and equipment costs.
+**Status:** ✅ Complete (Dec 11, 2025)
+**Tests:** 36 passing
+**Goal:** Implement Cost Agent that calculates material, labor, and equipment costs with P50/P80/P90 ranges.
+
+### Key Feature: 3-Tier Cost Output (P50/P80/P90)
+- P50 (low): Median estimate - 50th percentile
+- P80 (medium): Conservative estimate - 80th percentile  
+- P90 (high): Pessimistic estimate - 90th percentile
+- Uses variance multipliers (1.0/1.15/1.25) for Monte Carlo compatibility
 
 ### Tasks
 
-- [ ] **6.1 Create cost estimate models**
-  - Create: `functions/models/cost_estimate.py`
-    - `MaterialCost` model (itemCode, quantity, unitCost, totalCost)
-    - `LaborCost` model (trade, hours, rate, totalCost)
-    - `EquipmentCost` model (item, days, rate, totalCost)
-    - `CostSubtotals` model (materials, labor, equipment)
-    - `CostAdjustments` model (locationFactor, overhead, profit)
-    - `CostEstimate` model (lineItems, subtotals, adjustments, total, confidence)
+- [x] **6.1 Create cost estimate models**
+  - Created: `functions/models/cost_estimate.py`
+    - `CostRange` model (low/medium/high - P50/P80/P90) with arithmetic operators
+    - `LineItemCost` model with CostRange for material, labor, equipment costs
+    - `CostSubtotals` model (materials, labor, equipment as CostRange)
+    - `CostAdjustments` model (locationFactor, overhead, profit as CostRange)
+    - `CostEstimate` model (divisions, subtotals, adjustments, total CostRange, confidence)
+    - `CostSummary` model (headline, range explanation, drivers, savings opportunities)
+    - `CostConfidenceLevel` enum (HIGH, MEDIUM, LOW, ESTIMATED)
 
-- [ ] **6.2 Add material cost lookup to cost data service**
-  - Edit: `functions/services/cost_data_service.py`
-    - `get_material_cost(cost_code)` - returns unit cost, labor hours
-    - `get_labor_rate(trade, zip_code)` - returns hourly rate
-    - `get_equipment_cost(item)` - returns daily rate
-    - Mock RSMeans-schema data for common items
+- [x] **6.2 Add material cost lookup to cost data service**
+  - Edited: `functions/services/cost_data_service.py`
+    - `get_material_cost(cost_code, item_description)` - returns CostRange for unit cost
+    - `get_labor_rate(trade, zip_code)` - returns CostRange for hourly rate
+    - `get_equipment_cost(equipment_type)` - returns CostRange for equipment
+    - All methods return P50/P80/P90 ranges using variance multipliers (1.0/1.15/1.25)
+    - Mock RSMeans-schema data for 40+ common items
 
-- [ ] **6.3 Implement Cost Agent**
-  - Edit: `functions/agents/cost_agent.py`
-    - Inherit from `BaseAgent` (wraps Deep Agents)
-    - Use `create_deep_agent()` with system prompt for cost calculation
-    - Add custom tools: `get_material_cost`, `get_labor_rate`, `get_equipment_cost`
-    - Use Deep Agents' planning tool to organize cost calculation by division
-    - Read `billOfQuantities` from previous agent
-    - Read `locationFactors` for rate adjustments
+- [x] **6.3 Implement Cost Agent**
+  - Edited: `functions/agents/primary/cost_agent.py`
+    - Inherit from `BaseA2AAgent`
+    - Process BoQ line items from Scope Agent output
     - For each line item:
-      - Look up unit cost from cost database via tool
-      - Calculate: `materialCost = quantity × unitCost`
-      - Calculate labor hours and cost
-      - Add equipment costs where needed
-    - Apply adjustments:
-      - Location factor multiplier
+      - Look up material cost (CostRange) from CostDataService
+      - Look up labor rate (CostRange) by trade and ZIP code
+      - Calculate material, labor, equipment costs as CostRange
+      - Aggregate into division totals
+    - Apply adjustments to all three tiers (low/medium/high):
+      - Location factor from Location Agent output
       - Overhead percentage (default 10%)
       - Profit percentage (default 10%)
-    - Calculate totals:
-      - Materials subtotal
-      - Labor subtotal
-      - Equipment subtotal
-      - Adjusted grand total
-    - Use file system tools to store intermediate calculations if needed
-    - Calculate confidence based on data quality
-    - Save `costEstimate` to estimate document
+    - Calculate grand total CostRange (P50/P80/P90)
+    - Use LLM for cost analysis insights and summary generation
+    - Save output to Firestore
 
-- [ ] **6.4 Add Cost Agent tests**
-  - Create: `functions/tests/unit/test_cost_agent.py`
-    - Test material cost calculation
-    - Test labor cost with location rates
-    - Test equipment cost inclusion
-    - Test overhead/profit application
-    - Test location factor adjustment
-    - Test confidence scoring
+- [x] **6.4 Implement Cost Scorer**
+  - Edited: `functions/agents/scorers/cost_scorer.py`
+    - 6 scoring criteria:
+      1. `cost_ranges_valid` - all CostRanges have low ≤ medium ≤ high
+      2. `line_items_costed` - all BoQ items have calculated costs
+      3. `location_factor_applied` - matches Location Agent output
+      4. `adjustments_applied` - overhead/profit applied correctly
+      5. `subtotals_correct` - subtotals add up
+      6. `range_reasonable` - high/low ratio within bounds (1.0-2.0)
 
-### Verification
-- [ ] Cost Agent runs after Scope Agent completes
-- [ ] `costEstimate` field populated with full breakdown
-- [ ] Material costs = quantity × unit cost
-- [ ] Location factors applied correctly
-- [ ] Firestore `/estimates/{id}/agentOutputs/cost` created
-- [ ] `pytest tests/unit/test_cost_agent.py` passes
+- [x] **6.5 Implement Cost Critic**
+  - Edited: `functions/agents/critics/cost_critic.py`
+    - Actionable feedback for cost issues
+    - Detects invalid range ordering, missing items, factor mismatches
+    - Provides specific "what's wrong / why / how to fix" guidance
+
+- [x] **6.6 Add Cost Agent tests**
+  - Created: `functions/tests/fixtures/mock_cost_estimate_data.py`
+    - Mock location output, scope output, valid/invalid cost outputs
+    - Helper functions for A2A request building
+  - Created: `functions/tests/unit/test_cost_agent.py` (36 tests)
+    - `TestCostRangeModel` (9 tests) - CostRange validation and arithmetic
+    - `TestCostDataServiceMaterialCost` (4 tests) - Material cost lookup
+    - `TestCostDataServiceLaborRate` (3 tests) - Labor rate lookup
+    - `TestLineItemCostCalculation` (2 tests) - Cost calculation
+    - `TestCostAgent` (3 tests) - Agent run and output
+    - `TestCostScorer` (7 tests) - Scoring criteria validation
+    - `TestCostCritic` (6 tests) - Critique feedback
+    - `TestCostAgentIntegration` (2 tests) - End-to-end flow
+
+### Verification ✅
+- [x] Cost Agent runs after Scope Agent completes
+- [x] `costEstimate` field populated with P50/P80/P90 breakdown
+- [x] Material costs = quantity × unit cost (all three tiers)
+- [x] Location factors applied correctly to all tiers
+- [x] Firestore `/estimates/{id}/agentOutputs/cost` created
+- [x] `pytest tests/unit/test_cost_agent.py` passes (36 tests)
 
 ---
 
@@ -890,8 +912,8 @@ truecost/
 | 2 | `epic2/clarification-validation` | 2.1 | ClarificationOutput models & validation | `models/clarification_output.py`, `validators/` |
 | 3 | `epic2/orchestrator` | 2.1 | A2A orchestrator with Scorer+Critic flow & 18 endpoints | `orchestrator.py`, `main.py` (18 A2A endpoints) |
 | 4 | `epic2/location-agent` | 2.2 | Location Agent + Scorer + Critic | `location_agent.py`, `location_scorer.py`, `location_critic.py` |
-| 5 | `epic2/scope-agent` | 2.3 | Scope Agent + Scorer + Critic | `scope_agent.py`, `scope_scorer.py`, `scope_critic.py` |
-| 6 | `epic2/cost-agent` | 2.4 | Cost Agent + Scorer + Critic | `cost_agent.py`, `cost_scorer.py`, `cost_critic.py` |
+| 5 | `epic2/scope-agent` | 2.3 | ✅ Scope Agent + Scorer + Critic | `scope_agent.py`, `scope_scorer.py`, `scope_critic.py` |
+| 6 | `epic2/cost-agent` | 2.4 | ✅ Cost Agent + Scorer + Critic (P50/P80/P90) | `cost_agent.py`, `cost_scorer.py`, `cost_critic.py`, `cost_estimate.py` |
 | 7 | `epic2/risk-timeline-final` | 2.5 | Risk, Timeline, Final + Scorers + Critics | All remaining agents (9 total) |
 | 8 | `epic2/firestore-rules` | - | Security rules & docs | `firestore.rules`, API docs |
 

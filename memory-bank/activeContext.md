@@ -61,11 +61,11 @@ The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and
 | **PR #3** | `epic2/orchestrator` | 2.1 | ✅ Complete | 15 | Pipeline orchestrator & Cloud Function entry points |
 | **PR #4** | `ture-agent-pipeline` | 2.2 | ✅ Complete | 26 | Location Intelligence Agent |
 | **PR #5** | `epic2/scope-agent` | 2.3 | ✅ Complete | 29 | Construction Scope Agent (BoQ enrichment) |
-| **PR #6** | `epic2/cost-agent` | 2.4 | 🔲 Ready | - | Cost Estimation Agent |
+| **PR #6** | `epic2/cost-agent` | 2.4 | ✅ Complete | 36 | Cost Estimation Agent (P50/P80/P90) |
 | **PR #7** | `epic2/risk-final-agents` | 2.5 | 🔲 Not Started | - | Risk, Timeline & Final Agents |
 | **PR #8** | `epic2/firestore-rules` | - | 🔲 Not Started | - | Security rules & documentation |
 
-**Total Tests: 135 passing**
+**Total Tests: 171 passing**
 
 ## Completed PRs
 
@@ -135,26 +135,32 @@ The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and
 - 6 scoring criteria (cost code coverage, quantities, division coverage, etc.)
 - Detailed critic feedback for scope completeness issues
 
-## Current PR: PR #6 (Ready to Start)
+## Completed PR: PR #6 ✅
 
 **Branch**: `epic2/cost-agent`
 **Story**: 2.4 - Cost Estimation Agent
+**Tests**: 36 passing (171 total)
+**Completed**: Dec 11, 2025
 
-### PR #6 Tasks:
-1. Create `functions/models/cost_estimate.py` - Cost estimate Pydantic models
-2. Add `get_material_cost()` to cost data service - Material pricing lookup
-3. Replace stub `CostAgent` with real LLM-powered implementation
-4. Replace stub `CostScorer` with real scoring logic
-5. Replace stub `CostCritic` with real critique logic
-6. Create mock cost estimate fixtures
-7. Add unit tests
+### PR #6 Files Created/Modified:
+- `functions/models/cost_estimate.py` - CostRange (P50/P80/P90), LineItemCost, CostSubtotals, CostAdjustments, CostEstimate, CostSummary
+- `functions/services/cost_data_service.py` - Added `get_material_cost()`, `get_labor_rate()`, `get_equipment_cost()` with P50/P80/P90 ranges
+- `functions/agents/primary/cost_agent.py` - Real LLM-powered agent with 3-tier cost output (replaced stub)
+- `functions/agents/scorers/cost_scorer.py` - 6-criteria scoring for range validation (replaced stub)
+- `functions/agents/critics/cost_critic.py` - Actionable feedback for cost issues (replaced stub)
+- `functions/tests/fixtures/mock_cost_estimate_data.py` - Test fixtures
+- `functions/tests/unit/test_cost_agent.py` - 36 unit tests
 
-### Cost Agent Requirements:
-- Apply unit costs from CostDataService to BoQ line items
-- Apply location factors from LocationAgent output
-- Calculate material costs, labor costs, and totals
-- Generate cost breakdown by division and trade
-- Provide confidence ranges for estimates
+### Key Feature: 3-Tier Cost Output (P50/P80/P90):
+- P50 (low): Median estimate - 50th percentile
+- P80 (medium): Conservative estimate - 80th percentile  
+- P90 (high): Pessimistic estimate - 90th percentile
+- Uses variance multipliers (1.0/1.15/1.25) for Monte Carlo compatibility
+
+## Next PR: PR #7 (Ready to Start)
+
+**Branch**: `epic2/risk-final-agents`
+**Story**: 2.5 - Risk, Timeline & Final Agents
 
 ## File Structure (Current State)
 
@@ -175,7 +181,7 @@ functions/
 │   │   ├── __init__.py
 │   │   ├── location_agent.py        # ✅ PR #4 - Real LLM implementation
 │   │   ├── scope_agent.py           # ✅ PR #5 - Real LLM implementation
-│   │   ├── cost_agent.py            # ✅ PR #3 (stub)
+│   │   ├── cost_agent.py            # ✅ PR #6 - Real LLM implementation with P50/P80/P90
 │   │   ├── risk_agent.py            # ✅ PR #3 (stub)
 │   │   ├── timeline_agent.py        # ✅ PR #3 (stub)
 │   │   └── final_agent.py           # ✅ PR #3 (stub)
@@ -184,7 +190,7 @@ functions/
 │   │   ├── base_scorer.py           # ✅ PR #1 - BaseScorer
 │   │   ├── location_scorer.py       # ✅ PR #4 - 7-criteria scoring
 │   │   ├── scope_scorer.py          # ✅ PR #5 - 6-criteria scoring
-│   │   ├── cost_scorer.py           # ✅ PR #3 (stub)
+│   │   ├── cost_scorer.py           # ✅ PR #6 - 6-criteria scoring
 │   │   ├── risk_scorer.py           # ✅ PR #3 (stub)
 │   │   ├── timeline_scorer.py       # ✅ PR #3 (stub)
 │   │   └── final_scorer.py          # ✅ PR #3 (stub)
@@ -193,7 +199,7 @@ functions/
 │       ├── base_critic.py           # ✅ PR #1 - BaseCritic
 │       ├── location_critic.py       # ✅ PR #4 - Actionable feedback
 │       ├── scope_critic.py          # ✅ PR #5 - Actionable feedback
-│       ├── cost_critic.py           # ✅ PR #3 (stub)
+│       ├── cost_critic.py           # ✅ PR #6 - Actionable feedback
 │       ├── risk_critic.py           # ✅ PR #3 (stub)
 │       ├── timeline_critic.py       # ✅ PR #3 (stub)
 │       └── final_critic.py          # ✅ PR #3 (stub)
@@ -209,7 +215,8 @@ functions/
 │   ├── agent_output.py              # ✅ PR #3 - AgentStatus, PipelineStatus
 │   ├── estimate.py                  # ✅ PR #3 - EstimateDocument
 │   ├── location_factors.py          # ✅ PR #4 - LaborRates, PermitCosts, LocationFactors
-│   └── bill_of_quantities.py        # ✅ PR #5 - CostCode, EnrichedLineItem, BillOfQuantities
+│   ├── bill_of_quantities.py        # ✅ PR #5 - CostCode, EnrichedLineItem, BillOfQuantities
+│   └── cost_estimate.py             # ✅ PR #6 - CostRange, LineItemCost, CostEstimate
 │
 ├── services/
 │   ├── __init__.py
@@ -230,7 +237,8 @@ functions/
     │   ├── clarification_output_kitchen.json   # ✅ PR #2
     │   ├── clarification_output_bathroom.json  # ✅ PR #2
     │   ├── mock_cost_data.py                   # ✅ PR #4 - Location test fixtures
-    │   └── mock_boq_data.py                    # ✅ PR #5 - BoQ test fixtures
+    │   ├── mock_boq_data.py                    # ✅ PR #5 - BoQ test fixtures
+    │   └── mock_cost_estimate_data.py         # ✅ PR #6 - Cost test fixtures
     ├── unit/
     │   ├── __init__.py
     │   ├── test_a2a_client.py       # ✅ PR #1 (11 tests)
@@ -241,17 +249,18 @@ functions/
     │   ├── test_clarification_models.py # ✅ PR #2 (7 tests)
     │   ├── test_orchestrator.py     # ✅ PR #3 (15 tests)
     │   ├── test_location_agent.py   # ✅ PR #4 (26 tests)
-    │   └── test_scope_agent.py      # ✅ PR #5 (29 tests)
+    │   ├── test_scope_agent.py      # ✅ PR #5 (29 tests)
+    │   └── test_cost_agent.py       # ✅ PR #6 (36 tests)
     └── integration/
         └── __init__.py
 ```
 
 ## Next Action
 
-**Start PR #6: Cost Estimation Agent**
+**Start PR #7: Risk, Timeline & Final Agents**
 
-See `memory-bank/epic2-task-list.md` (PR #6 section) for detailed tasks.
+See `memory-bank/epic2-task-list.md` (PR #7 section) for detailed tasks.
 
 ---
 
-_Last Updated: December 11, 2025 (PR #5 Complete)_
+_Last Updated: December 11, 2025 (PR #6 Complete)_

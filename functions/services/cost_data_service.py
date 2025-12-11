@@ -2,12 +2,16 @@
 
 Mock implementation of cost data service for location-based factors.
 This will be replaced by Dev 4 with real RSMeans/cost database integration.
+
+PR #6 Addition: Material cost and labor rate lookups with P50/P80/P90 ranges.
 """
 
-from typing import Dict, List, Optional, Tuple
+from typing import Dict, List, Optional, Tuple, Any
 import re
 import structlog
 
+from models.cost_estimate import CostRange, CostConfidenceLevel
+from models.bill_of_quantities import TradeCategory
 from models.location_factors import (
     LocationFactors,
     LaborRates,
@@ -64,6 +68,27 @@ HIGH_COST_STATES = {"NY", "CA", "MA", "CT", "WA", "NJ", "HI", "AK"}
 
 # Low cost states (location factor < 0.95)
 LOW_COST_STATES = {"MS", "AR", "AL", "WV", "KY", "OK", "TN", "SC"}
+
+# National average labor rates by trade (P50 values)
+NATIONAL_AVERAGE_LABOR_RATES: Dict[TradeCategory, float] = {
+    TradeCategory.ELECTRICIAN: 55.0,
+    TradeCategory.PLUMBER: 58.0,
+    TradeCategory.CARPENTER: 45.0,
+    TradeCategory.HVAC: 56.0,
+    TradeCategory.GENERAL_LABOR: 32.0,
+    TradeCategory.PAINTER: 40.0,
+    TradeCategory.TILE_SETTER: 48.0,
+    TradeCategory.ROOFER: 42.0,
+    TradeCategory.CONCRETE_FINISHER: 45.0,
+    TradeCategory.DRYWALL_INSTALLER: 42.0,
+    TradeCategory.MASON: 48.0,
+    TradeCategory.WELDER: 52.0,
+    TradeCategory.FLOORING_INSTALLER: 44.0,
+    TradeCategory.CABINET_INSTALLER: 46.0,
+    TradeCategory.COUNTERTOP_INSTALLER: 48.0,
+    TradeCategory.APPLIANCE_INSTALLER: 38.0,
+    TradeCategory.DEMOLITION: 35.0,
+}
 
 
 # =============================================================================
@@ -698,6 +723,307 @@ class CostDataService:
         """Clear the location factors cache."""
         self._cache.clear()
         logger.info("cost_data_cache_cleared")
+
+    # =========================================================================
+    # PR #6: MATERIAL COST AND LABOR RATE LOOKUPS WITH COST RANGES
+    # =========================================================================
+
+    async def get_material_cost(
+        self,
+        cost_code: str,
+        item_description: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get material cost with P50/P80/P90 range for a cost code.
+        
+        Uses variance multipliers to generate cost ranges:
+        - P50 (low): Base cost (median)
+        - P80 (medium): Base × 1.15 (conservative)
+        - P90 (high): Base × 1.25 (pessimistic)
+        
+        Args:
+            cost_code: Cost code to look up.
+            item_description: Optional item description for fuzzy matching.
+            
+        Returns:
+            Dict with unit_cost (CostRange), labor_hours, equipment_cost (CostRange),
+            primary_trade, unit, and confidence.
+        """
+        logger.debug(
+            "get_material_cost",
+            cost_code=cost_code,
+            item_description=item_description[:50] if item_description else None
+        )
+        
+        # Try exact cost code match first
+        for code_data in MOCK_COST_CODES:
+            if code_data["code"] == cost_code:
+                return self._build_material_cost_result(code_data)
+        
+        # Try fuzzy match on item description if provided
+        if item_description:
+            desc_lower = item_description.lower()
+            best_match = None
+            best_score = 0.0
+            
+            for code_data in MOCK_COST_CODES:
+                score = self._calculate_fuzzy_score(desc_lower, code_data)
+                if score > best_score:
+                    best_score = score
+                    best_match = code_data
+            
+            if best_match and best_score >= 0.3:
+                return self._build_material_cost_result(best_match, confidence=0.75)
+        
+        # Return default costs based on code prefix
+        division = cost_code[:2] if len(cost_code) >= 2 else "00"
+        return self._get_default_material_cost(division)
+    
+    def _build_material_cost_result(
+        self,
+        code_data: Dict[str, Any],
+        confidence: float = 0.90
+    ) -> Dict[str, Any]:
+        """Build material cost result with P50/P80/P90 ranges.
+        
+        Args:
+            code_data: Cost code data from mock database.
+            confidence: Confidence in the cost data.
+            
+        Returns:
+            Material cost result with CostRange values.
+        """
+        base_material = code_data["material_cost_per_unit"]
+        base_equipment = code_data.get("equipment_cost_per_unit", 0.0)
+        
+        # Apply variance multipliers for P80 and P90
+        # P80 = 15% higher, P90 = 25% higher (typical construction variance)
+        return {
+            "cost_code": code_data["code"],
+            "description": code_data["description"],
+            "unit": code_data.get("unit", "EA"),
+            "unit_cost": CostRange.from_base_cost(base_material),
+            "labor_hours_per_unit": code_data["labor_hours_per_unit"],
+            "equipment_cost": CostRange.from_base_cost(base_equipment) if base_equipment > 0 else CostRange.zero(),
+            "primary_trade": TradeCategory(code_data["primary_trade"]),
+            "secondary_trades": [
+                TradeCategory(t) for t in code_data.get("secondary_trades", [])
+            ],
+            "confidence": CostConfidenceLevel.HIGH if confidence >= 0.85 else CostConfidenceLevel.MEDIUM,
+            "confidence_score": confidence
+        }
+    
+    def _get_default_material_cost(self, division: str) -> Dict[str, Any]:
+        """Get default material cost for a division.
+        
+        Args:
+            division: 2-digit CSI division code.
+            
+        Returns:
+            Default material cost with CostRange values.
+        """
+        # Default costs by division (P50 base values)
+        defaults = {
+            "01": {"material": 50.0, "labor": 0.5, "equipment": 0.0, "trade": TradeCategory.GENERAL_LABOR},
+            "02": {"material": 5.0, "labor": 0.25, "equipment": 5.0, "trade": TradeCategory.DEMOLITION},
+            "03": {"material": 8.0, "labor": 0.3, "equipment": 2.0, "trade": TradeCategory.CONCRETE_FINISHER},
+            "04": {"material": 12.0, "labor": 0.4, "equipment": 0.0, "trade": TradeCategory.MASON},
+            "05": {"material": 25.0, "labor": 0.5, "equipment": 5.0, "trade": TradeCategory.WELDER},
+            "06": {"material": 45.0, "labor": 0.5, "equipment": 0.0, "trade": TradeCategory.CARPENTER},
+            "07": {"material": 8.0, "labor": 0.3, "equipment": 0.0, "trade": TradeCategory.ROOFER},
+            "08": {"material": 150.0, "labor": 1.0, "equipment": 0.0, "trade": TradeCategory.CARPENTER},
+            "09": {"material": 3.0, "labor": 0.15, "equipment": 0.0, "trade": TradeCategory.PAINTER},
+            "10": {"material": 50.0, "labor": 0.5, "equipment": 0.0, "trade": TradeCategory.GENERAL_LABOR},
+            "11": {"material": 800.0, "labor": 2.0, "equipment": 0.0, "trade": TradeCategory.APPLIANCE_INSTALLER},
+            "12": {"material": 200.0, "labor": 1.5, "equipment": 0.0, "trade": TradeCategory.CABINET_INSTALLER},
+            "13": {"material": 100.0, "labor": 1.0, "equipment": 0.0, "trade": TradeCategory.GENERAL_LABOR},
+            "14": {"material": 500.0, "labor": 4.0, "equipment": 50.0, "trade": TradeCategory.GENERAL_LABOR},
+            "21": {"material": 50.0, "labor": 1.0, "equipment": 0.0, "trade": TradeCategory.PLUMBER},
+            "22": {"material": 75.0, "labor": 1.5, "equipment": 0.0, "trade": TradeCategory.PLUMBER},
+            "23": {"material": 100.0, "labor": 2.0, "equipment": 0.0, "trade": TradeCategory.HVAC},
+            "25": {"material": 150.0, "labor": 2.0, "equipment": 0.0, "trade": TradeCategory.ELECTRICIAN},
+            "26": {"material": 50.0, "labor": 0.75, "equipment": 0.0, "trade": TradeCategory.ELECTRICIAN},
+            "27": {"material": 75.0, "labor": 1.0, "equipment": 0.0, "trade": TradeCategory.ELECTRICIAN},
+            "28": {"material": 200.0, "labor": 2.0, "equipment": 0.0, "trade": TradeCategory.ELECTRICIAN},
+            "31": {"material": 5.0, "labor": 0.1, "equipment": 10.0, "trade": TradeCategory.GENERAL_LABOR},
+            "32": {"material": 10.0, "labor": 0.2, "equipment": 5.0, "trade": TradeCategory.GENERAL_LABOR},
+            "33": {"material": 100.0, "labor": 2.0, "equipment": 20.0, "trade": TradeCategory.PLUMBER},
+        }
+        
+        div_defaults = defaults.get(
+            division,
+            {"material": 50.0, "labor": 0.5, "equipment": 0.0, "trade": TradeCategory.GENERAL_LABOR}
+        )
+        
+        return {
+            "cost_code": f"GEN-{division}-001",
+            "description": f"General Division {division} item",
+            "unit": "EA",
+            "unit_cost": CostRange.from_base_cost(div_defaults["material"]),
+            "labor_hours_per_unit": div_defaults["labor"],
+            "equipment_cost": CostRange.from_base_cost(div_defaults["equipment"]) if div_defaults["equipment"] > 0 else CostRange.zero(),
+            "primary_trade": div_defaults["trade"],
+            "secondary_trades": [],
+            "confidence": CostConfidenceLevel.LOW,
+            "confidence_score": 0.50
+        }
+
+    async def get_labor_rate(
+        self,
+        trade: TradeCategory,
+        zip_code: Optional[str] = None
+    ) -> Dict[str, Any]:
+        """Get labor rate with P50/P80/P90 range for a trade.
+        
+        Uses location data if available, otherwise returns national averages.
+        Applies variance multipliers for range:
+        - P50 (low): Base rate
+        - P80 (medium): Base × 1.12 (typical overtime/premium)
+        - P90 (high): Base × 1.20 (rush/after-hours)
+        
+        Args:
+            trade: Trade category (e.g., ELECTRICIAN, PLUMBER).
+            zip_code: Optional ZIP code for location-specific rates.
+            
+        Returns:
+            Dict with hourly_rate (CostRange), union_status, and confidence.
+        """
+        logger.debug(
+            "get_labor_rate",
+            trade=trade.value,
+            zip_code=zip_code
+        )
+        
+        # Get location factors if ZIP provided
+        base_rate = NATIONAL_AVERAGE_LABOR_RATES.get(trade, 40.0)
+        union_status = UnionStatus.MIXED
+        confidence = 0.70
+        
+        if zip_code:
+            try:
+                location = await self.get_location_factors(zip_code)
+                # Get trade-specific rate from location data
+                trade_rate = self._get_trade_rate_from_location(trade, location)
+                if trade_rate:
+                    base_rate = trade_rate
+                    union_status = location.union_status
+                    confidence = 0.90
+            except Exception as e:
+                logger.warning(
+                    "labor_rate_location_lookup_failed",
+                    zip_code=zip_code,
+                    error=str(e)
+                )
+        
+        # Labor rate variance is typically lower than material variance
+        # P80 = 12% higher (overtime consideration)
+        # P90 = 20% higher (rush/premium work)
+        return {
+            "trade": trade,
+            "hourly_rate": CostRange.from_base_cost(
+                base_rate,
+                p80_multiplier=1.12,
+                p90_multiplier=1.20
+            ),
+            "union_status": union_status,
+            "confidence": CostConfidenceLevel.HIGH if confidence >= 0.85 else CostConfidenceLevel.MEDIUM,
+            "confidence_score": confidence
+        }
+    
+    def _get_trade_rate_from_location(
+        self,
+        trade: TradeCategory,
+        location: LocationFactors
+    ) -> Optional[float]:
+        """Get trade-specific rate from location factors.
+        
+        Args:
+            trade: Trade category.
+            location: Location factors with labor rates.
+            
+        Returns:
+            Hourly rate for the trade, or None if not found.
+        """
+        trade_mapping = {
+            TradeCategory.ELECTRICIAN: location.labor_rates.electrician,
+            TradeCategory.PLUMBER: location.labor_rates.plumber,
+            TradeCategory.CARPENTER: location.labor_rates.carpenter,
+            TradeCategory.HVAC: location.labor_rates.hvac,
+            TradeCategory.GENERAL_LABOR: location.labor_rates.general_labor,
+            TradeCategory.PAINTER: location.labor_rates.painter,
+            TradeCategory.TILE_SETTER: location.labor_rates.tile_setter,
+            TradeCategory.ROOFER: location.labor_rates.roofer,
+            TradeCategory.CONCRETE_FINISHER: location.labor_rates.concrete_finisher,
+            TradeCategory.DRYWALL_INSTALLER: location.labor_rates.drywall_installer,
+            # Map additional trades to closest match
+            TradeCategory.CABINET_INSTALLER: location.labor_rates.carpenter,
+            TradeCategory.COUNTERTOP_INSTALLER: location.labor_rates.carpenter,
+            TradeCategory.FLOORING_INSTALLER: location.labor_rates.tile_setter,
+            TradeCategory.APPLIANCE_INSTALLER: location.labor_rates.general_labor,
+            TradeCategory.DEMOLITION: location.labor_rates.general_labor,
+            TradeCategory.MASON: location.labor_rates.concrete_finisher,
+            TradeCategory.WELDER: location.labor_rates.carpenter * 1.2,  # Premium
+        }
+        
+        return trade_mapping.get(trade)
+
+    async def get_equipment_cost(
+        self,
+        equipment_type: str,
+        duration_days: int = 1
+    ) -> Dict[str, Any]:
+        """Get equipment rental cost with P50/P80/P90 range.
+        
+        Args:
+            equipment_type: Type of equipment (e.g., 'dumpster', 'scaffold').
+            duration_days: Number of days.
+            
+        Returns:
+            Dict with daily_rate (CostRange), total_cost (CostRange), and confidence.
+        """
+        logger.debug(
+            "get_equipment_cost",
+            equipment_type=equipment_type,
+            duration_days=duration_days
+        )
+        
+        # Mock equipment rates (P50 base)
+        equipment_rates = {
+            "dumpster_10yd": 450.0,
+            "dumpster_20yd": 550.0,
+            "dumpster_30yd": 650.0,
+            "scaffold": 75.0,
+            "lift": 250.0,
+            "compressor": 85.0,
+            "generator": 125.0,
+            "saw_table": 45.0,
+            "saw_miter": 35.0,
+            "drill_hammer": 55.0,
+        }
+        
+        # Normalize equipment type
+        equipment_key = equipment_type.lower().replace(" ", "_").replace("-", "_")
+        
+        # Find best match
+        base_rate = None
+        for key, rate in equipment_rates.items():
+            if key in equipment_key or equipment_key in key:
+                base_rate = rate
+                break
+        
+        if base_rate is None:
+            base_rate = 100.0  # Default
+        
+        daily_rate = CostRange.from_base_cost(base_rate, p80_multiplier=1.10, p90_multiplier=1.18)
+        total_cost = daily_rate * duration_days
+        
+        return {
+            "equipment_type": equipment_type,
+            "daily_rate": daily_rate,
+            "duration_days": duration_days,
+            "total_cost": total_cost,
+            "confidence": CostConfidenceLevel.MEDIUM,
+            "confidence_score": 0.75
+        }
     
     async def get_cost_code(
         self,
