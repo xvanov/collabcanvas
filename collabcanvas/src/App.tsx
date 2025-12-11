@@ -3,6 +3,7 @@ import { useAuth } from './hooks/useAuth';
 import { Login } from './pages/Login';
 import { Dashboard } from './pages/Dashboard';
 import { Project } from './pages/Project';
+import Epic3LabPage from './pages/Epic3Lab';
 
 /**
  * Protected Route Component
@@ -51,6 +52,14 @@ function App() {
           element={
             <ProtectedRoute>
               <Project />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/epic3-lab"
+          element={
+            <ProtectedRoute>
+              <Epic3LabPage />
             </ProtectedRoute>
           }
         />

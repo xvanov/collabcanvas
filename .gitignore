@@ -28,12 +28,59 @@ yarn-error.log*
 .firebase/
 firebase-debug.log*
 firebase-*-debug.log*
+firestore-debug.log*
+database-debug.log*
+ui-debug.log*
+
 # BMAD (local only)
 .bmad-core/
 .bmad-*/
 
-
+# Test results
 .*test-results.*
 *test-results*
 .cursor/*
 backend/*
+
+# ===================
+# Python
+# ===================
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Distribution / packaging
+*.egg-info/
+*.egg
+dist/
+build/
+eggs/
+.eggs/
+wheels/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.hypothesis/
+
+# Type checking
+.mypy_cache/
+.pytype/
+
+# Jupyter
+.ipynb_checkpoints/
+
+# OS files
+.DS_Store
+Thumbs.db

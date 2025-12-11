@@ -248,6 +248,19 @@ export function Dashboard() {
         )}
       </div>
 
+      {/* Epic 3 Test Lab Button - Floating Bottom Right */}
+      <button
+        onClick={() => navigate('/epic3-lab')}
+        className="fixed bottom-6 right-6 bg-gradient-to-r from-indigo-600 via-purple-600 to-pink-600 
+                   text-white px-6 py-3 rounded-full shadow-lg hover:shadow-xl 
+                   transform hover:scale-105 active:scale-95 transition-all duration-200 
+                   font-semibold flex items-center gap-2 z-50 border-2 border-white"
+        title="Test Epic 3 features in isolation"
+      >
+        <span className="text-lg">🧪</span>
+        <span>Epic 3 Test Lab</span>
+      </button>
+
       {/* Create Project Modal */}
       {showCreateModal && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
