@@ -22,7 +22,7 @@ export default defineConfig({
   },
 
   use: {
-    baseURL: process.env.BASE_URL || 'http://localhost:3000',
+    baseURL: process.env.BASE_URL || 'http://localhost:4173',
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     video: 'retain-on-failure',
@@ -30,6 +30,7 @@ export default defineConfig({
     navigationTimeout: 30 * 1000, // Navigation timeout: 30s
   },
 
+  outputDir: 'test-results/output',
   reporter: [
     ['html', { outputFolder: 'test-results/html' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],

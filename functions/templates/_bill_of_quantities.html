@@ -1,0 +1,134 @@
+{# Bill of Quantities Section - AC 4.3.3
+   Lists all line items with quantity, unit, unit cost, and total
+#}
+<div class="section page-break">
+    <h2>Bill of Quantities</h2>
+
+    <p class="text-muted">
+        Complete itemized list of all materials, labor, and services included in this estimate.
+        Quantities are based on project specifications and industry standards.
+    </p>
+
+    <table class="table-striped">
+        <thead>
+            <tr>
+                <th style="width: 8%;">Item #</th>
+                <th style="width: 32%;">Description</th>
+                <th class="text-right" style="width: 12%;">Quantity</th>
+                <th class="text-center" style="width: 8%;">Unit</th>
+                <th class="text-right" style="width: 12%;">Unit Cost</th>
+                <th class="text-right" style="width: 14%;">Total</th>
+                <th class="text-center" style="width: 14%;">Division</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in bill_of_quantities.get('items', []) %}
+            <tr>
+                <td>{{ item.line_number | default(loop.index) }}</td>
+                <td>{{ item.description }}</td>
+                <td class="text-right">{{ "{:,.1f}".format(item.quantity) }}</td>
+                <td class="text-center">{{ item.unit }}</td>
+                <td class="currency">${{ "{:,.2f}".format(item.unit_cost) }}</td>
+                <td class="currency">${{ "{:,.0f}".format(item.total) }}</td>
+                <td class="text-center">
+                    <span class="badge badge-gray">{{ item.csi_division | default('--') }}</span>
+                </td>
+            </tr>
+            {% else %}
+            {# Sample data for demo/testing #}
+            <tr>
+                <td>1</td>
+                <td>Kitchen Cabinets, wood, standard grade</td>
+                <td class="text-right">20.0</td>
+                <td class="text-center">lf</td>
+                <td class="currency">$225.00</td>
+                <td class="currency">$4,500</td>
+                <td class="text-center"><span class="badge badge-gray">12</span></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Countertops, granite, standard</td>
+                <td class="text-right">40.0</td>
+                <td class="text-center">sf</td>
+                <td class="currency">$85.00</td>
+                <td class="currency">$3,400</td>
+                <td class="text-center"><span class="badge badge-gray">12</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Interior Paint, latex, 2 coats</td>
+                <td class="text-right">500.0</td>
+                <td class="text-center">sf</td>
+                <td class="currency">$1.25</td>
+                <td class="currency">$625</td>
+                <td class="text-center"><span class="badge badge-gray">09</span></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Hardwood Flooring</td>
+                <td class="text-right">200.0</td>
+                <td class="text-center">sf</td>
+                <td class="currency">$12.00</td>
+                <td class="currency">$2,400</td>
+                <td class="text-center"><span class="badge badge-gray">06</span></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Electrical Rough-in</td>
+                <td class="text-right">1.0</td>
+                <td class="text-center">ls</td>
+                <td class="currency">$3,500.00</td>
+                <td class="currency">$3,500</td>
+                <td class="text-center"><span class="badge badge-gray">26</span></td>
+            </tr>
+            <tr>
+                <td>6</td>
+                <td>Plumbing Fixtures</td>
+                <td class="text-right">1.0</td>
+                <td class="text-center">set</td>
+                <td class="currency">$1,250.00</td>
+                <td class="currency">$1,250</td>
+                <td class="text-center"><span class="badge badge-gray">22</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            <tr class="summary-row">
+                <td colspan="5"><strong>Subtotal - Materials & Labor</strong></td>
+                <td class="currency"><strong>${{ "{:,.0f}".format(bill_of_quantities.subtotal | default(estimate.total_cost * 0.9)) }}</strong></td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="5">Permits & Inspections</td>
+                <td class="currency">${{ "{:,.0f}".format(bill_of_quantities.permits | default(estimate.total_cost * 0.03)) }}</td>
+                <td></td>
+            </tr>
+            <tr>
+                <td colspan="5">Overhead & Profit ({{ bill_of_quantities.markup_pct | default(7) }}%)</td>
+                <td class="currency">${{ "{:,.0f}".format(bill_of_quantities.overhead | default(estimate.total_cost * 0.07)) }}</td>
+                <td></td>
+            </tr>
+            <tr class="grand-total">
+                <td colspan="5"><strong>Grand Total</strong></td>
+                <td class="currency"><strong>${{ "{:,.0f}".format(estimate.total_cost) }}</strong></td>
+                <td></td>
+            </tr>
+        </tfoot>
+    </table>
+
+    <h3>Unit Abbreviations</h3>
+    <div class="text-small text-muted">
+        <strong>sf</strong> = square feet |
+        <strong>lf</strong> = linear feet |
+        <strong>ls</strong> = lump sum |
+        <strong>ea</strong> = each |
+        <strong>set</strong> = complete set |
+        <strong>sq</strong> = 100 square feet (roofing)
+    </div>
+
+    {% if not client_ready and bill_of_quantities.internal_notes %}
+    <div class="internal-only">
+        {{ bill_of_quantities.internal_notes }}
+    </div>
+    {% endif %}
+</div>

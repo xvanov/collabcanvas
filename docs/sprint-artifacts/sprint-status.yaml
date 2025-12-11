@@ -1,0 +1,82 @@
+# generated: 2025-12-09
+# project: TrueCost
+# project_key: truecost
+# tracking_system: file-system
+# story_location: docs/sprint_artifacts
+
+# STATUS DEFINITIONS:
+# ==================
+# Epic Status:
+#   - backlog: Epic exists in epic file but not contexted
+#   - contexted: Next epic tech context created by *epic-tech-context (required)
+#
+# Story Status:
+#   - backlog: Story only exists in epic file
+#   - drafted: Story file created in stories folder by *create-story
+#   - ready-for-dev: Draft approved and story context created by *story-ready
+#   - in-progress: Developer actively working on implementation by *dev-story
+#   - review: Implementation complete, ready for review by *code-review
+#   - done: Story completed by *story-done
+#
+# Retrospective Status:
+#   - optional: Can be completed but not required
+#   - completed: Retrospective has been done by *retrospective
+#
+# WORKFLOW NOTES:
+# ===============
+# - Epics should be 'contexted' before stories can be 'drafted'
+# - SM typically drafts next story ONLY after previous one is 'done' to incorporate learnings
+# - Dev moves story to 'review', dev reviews, then Dev moves to 'done'
+# - TrueCost is designed for 5 parallel developers - each epic can progress independently
+
+generated: 2025-12-09
+project: TrueCost
+project_key: truecost
+tracking_system: file-system
+story_location: docs/sprint_artifacts
+
+development_status:
+  # Epic 1: Frontend Experience (Dev 1) - 4 stories
+  epic-1: backlog
+  1-1-input-section-dashboard: backlog
+  1-2-plan-section: backlog
+  1-3-final-estimate-section: backlog
+  1-4-pipeline-visibility-feedback: backlog
+  epic-1-retrospective: optional
+
+  # Epic 2: Agent Pipeline (Dev 2) - 8 stories (1 per agent + orchestrator)
+  epic-2: backlog
+  2-1-pipeline-foundation-orchestrator: backlog
+  2-2-clarification-agent: backlog
+  2-3-cad-analysis-agent: backlog
+  2-4-location-intelligence-agent: backlog
+  2-5-construction-scope-agent: backlog
+  2-6-cost-estimation-agent: backlog
+  2-7-risk-analysis-agent: backlog
+  2-8-final-estimator-agent: backlog
+  epic-2-retrospective: optional
+
+  # Epic 3: CAD & Voice Processing (Dev 3) - 3 stories
+  epic-3: backlog
+  3-1-cad-file-upload-dwg-parsing: backlog
+  3-2-vision-based-cad-extraction: backlog
+  3-3-voice-input-processing: backlog
+  epic-3-retrospective: optional
+
+  # Epic 4: Data Services & PDF Output (Dev 4) - 5 stories
+  epic-4: contexted
+  4-1-location-intelligence-service: done
+  4-2-cost-data-monte-carlo-simulation: done
+  4-3-pdf-report-generation: review  # REWORK COMPLETE: client-ready mode fully implemented
+  4-4-cost-data-seeding: done
+  4-5-real-data-integration: done  # APPROVED: Senior code review passed 2025-12-10. All 16 ACs implemented, 90 tests pass.
+  epic-4-retrospective: optional
+
+  # Epic 5: Multi-Retailer Price Optimization (Dev 5) - 5 stories
+  epic-5: backlog
+  5-1-unrawngle-api-integration: backlog
+  5-2-fuzzy-product-matching: backlog
+  5-3-price-comparison-engine: backlog
+  5-4-price-comparison-ui: backlog
+  5-5-shopping-list-generator: backlog
+  epic-5-retrospective: optional

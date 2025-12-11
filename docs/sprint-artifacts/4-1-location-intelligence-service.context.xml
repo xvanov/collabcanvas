@@ -1,0 +1,254 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>1</storyId>
+    <title>Location Intelligence Service</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-1-location-intelligence-service.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system (Location Agent)</asA>
+    <iWant>to query location-specific cost factors by zip code</iWant>
+    <soThat>estimates are accurately adjusted for regional labor rates, union status, permit costs, and weather factors</soThat>
+    <tasks>
+      <task id="1" name="Create Data Models" ac="4.1.1-4.1.4">
+        <subtask id="1.1">Create LocationFactors dataclass with all required fields</subtask>
+        <subtask id="1.2">Create PermitCosts dataclass for permit cost structure</subtask>
+        <subtask id="1.3">Create WeatherFactors dataclass for seasonal impact data</subtask>
+        <subtask id="1.4">Create LaborRate dataclass for individual trade rates</subtask>
+        <subtask id="1.5">Add type hints and docstrings per Python conventions</subtask>
+      </task>
+      <task id="2" name="Implement Location Service Function" ac="4.1.1-4.1.5">
+        <subtask id="2.1">Create functions/services/cost_data_service.py if not exists</subtask>
+        <subtask id="2.2">Implement async def get_location_factors(zip_code: str) -> LocationFactors</subtask>
+        <subtask id="2.3">Add zip code format validation (5-digit US zip)</subtask>
+        <subtask id="2.4">Implement Firestore lookup from /costData/locationFactors/{zipCode}</subtask>
+        <subtask id="2.5">Implement regional fallback logic when specific zip not found</subtask>
+        <subtask id="2.6">Map zip prefix to region code (west, midwest, south, northeast)</subtask>
+        <subtask id="2.7">Set is_default=True and data_source="default" on fallback</subtask>
+      </task>
+      <task id="3" name="Implement Caching Layer" ac="4.1.6">
+        <subtask id="3.1">Add in-memory cache for hot data (LRU or similar)</subtask>
+        <subtask id="3.2">Set cache TTL to 24 hours</subtask>
+        <subtask id="3.3">Track data_source field (firestore | cache | default)</subtask>
+        <subtask id="3.4">Add structured logging for cache hits/misses</subtask>
+      </task>
+      <task id="4" name="Add Structured Logging" ac="all">
+        <subtask id="4.1">Configure structlog logger for the service</subtask>
+        <subtask id="4.2">Log location_lookup events with zip_code, data_source, latency_ms</subtask>
+        <subtask id="4.3">Log errors with appropriate context</subtask>
+      </task>
+      <task id="5" name="Write Unit Tests" ac="4.1.1-4.1.7">
+        <subtask id="5.1">Create functions/tests/unit/test_location_service.py</subtask>
+        <subtask id="5.2">Test: Valid zip returns all 8 trade labor rates</subtask>
+        <subtask id="5.3">Test: Chicago (60601) returns is_union=True</subtask>
+        <subtask id="5.4">Test: Houston (77001) returns is_union=False</subtask>
+        <subtask id="5.5">Test: Permit costs have base_percentage, minimum, inspection_fee</subtask>
+        <subtask id="5.6">Test: Denver has winter_slowdown > 1.0</subtask>
+        <subtask id="5.7">Test: Unknown zip (00000) returns is_default=True</subtask>
+        <subtask id="5.8">Test: NYC labor rates > Denver labor rates > rural rates</subtask>
+        <subtask id="5.9">Performance test: Cached lookup < 500ms</subtask>
+      </task>
+      <task id="6" name="Integration Test with Firestore Emulator" ac="4.1.1-4.1.5">
+        <subtask id="6.1">Create functions/tests/integration/test_location_with_firestore.py</subtask>
+        <subtask id="6.2">Test end-to-end location lookup with emulator</subtask>
+        <subtask id="6.3">Verify Firestore document structure matches schema</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="4.1.1">Given a valid zip code, service returns labor rates for all 8 trades (electrician, plumber, carpenter, hvac_tech, roofer, painter, tile_setter, general_labor) - Verification: Unit test with mock data</criterion>
+    <criterion id="4.1.2">Given a valid zip code, service returns union/non-union status (is_union boolean) - Verification: Unit test with Chicago (60601 = union) vs Houston (77001 = non-union)</criterion>
+    <criterion id="4.1.3">Given a valid zip code, service returns permit cost estimates (percentage of project value, minimum, maximum, inspection fee) - Verification: Unit test verifying PermitCosts dataclass fields</criterion>
+    <criterion id="4.1.4">Given a valid zip code, service returns weather/seasonal factors (winter_slowdown, summer_premium, rainy_season_months, outdoor_work_adjustment) - Verification: Unit test with Denver (winter slowdown > 1.0)</criterion>
+    <criterion id="4.1.5">Given an unknown zip code (e.g., "00000"), service returns regional defaults with is_default=True flag - Verification: Unit test verifying fallback behavior</criterion>
+    <criterion id="4.1.6">Response time less than 500ms for cached lookups - Verification: Performance test with timing assertions</criterion>
+    <criterion id="4.1.7">Labor rates reflect regional cost of living variations (NYC > Denver > rural) - Verification: Data validation test comparing rates across regions</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Detailed Design - Location Intelligence Service</section>
+        <snippet>Defines LocationFactors, PermitCosts, WeatherFactors dataclass schemas. API contract: async def get_location_factors(zip_code: str) -> LocationFactors. Performance target: &lt;500ms for cached lookups.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>Data Architecture - Firestore Schema</section>
+        <snippet>Firestore collection: /costData/locationFactors/{zipCode}. ADR-005: Firestore for cost data storage (auto-scaling, Firebase-native). Uses structlog for logging.</snippet>
+      </doc>
+      <doc>
+        <path>docs/prd.md</path>
+        <title>TrueCost PRD</title>
+        <section>FR37-40: Location Intelligence</section>
+        <snippet>FR37: Retrieve labor rates by zip code. FR38: Determine union vs. non-union market. FR39: Retrieve permit cost estimates. FR40: Retrieve weather/seasonal factors.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Epic 4: Data Services - Story 4.1</section>
+        <snippet>Owner: Dev 4. Exclusive files: functions/services/cost_data_service.py, Firestore /costData/** collections. Verification checklist with 14 test items.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>Implementation Patterns - Logging Strategy</section>
+        <snippet>Uses structlog: logger.info("location_lookup", zip_code=zip, data_source="firestore", latency_ms=45). All logs written to Cloud Logging.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Workflows - Location Intelligence Flow</section>
+        <snippet>Flow: Check Firestore -> If found: return cached -> If not found: lookup region from zip prefix -> Return regional defaults with is_default=True.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Non-Functional Requirements - Performance</section>
+        <snippet>Location lookup: &lt;500ms via Firestore indexing and in-memory cache. Fallback rate target: &lt;20% with coverage of 50+ major metros.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Dependencies and Integrations</section>
+        <snippet>Python packages: firebase-admin 6.x (Firestore access), structlog 23.x (structured logging). Firestore: /costData/locationFactors/{zipCode}.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <note>This is a NEW Python service - no existing code to reference. Create fresh implementation per architecture specs.</note>
+      <target>
+        <path>functions/services/cost_data_service.py</path>
+        <kind>service</kind>
+        <symbol>get_location_factors</symbol>
+        <reason>Primary service file - create new async function for location factor lookups</reason>
+      </target>
+      <target>
+        <path>functions/tests/unit/test_location_service.py</path>
+        <kind>test</kind>
+        <symbol>TestLocationService</symbol>
+        <reason>Unit tests for LocationFactors dataclass and get_location_factors function</reason>
+      </target>
+      <target>
+        <path>functions/tests/integration/test_location_with_firestore.py</path>
+        <kind>integration-test</kind>
+        <symbol>TestLocationWithFirestore</symbol>
+        <reason>Integration tests using Firebase Emulator for end-to-end validation</reason>
+      </target>
+      <reference>
+        <path>collabcanvas/functions/src</path>
+        <kind>existing-functions</kind>
+        <reason>Existing Node.js Cloud Functions for reference patterns - new Python functions will follow similar organization</reason>
+      </reference>
+      <reference>
+        <path>collabcanvas/firestore.rules</path>
+        <kind>security-rules</kind>
+        <reason>Add rules for /costData/** collection - allow read for authenticated users</reason>
+      </reference>
+    </code>
+
+    <dependencies>
+      <python comment="Required for Epic 4 Python Cloud Functions">
+        <package version="6.x" purpose="Firestore and Firebase Storage access">firebase-admin</package>
+        <package version="0.4.x" purpose="Cloud Functions framework for Python">firebase-functions</package>
+        <package version="23.x" purpose="Structured logging per architecture">structlog</package>
+        <package purpose="Python standard library for dataclasses">dataclasses</package>
+        <package purpose="Type hints">typing</package>
+        <package purpose="Async operations">asyncio</package>
+        <package purpose="LRU cache decorator">functools</package>
+      </python>
+      <firestore comment="Firestore collections to be seeded by Story 4.4">
+        <collection>/costData/locationFactors/{zipCode}</collection>
+      </firestore>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="ownership">Dev 4 exclusive ownership of functions/services/cost_data_service.py</constraint>
+    <constraint type="ownership">Dev 4 exclusive ownership of Firestore /costData/** collections</constraint>
+    <constraint type="pattern">Use Python dataclasses for data models (LocationFactors, PermitCosts, WeatherFactors)</constraint>
+    <constraint type="pattern">Use structlog for all logging - format: logger.info("event_name", key=value)</constraint>
+    <constraint type="pattern">Use snake_case for Python functions and variables</constraint>
+    <constraint type="pattern">Use PascalCase for Python classes and dataclasses</constraint>
+    <constraint type="pattern">All functions must be async for Firestore operations</constraint>
+    <constraint type="error-handling">Return regional defaults with is_default=True for unknown zip codes (graceful degradation)</constraint>
+    <constraint type="performance">Cached lookups must complete in &lt;500ms</constraint>
+    <constraint type="performance">Cache TTL: 24 hours for location data</constraint>
+    <constraint type="testing">Unit tests use pytest framework</constraint>
+    <constraint type="testing">Integration tests use Firebase Emulator</constraint>
+    <constraint type="security">Read-only public access for /costData/** - no sensitive data</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="get_location_factors" kind="async-function">
+      <signature>async def get_location_factors(zip_code: str) -> LocationFactors</signature>
+      <path>functions/services/cost_data_service.py</path>
+      <description>Retrieve location-specific cost factors for a zip code. Falls back to regional defaults if specific zip not found. Results cached for 24 hours.</description>
+      <raises>ValueError if zip_code format is invalid (not 5 digits)</raises>
+    </interface>
+    <interface name="LocationFactors" kind="dataclass">
+      <signature>@dataclass LocationFactors</signature>
+      <fields>
+        <field name="zip_code" type="str">5-digit US zip code</field>
+        <field name="region_code" type="str">west, midwest, south, northeast</field>
+        <field name="city" type="str">City name</field>
+        <field name="state" type="str">State abbreviation</field>
+        <field name="labor_rates" type="Dict[str, float]">{trade: hourly_rate} for 8 trades</field>
+        <field name="is_union" type="bool">Union market status</field>
+        <field name="union_premium" type="float">Multiplier if union (e.g., 1.25)</field>
+        <field name="permit_costs" type="PermitCosts">Permit cost dataclass</field>
+        <field name="weather_factors" type="WeatherFactors">Weather factor dataclass</field>
+        <field name="is_default" type="bool">True if using regional fallback</field>
+        <field name="data_source" type="str">firestore | cache | default</field>
+      </fields>
+    </interface>
+    <interface name="PermitCosts" kind="dataclass">
+      <signature>@dataclass PermitCosts</signature>
+      <fields>
+        <field name="base_percentage" type="float">e.g., 0.02 for 2% of project value</field>
+        <field name="minimum" type="float">Minimum permit fee</field>
+        <field name="maximum" type="Optional[float]">Cap if exists</field>
+        <field name="inspection_fee" type="float">Inspection fee amount</field>
+      </fields>
+    </interface>
+    <interface name="WeatherFactors" kind="dataclass">
+      <signature>@dataclass WeatherFactors</signature>
+      <fields>
+        <field name="winter_slowdown" type="float">e.g., 1.15 for 15% productivity loss</field>
+        <field name="summer_premium" type="float">e.g., 1.0 for no premium</field>
+        <field name="rainy_season_months" type="List[int]">List of month numbers</field>
+        <field name="outdoor_work_adjustment" type="float">Adjustment factor</field>
+      </fields>
+    </interface>
+    <interface name="Firestore Collection" kind="firestore">
+      <path>/costData/locationFactors/{zipCode}</path>
+      <schema>{regionCode, city, state, laborRates: {}, isUnion, unionPremium, permitCosts: {}, weatherFactors: {}}</schema>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>Use pytest as the testing framework for Python Cloud Functions. Unit tests should mock Firestore calls. Integration tests should use Firebase Emulator. All tests must pass before marking story as done. Follow AAA pattern (Arrange-Act-Assert). Use pytest fixtures for common test data. Performance tests should use timing assertions with time.perf_counter().</standards>
+    <locations>
+      <location>functions/tests/unit/test_location_service.py</location>
+      <location>functions/tests/integration/test_location_with_firestore.py</location>
+    </locations>
+    <ideas>
+      <idea ac="4.1.1">test_valid_zip_returns_all_8_trades - Call get_location_factors("80202"), verify response contains all 8 trade keys in labor_rates dict</idea>
+      <idea ac="4.1.2">test_chicago_is_union - Call get_location_factors("60601"), assert is_union=True</idea>
+      <idea ac="4.1.2">test_houston_not_union - Call get_location_factors("77001"), assert is_union=False</idea>
+      <idea ac="4.1.3">test_permit_costs_structure - Verify PermitCosts has base_percentage, minimum, maximum, inspection_fee fields</idea>
+      <idea ac="4.1.4">test_denver_winter_slowdown - Call get_location_factors("80202"), assert weather_factors.winter_slowdown > 1.0</idea>
+      <idea ac="4.1.5">test_unknown_zip_returns_default - Call get_location_factors("00000"), assert is_default=True</idea>
+      <idea ac="4.1.6">test_cached_lookup_performance - Call same zip twice, measure second call, assert &lt;500ms</idea>
+      <idea ac="4.1.7">test_regional_rate_hierarchy - Verify NYC rates > Denver rates > rural rates</idea>
+      <idea ac="4.1.1-4.1.5">test_firestore_integration - Use emulator, seed test data, verify end-to-end lookup</idea>
+    </ideas>
+  </tests>
+</story-context>

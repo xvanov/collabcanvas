@@ -1,0 +1,88 @@
+{# Client Risk Analysis Section - Simplified version for client-ready PDFs
+   Shows contingency recommendation without Monte Carlo methodology details
+   Replaces full risk analysis section when client_ready=True
+#}
+<div class="section page-break">
+    <h2>Project Contingency</h2>
+
+    <p class="text-muted">
+        Construction projects often encounter unforeseen conditions or changes that can affect the final cost.
+        We recommend budgeting a contingency allowance to ensure your project stays on track.
+    </p>
+
+    <div class="card">
+        <div class="card-header">Recommended Contingency</div>
+        <div class="stats-grid" style="margin-top: 16px;">
+            <div class="stat-card">
+                <div class="stat-value warning">{{ risk_analysis.contingency_pct | default(estimate.contingency_pct) }}%</div>
+                <div class="stat-label">Contingency Allowance</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-value primary">${{ "{:,.0f}".format(risk_analysis.contingency_amount | default(estimate.p80 * estimate.contingency_pct / 100)) }}</div>
+                <div class="stat-label">Amount Recommended</div>
+            </div>
+        </div>
+
+        <p style="margin-top: 20px;">
+            This contingency is <strong>already included</strong> in the total project estimate of
+            <strong>${{ "{:,.0f}".format(estimate.p80) }}</strong> shown on this report.
+        </p>
+    </div>
+
+    <h3>What the Contingency Covers</h3>
+    <p class="text-muted">
+        The contingency allowance provides a buffer for common project variables:
+    </p>
+
+    <div class="card">
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Category</th>
+                    <th style="width: 70%;">Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Material Price Fluctuations</strong></td>
+                    <td>Building material prices can vary based on market conditions, supply chain factors, and timing of purchase</td>
+                </tr>
+                <tr>
+                    <td><strong>Unforeseen Site Conditions</strong></td>
+                    <td>Hidden issues behind walls, under floors, or in existing systems that are discovered during construction</td>
+                </tr>
+                <tr>
+                    <td><strong>Minor Scope Adjustments</strong></td>
+                    <td>Small changes or additions that commonly arise during project execution</td>
+                </tr>
+                <tr>
+                    <td><strong>Code Compliance Updates</strong></td>
+                    <td>Additional work that may be required to meet current building code requirements</td>
+                </tr>
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Items Requiring Change Orders</h3>
+    <p class="text-muted">
+        The following types of changes would require a formal change order and may result in additional costs
+        beyond the contingency allowance:
+    </p>
+
+    <ul>
+        <li><strong>Scope Additions:</strong> Adding new work not included in the original estimate</li>
+        <li><strong>Material Upgrades:</strong> Selecting higher-grade materials than originally specified</li>
+        <li><strong>Design Changes:</strong> Modifications to the approved design or layout</li>
+        <li><strong>Major Structural Issues:</strong> Significant structural problems requiring engineering solutions</li>
+        <li><strong>Hazardous Materials:</strong> Discovery of asbestos, lead paint, or mold requiring remediation</li>
+    </ul>
+
+    <div class="annotation">
+        <div class="annotation-title">Change Order Policy</div>
+        <p>
+            Any work outside the defined scope will be documented in a written change order
+            <strong>before work begins</strong>. Change orders will detail the additional cost,
+            any impact to the project timeline, and require your written approval before proceeding.
+        </p>
+    </div>
+</div>
