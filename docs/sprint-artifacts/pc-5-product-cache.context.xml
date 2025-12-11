@@ -1,0 +1,308 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>price-comparison</epicId>
+    <storyId>PC-5</storyId>
+    <title>Global Product Cache</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/story-pc-5-product-cache.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system administrator</asA>
+    <iWant>product matches to be cached globally by retailer</iWant>
+    <soThat>future price comparisons are faster and consume fewer API credits</soThat>
+    <tasks>
+      <task id="1" acs="#1,#2,#3">
+        <title>Implement saveToProductCache function</title>
+        <subtasks>
+          <subtask>Add CachedProduct type to Cloud Function (duplicated from src/types)</subtask>
+          <subtask>Create normalizeCacheKey() function</subtask>
+          <subtask>Implement saveToProductCache() with upsert logic</subtask>
+          <subtask>Handle searchQueries array merge for existing entries</subtask>
+          <subtask>Increment matchCount on cache updates</subtask>
+        </subtasks>
+      </task>
+      <task id="2" acs="#4">
+        <title>Implement findInProductCache function</title>
+        <subtasks>
+          <subtask>Query cache by normalized key (exact match)</subtask>
+          <subtask>Query cache by searchQueries array-contains</subtask>
+          <subtask>Return null if not found</subtask>
+        </subtasks>
+      </task>
+      <task id="3" acs="#5,#6,#7">
+        <title>Implement assessCacheMatchConfidence function</title>
+        <subtasks>
+          <subtask>Use GPT-4o-mini for confidence scoring</subtask>
+          <subtask>Prompt: "Is cached product X a good match for search query Y?"</subtask>
+          <subtask>Return confidence 0-1 and reasoning</subtask>
+          <subtask>Define CACHE_CONFIDENCE_THRESHOLD = 0.8</subtask>
+        </subtasks>
+      </task>
+      <task id="4" acs="#6,#7,#8">
+        <title>Modify compareOneProduct flow</title>
+        <subtasks>
+          <subtask>Add cache lookup before API call</subtask>
+          <subtask>Skip API if cache hit with confidence >= 0.8</subtask>
+          <subtask>Call API if cache miss or low confidence</subtask>
+          <subtask>Save to cache after successful API match</subtask>
+        </subtasks>
+      </task>
+      <task id="5" acs="#9">
+        <title>Update Firestore rules</title>
+        <subtasks>
+          <subtask>Add read/write rules for productCache collection</subtask>
+          <subtask>Allow authenticated users to read/write</subtask>
+        </subtasks>
+      </task>
+      <task id="6" acs="#10">
+        <title>Add unit tests</title>
+        <subtasks>
+          <subtask>Test cache hit scenario</subtask>
+          <subtask>Test cache miss scenario</subtask>
+          <subtask>Test low confidence scenario</subtask>
+          <subtask>Test normalizeCacheKey function</subtask>
+          <subtask>Test saveToProductCache function</subtask>
+        </subtasks>
+      </task>
+      <task id="7" acs="optional">
+        <title>Add types to frontend (optional)</title>
+        <subtasks>
+          <subtask>Add CachedProduct, CacheLookupResult to src/types/priceComparison.ts</subtask>
+          <subtask>Add CACHE_CONFIDENCE_THRESHOLD constant</subtask>
+        </subtasks>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="AC1">After successful price comparison, matched products are saved to productCache/{retailer}/products/</criterion>
+    <criterion id="AC2">Home Depot products saved with: id, name, brand, price, url, imageUrl, lastUpdated, searchQueries[]</criterion>
+    <criterion id="AC3">Lowe's products saved with same structure as Home Depot</criterion>
+    <criterion id="AC4">On new comparison, system first queries cache for potential matches</criterion>
+    <criterion id="AC5">LLM evaluates cache matches with confidence score (0-1)</criterion>
+    <criterion id="AC6">If confidence >= 0.8, use cached product (skip API call)</criterion>
+    <criterion id="AC7">If confidence < 0.8, call API and update cache with new result</criterion>
+    <criterion id="AC8">Cache lookup adds < 500ms to comparison time (on cache hit)</criterion>
+    <criterion id="AC9">Firestore rules updated to allow read/write to productCache collection</criterion>
+    <criterion id="AC10">Unit tests cover cache hit, cache miss, and low-confidence scenarios</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/prd.md</path>
+        <title>TrueCost PRD</title>
+        <section>Growth Features - Enhanced Data Integration</section>
+        <snippet>Post-MVP features include Home Depot/Lowe's API for real-time material pricing, establishing the foundation for price comparison functionality.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>Data Architecture - Firestore Schema</section>
+        <snippet>Firestore document database with user/estimates collections. Flat structure with subcollections for real-time updates.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/epic-price-comparison.md</path>
+        <title>Epic: Price Intelligence Module</title>
+        <section>Stories</section>
+        <snippet>PC-5 Global Product Cache is a Medium complexity story that adds caching to reduce API calls and improve response time.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <artifact>
+        <path>collabcanvas/functions/src/priceComparison.ts</path>
+        <kind>Cloud Function</kind>
+        <symbol>comparePrices, compareOneProduct, selectBestMatch, fetchForRetailer</symbol>
+        <lines>1-598</lines>
+        <reason>Main file to modify - contains the price comparison logic where cache lookup and save must be integrated</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/functions/src/priceComparison.ts</path>
+        <kind>function</kind>
+        <symbol>compareOneProduct</symbol>
+        <lines>446-506</lines>
+        <reason>Core function to modify - cache lookup before API call and save after successful match</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/functions/src/priceComparison.ts</path>
+        <kind>function</kind>
+        <symbol>selectBestMatch</symbol>
+        <lines>244-287</lines>
+        <reason>LLM matching pattern to follow for assessCacheMatchConfidence implementation</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/functions/src/priceComparison.ts</path>
+        <kind>function</kind>
+        <symbol>parseMatchResult</symbol>
+        <lines>222-239</lines>
+        <reason>JSON parsing utility for LLM responses - reuse for cache confidence parsing</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/functions/src/priceComparison.ts</path>
+        <kind>type</kind>
+        <symbol>RetailerProduct, Retailer</symbol>
+        <lines>38-57</lines>
+        <reason>Existing type definitions that CachedProduct will wrap</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/src/types/priceComparison.ts</path>
+        <kind>types</kind>
+        <symbol>RetailerProduct, Retailer, ComparisonResult</symbol>
+        <lines>1-84</lines>
+        <reason>Frontend types - optional location for CachedProduct types if needed client-side</reason>
+      </artifact>
+      <artifact>
+        <path>collabcanvas/firestore.rules</path>
+        <kind>security rules</kind>
+        <symbol>priceComparison</symbol>
+        <lines>401-408</lines>
+        <reason>Existing priceComparison rules pattern to follow for productCache collection</reason>
+      </artifact>
+    </code>
+    <dependencies>
+      <node>
+        <package>firebase-admin</package>
+        <version>^12.0.0</version>
+        <usage>Firestore operations for cache read/write</usage>
+      </node>
+      <node>
+        <package>firebase-functions</package>
+        <version>^4.8.0</version>
+        <usage>Cloud Functions v2 callable functions</usage>
+      </node>
+      <node>
+        <package>openai</package>
+        <version>^4.20.0</version>
+        <usage>GPT-4o-mini for cache confidence scoring</usage>
+      </node>
+      <frontend>
+        <package>firebase</package>
+        <version>^12.4.0</version>
+        <usage>Firestore client SDK</usage>
+      </frontend>
+      <frontend>
+        <package>vitest</package>
+        <version>^3.2.4</version>
+        <usage>Unit testing framework</usage>
+      </frontend>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">Cache is global (not per-project) - all users benefit from cached products</constraint>
+    <constraint type="storage">Use Firestore for cache storage at productCache/{retailer}/products/{normalizedProductName}</constraint>
+    <constraint type="llm">LLM call for confidence check uses GPT-4o-mini (same as product matching)</constraint>
+    <constraint type="normalization">Cache key normalization: lowercase, remove special chars, collapse whitespace, max 100 chars</constraint>
+    <constraint type="performance">Cache lookup must add < 500ms to comparison time on cache hit</constraint>
+    <constraint type="threshold">CACHE_CONFIDENCE_THRESHOLD = 0.8 - configurable constant</constraint>
+    <constraint type="pattern">Follow existing normalizeProduct() and selectBestMatch() patterns</constraint>
+    <constraint type="pattern">Use existing OpenAI client initialization pattern from priceComparison.ts</constraint>
+    <constraint type="testing">698 tests currently passing - new tests must not break existing suite</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface>
+      <name>CachedProduct</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface CachedProduct {
+  product: RetailerProduct
+  searchQueries: string[]
+  lastUpdated: number
+  matchCount: number
+  originalSearchTerm: string
+}
+      </signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>CacheLookupResult</name>
+      <kind>TypeScript interface</kind>
+      <signature>
+interface CacheLookupResult {
+  found: boolean
+  cachedProduct?: CachedProduct
+  confidence: number
+  useCache: boolean
+  reasoning: string
+}
+      </signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>normalizeCacheKey</name>
+      <kind>function signature</kind>
+      <signature>function normalizeCacheKey(productName: string): string</signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>findInProductCache</name>
+      <kind>function signature</kind>
+      <signature>
+async function findInProductCache(
+  db: FirebaseFirestore.Firestore,
+  retailer: Retailer,
+  searchQuery: string
+): Promise&lt;{ cachedProduct: CachedProduct | null; docId: string | null }&gt;
+      </signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>assessCacheMatchConfidence</name>
+      <kind>function signature</kind>
+      <signature>
+async function assessCacheMatchConfidence(
+  searchQuery: string,
+  cachedProduct: CachedProduct
+): Promise&lt;{ confidence: number; reasoning: string }&gt;
+      </signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>saveToProductCache</name>
+      <kind>function signature</kind>
+      <signature>
+async function saveToProductCache(
+  db: FirebaseFirestore.Firestore,
+  retailer: Retailer,
+  product: RetailerProduct,
+  searchQuery: string
+): Promise&lt;void&gt;
+      </signature>
+      <path>collabcanvas/functions/src/priceComparison.ts</path>
+    </interface>
+    <interface>
+      <name>Firestore productCache collection</name>
+      <kind>Firestore path</kind>
+      <signature>productCache/{retailer}/products/{normalizedProductName}</signature>
+      <path>collabcanvas/firestore.rules</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use Vitest as the testing framework. Follow existing patterns from the codebase which has 698 passing tests.
+      Tests should be placed in collabcanvas/functions/src/priceComparison.test.ts alongside existing tests.
+      Use describe/it blocks for organization. Mock external API calls (Firestore, OpenAI) for unit tests.
+      The test suite currently uses `vitest run` for execution with no specific config needed.
+    </standards>
+    <locations>
+      <location>collabcanvas/functions/src/*.test.ts</location>
+      <location>collabcanvas/src/**/*.test.ts</location>
+    </locations>
+    <ideas>
+      <idea ac="AC1,AC2,AC3">Test that saveToProductCache writes correct structure to Firestore with all required fields</idea>
+      <idea ac="AC4">Test findInProductCache returns cached product when exact normalized key match exists</idea>
+      <idea ac="AC4">Test findInProductCache returns cached product when searchQueries array contains query</idea>
+      <idea ac="AC5">Test assessCacheMatchConfidence returns confidence score from LLM response</idea>
+      <idea ac="AC6">Test compareOneProduct skips API when cache hit with confidence >= 0.8</idea>
+      <idea ac="AC7">Test compareOneProduct calls API when confidence < 0.8 and updates cache</idea>
+      <idea ac="AC8">Test cache lookup performance is under 500ms (mock Firestore with fast response)</idea>
+      <idea ac="normalization">Test normalizeCacheKey handles special chars, whitespace, max length</idea>
+      <idea ac="upsert">Test cache upsert increments matchCount and merges searchQueries</idea>
+    </ideas>
+  </tests>
+</story-context>

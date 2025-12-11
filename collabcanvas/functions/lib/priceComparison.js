@@ -15,6 +15,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 if (process.env.NODE_ENV !== 'production') {
     console.log('[PRICE_COMPARISON] Environment check:');
     console.log('[PRICE_COMPARISON] - UNWRANGLE_API_KEY:', process.env.UNWRANGLE_API_KEY ? 'SET' : 'NOT SET');
+    console.log('[PRICE_COMPARISON] - SERP_API_KEY:', process.env.SERP_API_KEY ? 'SET' : 'NOT SET');
     console.log('[PRICE_COMPARISON] - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
 }
 // Initialize admin if not already
@@ -33,13 +34,19 @@ else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATO
     console.log('[PRICE_COMPARISON] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
 }
 // ============ CONSTANTS ============
-const PLATFORMS = {
+// Unwrangle platforms (for Home Depot)
+const UNWRANGLE_PLATFORMS = {
     homeDepot: 'homedepot_search',
-    lowes: 'lowes_search',
-    aceHardware: 'acehardware_search',
 };
-const RETAILERS = ['homeDepot', 'lowes', 'aceHardware'];
-const UNWRANGLE_TIMEOUT_MS = 30000; // 30 seconds per retailer
+// SerpApi site filters for Google Shopping (for Lowe's)
+const SERPAPI_SITES = {
+    lowes: 'lowes.com',
+};
+// Active retailers - Home Depot via Unwrangle, Lowe's via SerpApi Google Shopping
+// aceHardware removed - no reliable API available
+const RETAILERS = ['homeDepot', 'lowes'];
+const UNWRANGLE_TIMEOUT_MS = 30000;
+const SERPAPI_TIMEOUT_MS = 30000;
 // ============ UNWRANGLE API ============
 async function fetchFromUnwrangle(productName, platform, zipCode) {
     const apiKey = process.env.UNWRANGLE_API_KEY;
@@ -78,6 +85,65 @@ async function fetchFromUnwrangle(productName, platform, zipCode) {
             return [];
         }
         console.error(`[PRICE_COMPARISON] Unwrangle fetch error:`, err);
+        return [];
+    }
+}
+// ============ SERPAPI GOOGLE SHOPPING ============
+// Merchant name patterns for filtering Google Shopping results
+const MERCHANT_PATTERNS = {
+    'lowes.com': /lowe'?s/i,
+};
+async function fetchFromSerpApi(productName, merchantKey) {
+    const apiKey = process.env.SERP_API_KEY;
+    if (!apiKey) {
+        console.error('[PRICE_COMPARISON] SERP_API_KEY not configured');
+        throw new Error('SERP_API_KEY not configured');
+    }
+    // Search Google Shopping without site filter (doesn't work for shopping)
+    // We'll filter by merchant name after getting results
+    const params = new URLSearchParams({
+        engine: 'google_shopping',
+        q: productName,
+        api_key: apiKey,
+        gl: 'us',
+        hl: 'en',
+        num: '40', // Get more results to find Lowe's products
+    });
+    const url = `https://serpapi.com/search?${params}`;
+    console.log(`[PRICE_COMPARISON] Fetching from SerpApi Google Shopping: search="${productName}"`);
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), SERPAPI_TIMEOUT_MS);
+    try {
+        const res = await fetch(url, { signal: controller.signal });
+        clearTimeout(timeoutId);
+        if (!res.ok) {
+            const errorText = await res.text();
+            console.error(`[PRICE_COMPARISON] SerpApi error: ${res.status} - ${errorText}`);
+            return [];
+        }
+        const data = await res.json();
+        const allResults = data.shopping_results || [];
+        console.log(`[PRICE_COMPARISON] SerpApi returned ${allResults.length} total results for "${productName}"`);
+        // Filter results by merchant name
+        const merchantPattern = MERCHANT_PATTERNS[merchantKey];
+        if (!merchantPattern) {
+            console.warn(`[PRICE_COMPARISON] No merchant pattern for ${merchantKey}`);
+            return [];
+        }
+        const filteredResults = allResults.filter((result) => {
+            const source = String(result.source || '');
+            return merchantPattern.test(source);
+        });
+        console.log(`[PRICE_COMPARISON] Filtered to ${filteredResults.length} results from ${merchantKey}`);
+        return filteredResults;
+    }
+    catch (err) {
+        clearTimeout(timeoutId);
+        if (err instanceof Error && err.name === 'AbortError') {
+            console.error(`[PRICE_COMPARISON] SerpApi timeout`);
+            return [];
+        }
+        console.error(`[PRICE_COMPARISON] SerpApi fetch error:`, err);
         return [];
     }
 }
@@ -146,7 +212,10 @@ Return ONLY JSON: { "index": number, "confidence": number (0-1), "reasoning": "b
     }
 }
 // ============ PRODUCT NORMALIZATION ============
-function normalizeProduct(rawProduct, retailer) {
+/**
+ * Normalize Unwrangle product data (Home Depot)
+ */
+function normalizeUnwrangleProduct(rawProduct, retailer) {
     if (!rawProduct || typeof rawProduct !== 'object') {
         return null;
     }
@@ -187,6 +256,44 @@ function normalizeProduct(rawProduct, retailer) {
         retailer,
     };
 }
+/**
+ * Normalize SerpApi Google Shopping product data (Lowe's)
+ * SerpApi returns: { title, link, source, price, extracted_price, thumbnail, product_id }
+ */
+function normalizeSerpApiProduct(rawProduct, retailer) {
+    if (!rawProduct || typeof rawProduct !== 'object') {
+        return null;
+    }
+    const product = rawProduct;
+    // SerpApi provides extracted_price as a number, or price as string like "$29.99"
+    let price = 0;
+    if (typeof product.extracted_price === 'number') {
+        price = product.extracted_price;
+    }
+    else if (typeof product.price === 'string') {
+        const cleaned = product.price.replace(/[^0-9.]/g, '');
+        price = parseFloat(cleaned) || 0;
+    }
+    // SerpApi uses product_id or position as ID
+    const id = String(product.product_id || product.position || '');
+    // SerpApi uses link for URL
+    const url = String(product.link || product.product_link || '');
+    // SerpApi uses title for name
+    const name = String(product.title || '');
+    if (!id || !name || price <= 0) {
+        return null;
+    }
+    return {
+        id,
+        name,
+        brand: product.source ? String(product.source) : null,
+        price,
+        currency: 'USD',
+        url,
+        imageUrl: product.thumbnail ? String(product.thumbnail) : null,
+        retailer,
+    };
+}
 // ============ BEST PRICE DETERMINATION ============
 function determineBestPrice(matches) {
     let bestRetailer = null;
@@ -213,17 +320,37 @@ function determineBestPrice(matches) {
     return { retailer: bestRetailer, product: bestProduct, savings };
 }
 // ============ SINGLE PRODUCT COMPARISON ============
+/**
+ * Fetch products from the appropriate API based on retailer
+ * - Home Depot: Unwrangle API
+ * - Lowe's: SerpApi Google Shopping
+ */
+async function fetchForRetailer(productName, retailer, zipCode) {
+    // Home Depot uses Unwrangle
+    if (UNWRANGLE_PLATFORMS[retailer]) {
+        const results = await fetchFromUnwrangle(productName, UNWRANGLE_PLATFORMS[retailer], zipCode);
+        return { results, normalizer: normalizeUnwrangleProduct };
+    }
+    // Lowe's uses SerpApi Google Shopping
+    if (SERPAPI_SITES[retailer]) {
+        const results = await fetchFromSerpApi(productName, SERPAPI_SITES[retailer]);
+        return { results, normalizer: normalizeSerpApiProduct };
+    }
+    // Fallback - no API configured for this retailer
+    console.warn(`[PRICE_COMPARISON] No API configured for ${retailer}`);
+    return { results: [], normalizer: normalizeUnwrangleProduct };
+}
 async function compareOneProduct(productName, zipCode) {
     const matches = {};
     console.log(`[PRICE_COMPARISON] Comparing product: "${productName}"`);
     // Fetch from all retailers in parallel
     const retailerResults = await Promise.all(RETAILERS.map(async (retailer) => {
         try {
-            const results = await fetchFromUnwrangle(productName, PLATFORMS[retailer], zipCode);
+            const { results, normalizer } = await fetchForRetailer(productName, retailer, zipCode);
             const match = await selectBestMatch(productName, results, retailer);
             let selectedProduct = null;
             if (match.index >= 0 && results[match.index]) {
-                selectedProduct = normalizeProduct(results[match.index], retailer);
+                selectedProduct = normalizer(results[match.index], retailer);
             }
             return {
                 retailer,

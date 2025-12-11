@@ -407,7 +407,24 @@ service cloud.firestore {
         allow delete: if request.auth != null;
       }
     }
-    
+
+    // Global Product Cache - shared across all users for price comparison optimization
+    // Structure: productCache/{retailer}/products/{normalizedProductName}
+    match /productCache/{retailer} {
+      // Allow read access to retailer document
+      allow read: if request.auth != null;
+
+      // Products subcollection - cached product data by retailer
+      match /products/{productId} {
+        // Allow authenticated users to read cached products
+        allow read: if request.auth != null;
+        // Allow Cloud Functions to write (authenticated users can also write for testing)
+        allow create, update: if request.auth != null;
+        // Allow deletion for cache maintenance
+        allow delete: if request.auth != null;
+      }
+    }
+
     // Deny all other paths
     match /{document=**} {
       allow read, write: if false;

@@ -14,6 +14,7 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env') });
 if (process.env.NODE_ENV !== 'production') {
   console.log('[PRICE_COMPARISON] Environment check:');
   console.log('[PRICE_COMPARISON] - UNWRANGLE_API_KEY:', process.env.UNWRANGLE_API_KEY ? 'SET' : 'NOT SET');
+  console.log('[PRICE_COMPARISON] - SERP_API_KEY:', process.env.SERP_API_KEY ? 'SET' : 'NOT SET');
   console.log('[PRICE_COMPARISON] - OPENAI_API_KEY:', process.env.OPENAI_API_KEY ? 'SET' : 'NOT SET');
 }
 
@@ -69,17 +70,221 @@ interface ComparisonResult {
   comparedAt: number;
 }
 
+// ============ CACHE TYPES ============
+
+/**
+ * Cached product data stored globally by retailer
+ */
+interface CachedProduct {
+  product: RetailerProduct;
+  searchQueries: string[];
+  lastUpdated: number;
+  matchCount: number;
+  originalSearchTerm: string;
+}
+
+/**
+ * Result of checking the product cache
+ */
+interface CacheLookupResult {
+  found: boolean;
+  cachedProduct?: CachedProduct;
+  confidence: number;
+  useCache: boolean;
+  reasoning: string;
+}
+
 // ============ CONSTANTS ============
 
-const PLATFORMS: Record<Retailer, string> = {
+// Unwrangle platforms (for Home Depot)
+const UNWRANGLE_PLATFORMS: Partial<Record<Retailer, string>> = {
   homeDepot: 'homedepot_search',
-  lowes: 'lowes_search',
-  aceHardware: 'acehardware_search',
 };
 
-const RETAILERS: Retailer[] = ['homeDepot', 'lowes', 'aceHardware'];
+// SerpApi site filters for Google Shopping (for Lowe's)
+const SERPAPI_SITES: Partial<Record<Retailer, string>> = {
+  lowes: 'lowes.com',
+};
 
-const UNWRANGLE_TIMEOUT_MS = 30000; // 30 seconds per retailer
+// Active retailers - Home Depot via Unwrangle, Lowe's via SerpApi Google Shopping
+// aceHardware removed - no reliable API available
+const RETAILERS: Retailer[] = ['homeDepot', 'lowes'];
+
+const UNWRANGLE_TIMEOUT_MS = 30000;
+const SERPAPI_TIMEOUT_MS = 30000;
+
+// Cache configuration
+const CACHE_CONFIDENCE_THRESHOLD = 0.8;
+
+// ============ CACHE UTILITIES ============
+
+/**
+ * Normalize product name for cache key
+ * Lowercase, remove special chars, collapse whitespace, max 100 chars
+ */
+export function normalizeCacheKey(productName: string): string {
+  return productName
+    .toLowerCase()
+    .replace(/[^a-z0-9\s]/g, '') // Remove special characters
+    .replace(/\s+/g, '-')        // Replace whitespace with hyphens
+    .substring(0, 100);          // Max 100 chars for Firestore doc ID
+}
+
+/**
+ * Check product cache for a potential match
+ * First tries exact normalized key match, then searches by searchQueries array
+ */
+async function findInProductCache(
+  db: FirebaseFirestore.Firestore,
+  retailer: Retailer,
+  searchQuery: string
+): Promise<{ cachedProduct: CachedProduct | null; docId: string | null }> {
+  const normalizedKey = normalizeCacheKey(searchQuery);
+  const cacheRef = db.collection('productCache').doc(retailer).collection('products');
+
+  console.log(`[PRICE_COMPARISON] Cache lookup for "${searchQuery}" (key: ${normalizedKey}) in ${retailer}`);
+
+  // Try 1: Exact match by normalized key
+  const exactDoc = await cacheRef.doc(normalizedKey).get();
+  if (exactDoc.exists) {
+    const data = exactDoc.data() as CachedProduct;
+    console.log(`[PRICE_COMPARISON] Cache HIT (exact key match) for "${searchQuery}" in ${retailer}`);
+    return { cachedProduct: data, docId: exactDoc.id };
+  }
+
+  // Try 2: Search by searchQueries array-contains
+  const querySnapshot = await cacheRef
+    .where('searchQueries', 'array-contains', searchQuery.toLowerCase())
+    .limit(1)
+    .get();
+
+  if (!querySnapshot.empty) {
+    const doc = querySnapshot.docs[0];
+    const data = doc.data() as CachedProduct;
+    console.log(`[PRICE_COMPARISON] Cache HIT (searchQueries match) for "${searchQuery}" in ${retailer}`);
+    return { cachedProduct: data, docId: doc.id };
+  }
+
+  console.log(`[PRICE_COMPARISON] Cache MISS for "${searchQuery}" in ${retailer}`);
+  return { cachedProduct: null, docId: null };
+}
+
+/**
+ * Use LLM to assess if cached product matches search query
+ */
+async function assessCacheMatchConfidence(
+  searchQuery: string,
+  cachedProduct: CachedProduct
+): Promise<{ confidence: number; reasoning: string }> {
+  const apiKey = process.env.OPENAI_API_KEY;
+  if (!apiKey) {
+    console.error('[PRICE_COMPARISON] OPENAI_API_KEY not configured for cache confidence');
+    return { confidence: 0.5, reasoning: 'OpenAI not configured - using moderate confidence' };
+  }
+
+  const openai = new OpenAI({ apiKey });
+
+  try {
+    const response = await openai.chat.completions.create({
+      model: 'gpt-4o-mini',
+      messages: [{
+        role: 'user',
+        content: `Is this cached product a good match for the search query?
+
+Search Query: "${searchQuery}"
+
+Cached Product:
+- Name: ${cachedProduct.product.name}
+- Brand: ${cachedProduct.product.brand || 'N/A'}
+- Price: $${cachedProduct.product.price}
+- Original Search Term: "${cachedProduct.originalSearchTerm}"
+
+Consider:
+1. Is this the same type of product?
+2. Are specifications likely compatible?
+3. Would a user searching for "${searchQuery}" want this product?
+
+Return ONLY JSON: { "confidence": number (0-1), "reasoning": "brief explanation" }`
+      }],
+      temperature: 0.1,
+    });
+
+    const content = response.choices[0]?.message?.content || '{}';
+    console.log(`[PRICE_COMPARISON] Cache confidence response: ${content.substring(0, 100)}...`);
+
+    // Parse response (reuse existing parsing logic pattern)
+    const cleaned = content
+      .replace(/```json\n?/gi, '')
+      .replace(/```\n?/g, '')
+      .trim();
+
+    try {
+      const parsed = JSON.parse(cleaned);
+      return {
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0.5,
+        reasoning: parsed.reasoning || 'No reasoning provided',
+      };
+    } catch {
+      console.warn('[PRICE_COMPARISON] Cache confidence JSON parse failed');
+      return { confidence: 0.5, reasoning: 'JSON parse failed - using moderate confidence' };
+    }
+  } catch (err) {
+    console.error('[PRICE_COMPARISON] OpenAI error for cache confidence:', err);
+    return { confidence: 0.5, reasoning: 'OpenAI error - using moderate confidence' };
+  }
+}
+
+/**
+ * Save product to cache after successful API match
+ * Handles upsert: creates new entry or updates existing with merged searchQueries
+ */
+async function saveToProductCache(
+  db: FirebaseFirestore.Firestore,
+  retailer: Retailer,
+  product: RetailerProduct,
+  searchQuery: string
+): Promise<void> {
+  const normalizedKey = normalizeCacheKey(product.name);
+  const docRef = db.collection('productCache').doc(retailer).collection('products').doc(normalizedKey);
+
+  console.log(`[PRICE_COMPARISON] Saving to cache: ${retailer}/${normalizedKey}`);
+
+  try {
+    const existingDoc = await docRef.get();
+
+    if (existingDoc.exists) {
+      // Update existing entry
+      const existingData = existingDoc.data() as CachedProduct;
+      const updatedSearchQueries = Array.from(new Set([
+        ...existingData.searchQueries,
+        searchQuery.toLowerCase()
+      ]));
+
+      await docRef.update({
+        product,
+        searchQueries: updatedSearchQueries,
+        lastUpdated: Date.now(),
+        matchCount: (existingData.matchCount || 0) + 1,
+      });
+      console.log(`[PRICE_COMPARISON] Cache UPDATED: ${retailer}/${normalizedKey} (matchCount: ${(existingData.matchCount || 0) + 1})`);
+    } else {
+      // Create new entry
+      const newCacheEntry: CachedProduct = {
+        product,
+        searchQueries: [searchQuery.toLowerCase()],
+        lastUpdated: Date.now(),
+        matchCount: 1,
+        originalSearchTerm: searchQuery,
+      };
+
+      await docRef.set(newCacheEntry);
+      console.log(`[PRICE_COMPARISON] Cache CREATED: ${retailer}/${normalizedKey}`);
+    }
+  } catch (err) {
+    console.error(`[PRICE_COMPARISON] Cache save error for ${retailer}/${normalizedKey}:`, err);
+    // Don't throw - cache failures shouldn't break the comparison
+  }
+}
 
 // ============ UNWRANGLE API ============
 
@@ -128,6 +333,79 @@ async function fetchFromUnwrangle(
       return [];
     }
     console.error(`[PRICE_COMPARISON] Unwrangle fetch error:`, err);
+    return [];
+  }
+}
+
+// ============ SERPAPI GOOGLE SHOPPING ============
+
+// Merchant name patterns for filtering Google Shopping results
+const MERCHANT_PATTERNS: Record<string, RegExp> = {
+  'lowes.com': /lowe'?s/i,
+};
+
+async function fetchFromSerpApi(
+  productName: string,
+  merchantKey: string
+): Promise<unknown[]> {
+  const apiKey = process.env.SERP_API_KEY;
+  if (!apiKey) {
+    console.error('[PRICE_COMPARISON] SERP_API_KEY not configured');
+    throw new Error('SERP_API_KEY not configured');
+  }
+
+  // Search Google Shopping without site filter (doesn't work for shopping)
+  // We'll filter by merchant name after getting results
+  const params = new URLSearchParams({
+    engine: 'google_shopping',
+    q: productName,
+    api_key: apiKey,
+    gl: 'us',
+    hl: 'en',
+    num: '40', // Get more results to find Lowe's products
+  });
+
+  const url = `https://serpapi.com/search?${params}`;
+  console.log(`[PRICE_COMPARISON] Fetching from SerpApi Google Shopping: search="${productName}"`);
+
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), SERPAPI_TIMEOUT_MS);
+
+  try {
+    const res = await fetch(url, { signal: controller.signal });
+    clearTimeout(timeoutId);
+
+    if (!res.ok) {
+      const errorText = await res.text();
+      console.error(`[PRICE_COMPARISON] SerpApi error: ${res.status} - ${errorText}`);
+      return [];
+    }
+
+    const data = await res.json();
+    const allResults = data.shopping_results || [];
+    console.log(`[PRICE_COMPARISON] SerpApi returned ${allResults.length} total results for "${productName}"`);
+
+    // Filter results by merchant name
+    const merchantPattern = MERCHANT_PATTERNS[merchantKey];
+    if (!merchantPattern) {
+      console.warn(`[PRICE_COMPARISON] No merchant pattern for ${merchantKey}`);
+      return [];
+    }
+
+    const filteredResults = allResults.filter((result: Record<string, unknown>) => {
+      const source = String(result.source || '');
+      return merchantPattern.test(source);
+    });
+
+    console.log(`[PRICE_COMPARISON] Filtered to ${filteredResults.length} results from ${merchantKey}`);
+    return filteredResults;
+  } catch (err) {
+    clearTimeout(timeoutId);
+    if (err instanceof Error && err.name === 'AbortError') {
+      console.error(`[PRICE_COMPARISON] SerpApi timeout`);
+      return [];
+    }
+    console.error(`[PRICE_COMPARISON] SerpApi fetch error:`, err);
     return [];
   }
 }
@@ -207,7 +485,10 @@ Return ONLY JSON: { "index": number, "confidence": number (0-1), "reasoning": "b
 
 // ============ PRODUCT NORMALIZATION ============
 
-function normalizeProduct(rawProduct: unknown, retailer: Retailer): RetailerProduct | null {
+/**
+ * Normalize Unwrangle product data (Home Depot)
+ */
+function normalizeUnwrangleProduct(rawProduct: unknown, retailer: Retailer): RetailerProduct | null {
   if (!rawProduct || typeof rawProduct !== 'object') {
     return null;
   }
@@ -253,6 +534,51 @@ function normalizeProduct(rawProduct: unknown, retailer: Retailer): RetailerProd
   };
 }
 
+/**
+ * Normalize SerpApi Google Shopping product data (Lowe's)
+ * SerpApi returns: { title, link, source, price, extracted_price, thumbnail, product_id }
+ */
+function normalizeSerpApiProduct(rawProduct: unknown, retailer: Retailer): RetailerProduct | null {
+  if (!rawProduct || typeof rawProduct !== 'object') {
+    return null;
+  }
+
+  const product = rawProduct as Record<string, unknown>;
+
+  // SerpApi provides extracted_price as a number, or price as string like "$29.99"
+  let price = 0;
+  if (typeof product.extracted_price === 'number') {
+    price = product.extracted_price;
+  } else if (typeof product.price === 'string') {
+    const cleaned = product.price.replace(/[^0-9.]/g, '');
+    price = parseFloat(cleaned) || 0;
+  }
+
+  // SerpApi uses product_id or position as ID
+  const id = String(product.product_id || product.position || '');
+
+  // SerpApi uses link for URL
+  const url = String(product.link || product.product_link || '');
+
+  // SerpApi uses title for name
+  const name = String(product.title || '');
+
+  if (!id || !name || price <= 0) {
+    return null;
+  }
+
+  return {
+    id,
+    name,
+    brand: product.source ? String(product.source) : null, // source is usually the retailer
+    price,
+    currency: 'USD',
+    url,
+    imageUrl: product.thumbnail ? String(product.thumbnail) : null,
+    retailer,
+  };
+}
+
 // ============ BEST PRICE DETERMINATION ============
 
 function determineBestPrice(
@@ -287,24 +613,86 @@ function determineBestPrice(
 
 // ============ SINGLE PRODUCT COMPARISON ============
 
+/**
+ * Fetch products from the appropriate API based on retailer
+ * - Home Depot: Unwrangle API
+ * - Lowe's: SerpApi Google Shopping
+ */
+async function fetchForRetailer(
+  productName: string,
+  retailer: Retailer,
+  zipCode?: string
+): Promise<{ results: unknown[]; normalizer: (p: unknown, r: Retailer) => RetailerProduct | null }> {
+  // Home Depot uses Unwrangle
+  if (UNWRANGLE_PLATFORMS[retailer]) {
+    const results = await fetchFromUnwrangle(productName, UNWRANGLE_PLATFORMS[retailer]!, zipCode);
+    return { results, normalizer: normalizeUnwrangleProduct };
+  }
+
+  // Lowe's uses SerpApi Google Shopping
+  if (SERPAPI_SITES[retailer]) {
+    const results = await fetchFromSerpApi(productName, SERPAPI_SITES[retailer]!);
+    return { results, normalizer: normalizeSerpApiProduct };
+  }
+
+  // Fallback - no API configured for this retailer
+  console.warn(`[PRICE_COMPARISON] No API configured for ${retailer}`);
+  return { results: [], normalizer: normalizeUnwrangleProduct };
+}
+
 async function compareOneProduct(
   productName: string,
-  zipCode?: string
+  zipCode?: string,
+  db?: FirebaseFirestore.Firestore
 ): Promise<ComparisonResult> {
   const matches: Record<Retailer, MatchResult> = {} as Record<Retailer, MatchResult>;
 
   console.log(`[PRICE_COMPARISON] Comparing product: "${productName}"`);
 
-  // Fetch from all retailers in parallel
+  // Get Firestore instance if not provided (for cache operations)
+  const firestoreDb = db || getFirestore();
+
+  // Process each retailer with cache-first strategy
   const retailerResults = await Promise.all(
     RETAILERS.map(async (retailer) => {
       try {
-        const results = await fetchFromUnwrangle(productName, PLATFORMS[retailer], zipCode);
+        // Step 1: Check cache first
+        const { cachedProduct } = await findInProductCache(firestoreDb, retailer, productName);
+
+        if (cachedProduct) {
+          // Step 2: Assess cache match confidence
+          const { confidence, reasoning } = await assessCacheMatchConfidence(productName, cachedProduct);
+
+          // Step 3: If confidence >= threshold, use cached product
+          if (confidence >= CACHE_CONFIDENCE_THRESHOLD) {
+            console.log(`[PRICE_COMPARISON] Using CACHED product for "${productName}" from ${retailer} (confidence: ${confidence.toFixed(2)})`);
+            return {
+              retailer,
+              match: {
+                selectedProduct: cachedProduct.product,
+                confidence,
+                reasoning: `[CACHE HIT] ${reasoning}`,
+                searchResultsCount: 0, // No API call made
+              },
+              fromCache: true,
+            };
+          } else {
+            console.log(`[PRICE_COMPARISON] Cache confidence too low (${confidence.toFixed(2)} < ${CACHE_CONFIDENCE_THRESHOLD}) for "${productName}" from ${retailer}, calling API`);
+          }
+        }
+
+        // Step 4: Cache miss or low confidence - call API
+        const { results, normalizer } = await fetchForRetailer(productName, retailer, zipCode);
         const match = await selectBestMatch(productName, results, retailer);
 
         let selectedProduct: RetailerProduct | null = null;
         if (match.index >= 0 && results[match.index]) {
-          selectedProduct = normalizeProduct(results[match.index], retailer);
+          selectedProduct = normalizer(results[match.index], retailer);
+
+          // Step 5: Save to cache after successful API match
+          if (selectedProduct) {
+            await saveToProductCache(firestoreDb, retailer, selectedProduct, productName);
+          }
         }
 
         return {
@@ -315,6 +703,7 @@ async function compareOneProduct(
             reasoning: match.reasoning,
             searchResultsCount: results.length,
           },
+          fromCache: false,
         };
       } catch (error) {
         console.error(`[PRICE_COMPARISON] Error for ${retailer}:`, error);
@@ -326,6 +715,7 @@ async function compareOneProduct(
             reasoning: `Error: ${error instanceof Error ? error.message : 'Unknown'}`,
             searchResultsCount: 0,
           },
+          fromCache: false,
         };
       }
     })
@@ -339,7 +729,9 @@ async function compareOneProduct(
   // Determine best price
   const bestPrice = determineBestPrice(matches);
 
-  console.log(`[PRICE_COMPARISON] Completed comparison for "${productName}". Best price: ${bestPrice ? `$${bestPrice.product.price} at ${bestPrice.retailer}` : 'none'}`);
+  // Log cache usage summary
+  const cacheHits = retailerResults.filter(r => r.fromCache).length;
+  console.log(`[PRICE_COMPARISON] Completed comparison for "${productName}". Cache hits: ${cacheHits}/${RETAILERS.length}. Best price: ${bestPrice ? `$${bestPrice.product.price} at ${bestPrice.retailer}` : 'none'}`);
 
   return {
     originalProductName: productName,

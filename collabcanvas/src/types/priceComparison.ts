@@ -81,3 +81,34 @@ export interface ComparisonProgress {
   completedAt?: number;
   error?: string;
 }
+
+// ============ CACHE TYPES (PC-5) ============
+
+/**
+ * Cached product data stored globally by retailer
+ * Structure: productCache/{retailer}/products/{normalizedProductName}
+ */
+export interface CachedProduct {
+  product: RetailerProduct;
+  searchQueries: string[];
+  lastUpdated: number;
+  matchCount: number;
+  originalSearchTerm: string;
+}
+
+/**
+ * Result of checking the product cache
+ */
+export interface CacheLookupResult {
+  found: boolean;
+  cachedProduct?: CachedProduct;
+  confidence: number;
+  useCache: boolean;
+  reasoning: string;
+}
+
+/**
+ * Confidence threshold for using cached products
+ * If LLM confidence >= threshold, use cached product instead of API call
+ */
+export const CACHE_CONFIDENCE_THRESHOLD = 0.8;

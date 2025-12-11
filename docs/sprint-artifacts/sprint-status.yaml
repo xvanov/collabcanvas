@@ -80,11 +80,12 @@ development_status:
   5-5-shopping-list-generator: backlog
   epic-5-retrospective: optional
 
-  # Stretch Epic: Price Intelligence Module (price-comparison) - 4 stories
-  # Developed in parallel as stretch goal - COMPLETED 2025-12-10
-  epic-price-comparison: done
+  # Stretch Epic: Price Intelligence Module (price-comparison) - 5 stories
+  # Developed in parallel as stretch goal - PC-5 added 2025-12-10
+  epic-price-comparison: in-progress
   pc-1-types-mock-data: done
   pc-2-cloud-function: done
   pc-3-frontend-service: done
   pc-4-ui-components: done
-  epic-price-comparison-retrospective: completed
+  pc-5-product-cache: done
+  epic-price-comparison-retrospective: optional

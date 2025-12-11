@@ -16,8 +16,11 @@ interface Props {
 const RETAILER_LABELS: Record<Retailer, string> = {
   homeDepot: 'Home Depot',
   lowes: "Lowe's",
-  aceHardware: 'Ace Hardware',
+  aceHardware: 'Ace Hardware', // kept for type compatibility but not displayed
 }
+
+// Only display these retailers in the UI
+const DISPLAYED_RETAILERS: Retailer[] = ['homeDepot', 'lowes']
 
 export function PriceComparisonTable({ results }: Props) {
   return (
@@ -26,16 +29,18 @@ export function PriceComparisonTable({ results }: Props) {
         <thead>
           <tr className="bg-gray-100">
             <th className="p-3 text-left font-semibold">Product</th>
-            <th className="p-3 text-left font-semibold">Home Depot</th>
-            <th className="p-3 text-left font-semibold">Lowe's</th>
-            <th className="p-3 text-left font-semibold">Ace Hardware</th>
+            {DISPLAYED_RETAILERS.map((retailer) => (
+              <th key={retailer} className="p-3 text-left font-semibold">
+                {RETAILER_LABELS[retailer]}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {results.map((result) => (
             <tr key={result.originalProductName} className="border-t">
               <td className="p-3 font-medium">{result.originalProductName}</td>
-              {(['homeDepot', 'lowes', 'aceHardware'] as Retailer[]).map((retailer) => (
+              {DISPLAYED_RETAILERS.map((retailer) => (
                 <ProductCell
                   key={retailer}
                   match={result.matches[retailer]}
@@ -54,9 +59,18 @@ function ProductCell({
   match,
   isBest,
 }: {
-  match: { selectedProduct: RetailerProduct | null; confidence: number }
+  match?: { selectedProduct: RetailerProduct | null; confidence: number }
   isBest: boolean
 }) {
+  // Handle missing retailer data (retailer not queried)
+  if (!match) {
+    return (
+      <td className="p-3 bg-gray-100 text-gray-400 italic">
+        Not available
+      </td>
+    )
+  }
+
   const product = match.selectedProduct
 
   if (!product) {

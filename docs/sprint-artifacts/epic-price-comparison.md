@@ -31,6 +31,7 @@ Enable users to compare construction material prices across multiple retailers w
 | PC-2 | Unwrangle + LLM Cloud Function | Large | PC-1 |
 | PC-3 | Frontend Service Layer | Medium | PC-2 |
 | PC-4 | UI Components and Integration | Medium | PC-3 |
+| PC-5 | Global Product Cache | Medium | PC-2 |
 
 ## Exclusive Files (No Conflict Zone)
 
@@ -62,7 +63,7 @@ functions/src/index.ts                       # Add export only
 
 ## Definition of Done
 
-- [ ] All 4 stories completed
+- [ ] All 5 stories completed
 - [ ] Unit tests passing
 - [ ] Integration tests passing
 - [ ] Manual testing with mock data successful
