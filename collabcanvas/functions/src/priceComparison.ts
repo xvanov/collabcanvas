@@ -4,7 +4,8 @@ import { getFirestore } from 'firebase-admin/firestore';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
 import OpenAI from 'openai';
-import { getCorsOrigins } from './corsConfig';
+// Using cors: true to match other functions (aiCommand, materialEstimateCommand, sagemakerInvoke)
+// This supports Firebase preview channel URLs which have dynamic hostnames
 
 // Load environment variables - try multiple locations
 dotenv.config();
@@ -737,7 +738,7 @@ async function compareOneProduct(
 
 // Export configuration for testing - changes here are detected by tests
 export const comparePricesConfig = {
-  cors: getCorsOrigins(),
+  cors: true,
   maxInstances: 10,
   memory: '1GiB' as const,
   timeoutSeconds: 540, // Max for 2nd gen - handles large product lists

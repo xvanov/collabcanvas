@@ -3,7 +3,7 @@ import * as admin from 'firebase-admin';
 import { getFirestore, FieldValue } from 'firebase-admin/firestore';
 import * as dotenv from 'dotenv';
 import * as path from 'path';
-import { getCorsOrigins } from './corsConfig';
+// Using cors: true to match other functions (aiCommand, materialEstimateCommand, sagemakerInvoke)
 
 // Load environment variables - try multiple locations
 dotenv.config(); // Default: .env in functions directory
@@ -225,7 +225,7 @@ async function fetchFromSerpApi(
 }
 
 export const getHomeDepotPrice = onCall<{ request: PriceRequest }>({
-  cors: getCorsOrigins(),
+  cors: true,
   maxInstances: 20,
   memory: '256MiB',
   timeoutSeconds: 60, // Allow up to 60 seconds for SerpAPI calls
