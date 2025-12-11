@@ -5,3 +5,5 @@ Write-Host "🚀 Starting Firebase Emulators..." -ForegroundColor Green
 $env:VITE_USE_FIREBASE_EMULATORS = "true"
 firebase emulators:start
 
+
+

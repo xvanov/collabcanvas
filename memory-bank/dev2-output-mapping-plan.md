@@ -4,6 +4,9 @@ Goal: Align the pipeline outputs to the integration contract in `memory-bank/dev
 
 Key actions:
 - Build a spec-compliant payload in FinalAgent and persist it on the estimate root (in addition to existing `finalOutput`).
+- Persist granular cost components to a Firestore subcollection for UI transparency without bloating the root estimate document:
+  - `/estimates/{estimateId}/costItems`
+  - Root estimate carries discoverability metadata (`costItemsCount`, `costItemsCollectionPath`)
 - Map existing outputs to required fields:
   - Identification: `projectName`, `address`, `projectType`, `scope`, `squareFootage` (from `clarificationOutput.projectBrief`)
   - Cost summary: `totalCost`/`p50`/`p80`/`p90` from `costOutput.total`; `contingencyPct` from `riskOutput.contingency`; `timelineWeeks` from `timelineOutput`; `monteCarloIterations` from `riskOutput.monteCarlo`

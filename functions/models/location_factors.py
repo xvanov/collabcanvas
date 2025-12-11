@@ -365,3 +365,5 @@ def get_default_location_factors() -> LocationFactors:
         summary="National average - specific location data unavailable"
     )
 
+
+

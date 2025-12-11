@@ -17,7 +17,7 @@
 
 | Technology | Version | Purpose |
 |------------|---------|---------|
-| Python | 3.11+ | Cloud Functions runtime |
+| Python | 3.11+ | Cloud Functions runtime (local dev validated on Python 3.12 as well) |
 | LangChain | 1.x | LLM integration & tool framework |
 | Deep Agents | 0.2.0+ | Agent orchestration with planning, file system, subagents |
 | LangGraph | 0.2.0+ | Graph execution (used by Deep Agents) |
@@ -60,6 +60,7 @@ truecost/
 ├── functions/                 # NEW: Python Cloud Functions for Deep Agents
 │   ├── main.py                # Entry points + A2A endpoints
 │   ├── requirements.txt
+│   ├── pipeline_dashboard.html # Local/makeshift HTML dashboard for pipeline runs
 │   ├── agents/
 │   │   ├── base_agent.py           # A2A-compatible base class
 │   │   ├── agent_cards.py          # A2A Agent Cards registry
@@ -121,6 +122,9 @@ pip install -r requirements.txt
 
 # Start emulators
 firebase emulators:start
+
+# Optional: open the local dashboard
+# functions/pipeline_dashboard.html (served by any static server)
 
 # Start frontend dev server
 cd collabcanvas

@@ -1,9 +1,9 @@
 # TrueCost - Active Context
 
-## Current Focus: Epic 2 - Deep Agent Pipeline
+## Current Focus: Epic 2 - Deep Agent Pipeline (Granular Cost Ledger + Dashboard Stability)
 
-**Role**: Dev 2
-**Responsibility**: Build the deep agent pipeline that transforms `ClarificationOutput` into a complete cost estimate.
+**Role**: Dev 2  
+**Responsibility**: Maintain/extend the deep agent pipeline that transforms `ClarificationOutput` into a complete cost estimate, with **granular cost transparency** for UI/PDF consumers.  
 **Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed breakdown
 
 ## Epic 2 Overview
@@ -65,7 +65,7 @@ The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and
 | **PR #7** | `epic2/risk-final-agents` | 2.5 | ✅ Complete | 33 | Risk, Timeline & Final Agents |
 | **PR #8** | `epic2/firestore-rules` | - | ✅ Complete | - | Security rules, docs, integration mapping |
 
-**Total Tests: 204 passing**
+**Total Tests: 205 passing**
 
 ## Completed PRs
 
@@ -139,7 +139,7 @@ The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and
 
 **Branch**: `epic2/risk-final-agents`
 **Story**: 2.5 - Risk, Timeline & Final Agents
-**Tests**: 33 passing (204 total)
+**Tests**: 33 passing (205 total)
 **Completed**: Dec 11, 2025
 
 ### PR #7 Files Created/Modified:
@@ -270,13 +270,15 @@ functions/
 
 ## Next Action
 
-Refine Dev4 integration payload:
-- Enrich `laborAnalysis` with trades, hours, rates, base/burden/total, labor_pct, estimated_days.
-- Add cost_breakdown percentages (material_pct, labor_pct, permits_pct, overhead_pct) and per-division percentages.
-- Emit risk histogram + top_risks from MonteCarloService mock and include in `risk_analysis`.
-- Implement per `docs/setup/pipeline-output-mapping.md` and `memory-bank/dev2-output-mapping-plan.md`.
-- Optional: rerun full suite (205 tests currently passing).
+Finalize “granular cost” visibility end-to-end:
+- Persist granular cost components to Firestore subcollection: `/estimates/{estimateId}/costItems`
+  - Written by `CostAgent` as each line item is costed
+  - Includes material/labor/equipment components plus simple heuristics (e.g., SF → plank counts)
+- Ensure `get_pipeline_status` is dashboard-safe:
+  - Serialize Firestore timestamps in JSON responses
+  - Attach **full** `costItems` list into the `finalOutput` response for UI display (no truncation in API response)
+- Keep Dev4 integration payload on estimate root aligned to `dev2-integration-spec.md` (fields like `laborAnalysis`, `cost_breakdown`, `risk_analysis`, etc.)
 
 ---
 
-_Last Updated: December 11, 2025 (PR #7 Complete)_
+_Last Updated: December 11, 2025 (Granular cost ledger + dashboard fixes; 205 tests passing)_

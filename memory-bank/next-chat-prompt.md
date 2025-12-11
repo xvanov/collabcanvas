@@ -1,4 +1,4 @@
-# Next Chat Prompt - PR #4: Location Intelligence Agent
+# Next Chat Prompt - Deep Agent Pipeline (Dashboard + Granular Cost Ledger)
 
 Copy and paste this into a new chat:
 
@@ -10,52 +10,35 @@ I'm Dev 2 for the TrueCost project, continuing Epic 2: Deep Agent Pipeline.
 - **Project**: TrueCost - AI-powered construction estimation system
 - **My Role**: Dev 2 - Deep Agent Pipeline
 - **Branch**: `ture-agent-pipeline`
-- **Status**: PR #1 ✅, PR #2 ✅, PR #3 ✅, Starting PR #4
+- **Status**: Epic 2 PRs (#1-#8) complete; dashboard stability + granular cost ledger implemented
 
-## Completed PRs
-- **PR #1**: Foundation (58 tests) - config, services, base classes, agent cards
-- **PR #2**: ClarificationOutput Models (7 tests) - Pydantic models for v3.0.0
-- **PR #3**: Orchestrator & Pipeline Infrastructure (15 tests) - PipelineOrchestrator, main.py, stub agents
+## Current State (What Works)
+- Deep pipeline runs via Cloud Functions + Firestore persistence
+- `CostAgent` writes granular cost component rows to `/estimates/{id}/costItems`
+- `FinalAgent` exposes `costItemsCount` + `costItemsCollectionPath` on the estimate root for discovery
+- `get_pipeline_status` is safe for the dashboard:
+  - Firestore timestamps serialize to ISO strings
+  - `finalOutput` includes `granularCostItems.items` (full list in API response)
 
-**Total: 80 tests passing**
+**Total: 205 tests passing**
 
-## PR #4: Location Intelligence Agent
+## What I Need Help With Next
 
 ### Tasks
-- [ ] Create `functions/models/location_factors.py` - LocationFactors, LaborRates, PermitCosts models
-- [ ] Create `functions/services/cost_data_service.py` - Mock cost data service interface
-- [ ] Replace stub `functions/agents/primary/location_agent.py` with real LLM implementation
-- [ ] Replace stub `functions/agents/scorers/location_scorer.py` with real scoring logic
-- [ ] Replace stub `functions/agents/critics/location_critic.py` with real critique logic
-- [ ] Create `functions/tests/fixtures/mock_cost_data.py` - Mock location data (Denver, NYC, Houston)
-- [ ] Create `functions/tests/unit/test_location_agent.py`
-
-### Location Agent Requirements
-- Extract zip code from `clarificationOutput.projectBrief.location.zipCode`
-- Call `cost_data_service.get_location_factors(zip_code)`
-- Return structured LocationFactors:
-  - Labor rates (electrician, plumber, carpenter, HVAC, etc.)
-  - Union vs non-union market determination
-  - Permit costs (building, electrical, plumbing, mechanical)
-  - Weather/seasonal factors
-  - Location cost multiplier (0.8-1.5 range)
-- Save output to Firestore
-- Generate human-readable summary
+- [ ] Ensure the dashboard renders “Cost Ledger” reliably for large `costItems` collections (pagination/limits if needed)
+- [ ] Keep Dev4 integration payload (`/estimates/{id}`) aligned to `memory-bank/dev2-integration-spec.md`
+- [ ] Optional: add guards so UI polling never breaks even if some agent outputs are missing
 
 ### Key References
-- Task list: `memory-bank/epic2-task-list.md` (PR #4 section)
-- Base agent: `functions/agents/base_agent.py`
-- Base scorer: `functions/agents/scorers/base_scorer.py`
-- Base critic: `functions/agents/critics/base_critic.py`
-- Current stub: `functions/agents/primary/location_agent.py`
-- Services: `functions/services/` (firestore, llm, a2a_client)
+- Memory Bank: `memory-bank/activeContext.md`, `memory-bank/systemPatterns.md`, `memory-bank/progress.md`
+- Dashboard UI: `functions/pipeline_dashboard.html`
+- Cloud Functions entry: `functions/main.py` (including `get_pipeline_status`)
+- Firestore service: `functions/services/firestore_service.py`
 
-### Mock Data to Support
-- Denver (80202) - Mixed market, locationFactor 1.05
-- NYC (10001) - Union market, locationFactor 1.25
-- Houston (77001) - Non-union, locationFactor 0.95
-- Unknown zips - Default to national averages
+### Acceptance Check
+- Start pipeline from dashboard → polling works without 500s
+- Cost ledger panel shows granular component rows and matches `costItemsCount`
 
-Please read `memory-bank/epic2-task-list.md` (PR #4 section) first, then start implementing.
+Please read `memory-bank/activeContext.md` and `memory-bank/systemPatterns.md` first, then proceed.
 
 ---

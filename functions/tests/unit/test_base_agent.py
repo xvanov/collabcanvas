@@ -321,3 +321,5 @@ class TestBaseCritic:
         assert "JSON" in prompt
         assert "issues" in prompt
 
+
+

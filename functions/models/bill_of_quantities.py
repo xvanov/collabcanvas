@@ -522,3 +522,5 @@ def get_primary_trade(division_code: str) -> TradeCategory:
     """Get primary trade for a division."""
     return DIVISION_TRADE_MAPPING.get(division_code, TradeCategory.GENERAL_LABOR)
 
+
+

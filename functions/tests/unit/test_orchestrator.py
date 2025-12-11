@@ -512,3 +512,5 @@ class TestConvenienceFunction:
             assert result.success is True
             mock_instance.run_pipeline.assert_called_once()
 
+
+

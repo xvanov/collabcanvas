@@ -1,8 +1,24 @@
 """Pytest configuration and shared fixtures for TrueCost tests."""
 
+import os
+import sys
 import pytest
 from unittest.mock import AsyncMock, MagicMock, patch
 from typing import Dict, Any
+
+
+# ============================================================================
+# Ensure local imports work (agents/, models/, services/, config/)
+# ============================================================================
+#
+# On some Windows/Python/pytest combinations (especially with importlib import mode),
+# the repository root may not reliably be on sys.path during collection.
+# Our codebase uses absolute imports like `from models...` / `from agents...`.
+#
+# This guarantees that `functions/` is importable as the top-level module root.
+PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), ".."))
+if PROJECT_ROOT not in sys.path:
+    sys.path.insert(0, PROJECT_ROOT)
 
 
 # ============================================================================
@@ -429,4 +445,6 @@ def mock_settings():
         mock.pipeline_passing_score = 80
         mock.log_level = "INFO"
         yield mock
+
+
 

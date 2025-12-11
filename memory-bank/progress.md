@@ -8,7 +8,7 @@
 **Branch**: `ture-agent-pipeline`
 **Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed PR breakdown
 **Local Dev**: ✅ Running (Firebase emulators + Vite dev server)
-**Total Tests**: 204 passing
+**Total Tests**: 205 passing
 
 ---
 
@@ -259,7 +259,7 @@
 
 ## Next Actions
 
-1. (Optional) Run full test suite for regression after payload refinements (targeted suite passes).
+1. Verify end-to-end run in the local dashboard shows **granular cost ledger** items and does not 500 during polling.
 
 ## Test Summary
 
@@ -272,7 +272,7 @@
 | PR #5 | 29 | ✅ All passing |
 | PR #6 | 36 | ✅ All passing |
 | PR #7 | 33 | ✅ All passing |
-| **Total** | **204** | ✅ All passing |
+| **Total** | **205** | ✅ All passing |
 
 ## Local Development Setup
 
@@ -285,4 +285,22 @@
 
 ---
 
-_Last Updated: December 11, 2025 (PR #7 Complete)_
+## Recent Changes (Post PR #8)
+
+### Granular Cost Ledger (Cost Items)
+- Added Firestore subcollection `/estimates/{estimateId}/costItems` for high-granularity cost components
+- `CostAgent` writes granular component records during costing (material/labor/equipment + heuristic plank counts)
+- `FinalAgent` writes metadata (`costItemsCount`, `costItemsCollectionPath`) to the root estimate for discovery
+- `get_pipeline_status` now injects full `finalOutput.granularCostItems.items` for UI display (no truncation in API response)
+
+### Dashboard + API Stability
+- `functions/pipeline_dashboard.html` displays the cost ledger and reads from the `costItems` subcollection
+- Fixed `get_pipeline_status` 500s caused by Firestore timestamp objects not being JSON serializable (now serialized to ISO strings)
+
+### Test/Dev Ergonomics
+- Pytest import stability: `functions/tests/conftest.py` ensures `functions/` is on `sys.path` so imports like `from models...` work reliably
+- FirestoreService supports both sync firebase-admin calls and AsyncMock behavior in tests
+
+---
+
+_Last Updated: December 11, 2025 (Granular cost ledger + dashboard fixes; 205 tests passing)_

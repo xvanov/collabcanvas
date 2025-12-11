@@ -709,3 +709,5 @@ class TestScopeAgentIntegration:
         coverage = items_with_codes / total_items if total_items > 0 else 0
         assert coverage >= 0.9
 
+
+

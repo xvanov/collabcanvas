@@ -572,25 +572,114 @@
         </div>
         
         <div id="summarySection" style="display: none; margin-top: 25px;">
-            <div class="panel">
+            <!-- Executive Summary -->
+            <div class="panel" style="margin-bottom: 20px;">
                 <div class="panel-header">
-                    <span>💎</span> Final Estimate Summary
+                    <span>💎</span> Executive Summary
                 </div>
                 <div class="panel-content">
+                    <div id="projectHeader" style="margin-bottom: 20px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px;">
+                        <h2 id="projectName" style="color: #00d4ff; margin-bottom: 5px;">--</h2>
+                        <p id="projectAddress" style="color: #888;">--</p>
+                        <p id="projectScope" style="color: #aaa; font-size: 0.9rem; margin-top: 10px;">--</p>
+                    </div>
                     <div class="estimate-summary">
                         <div class="summary-card">
                             <div class="summary-label">P50 Estimate (Base)</div>
                             <div class="summary-value" id="p50Value">--</div>
                         </div>
                         <div class="summary-card">
-                            <div class="summary-label">P80 Estimate (Conservative)</div>
-                            <div class="summary-value" id="p80Value">--</div>
+                            <div class="summary-label">P80 Estimate</div>
+                            <div class="summary-value" id="p80Value" style="color: #ffa502;">--</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">P90 Estimate (Conservative)</div>
+                            <div class="summary-value" id="p90Value" style="color: #ff6b6b;">--</div>
                         </div>
                         <div class="summary-card">
                             <div class="summary-label">Timeline</div>
                             <div class="summary-value" id="timelineValue">--</div>
                         </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Contingency</div>
+                            <div class="summary-value" id="contingencyValue" style="color: #ffa502;">--</div>
+                        </div>
+                        <div class="summary-card">
+                            <div class="summary-label">Square Footage</div>
+                            <div class="summary-value" id="sqftValue" style="color: #00d4ff;">--</div>
+                        </div>
                     </div>
+                </div>
+            </div>
+            
+            <!-- Cost Breakdown -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>💰</span> Cost Breakdown by CSI Division
+                </div>
+                <div class="panel-content" id="costBreakdownPanel">
+                    <div class="empty-state">No cost breakdown available</div>
+                </div>
+            </div>
+            
+            <!-- Labor Analysis -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>👷</span> Labor Analysis
+                </div>
+                <div class="panel-content" id="laborPanel">
+                    <div class="empty-state">No labor analysis available</div>
+                </div>
+            </div>
+            
+            <!-- Risk Analysis -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>⚠️</span> Risk Analysis (Monte Carlo)
+                </div>
+                <div class="panel-content" id="riskPanel">
+                    <div class="empty-state">No risk analysis available</div>
+                </div>
+            </div>
+            
+            <!-- Schedule -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>📅</span> Project Schedule
+                </div>
+                <div class="panel-content" id="schedulePanel">
+                    <div class="empty-state">No schedule available</div>
+                </div>
+            </div>
+
+            <!-- Granular Cost Items -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>🧾</span> Granular Cost Items (Cost Ledger)
+                </div>
+                <div class="panel-content" id="costItemsPanel" style="max-height: 500px;">
+                    <div class="empty-state">No granular cost items available</div>
+                </div>
+            </div>
+            
+            <!-- Bill of Quantities -->
+            <div class="panel" style="margin-bottom: 20px;">
+                <div class="panel-header">
+                    <span>📋</span> Bill of Quantities
+                </div>
+                <div class="panel-content" id="boqPanel" style="max-height: 500px;">
+                    <div class="empty-state">No bill of quantities available</div>
+                </div>
+            </div>
+            
+            <!-- Raw JSON Output -->
+            <div class="panel">
+                <div class="panel-header" style="cursor: pointer;" onclick="toggleRawJson()">
+                    <span>📄</span> Raw JSON Output 
+                    <span id="rawJsonToggle" style="margin-left: auto; color: #888;">▼ Click to expand</span>
+                </div>
+                <div class="panel-content" id="rawJsonPanel" style="display: none; max-height: 600px;">
+                    <pre id="rawJsonContent" style="font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: #888; white-space: pre-wrap;"></pre>
                 </div>
             </div>
         </div>
@@ -713,16 +802,383 @@
             `;
         }
         
+        function toggleRawJson() {
+            const panel = document.getElementById('rawJsonPanel');
+            const toggle = document.getElementById('rawJsonToggle');
+            if (panel.style.display === 'none') {
+                panel.style.display = 'block';
+                toggle.textContent = '▲ Click to collapse';
+            } else {
+                panel.style.display = 'none';
+                toggle.textContent = '▼ Click to expand';
+            }
+        }
+        
+        function formatCurrency(value) {
+            if (typeof value !== 'number') return '--';
+            return '$' + value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        }
+        
         function showFinalSummary(data) {
             document.getElementById('summarySection').style.display = 'block';
             
-            const p50 = data.costEstimate?.p50 || data.p50 || 0;
-            const p80 = data.costEstimate?.p80 || data.p80 || 0;
-            const timeline = data.timeline?.totalDays || data.totalDays || '--';
+            // Executive Summary
+            document.getElementById('projectName').textContent = data.projectName || 'Kitchen Remodel Project';
+            document.getElementById('projectAddress').textContent = data.address || 'Address not specified';
+            document.getElementById('projectScope').textContent = data.scope || 'Full kitchen remodel';
             
-            document.getElementById('p50Value').textContent = '$' + p50.toLocaleString();
-            document.getElementById('p80Value').textContent = '$' + p80.toLocaleString();
-            document.getElementById('timelineValue').textContent = timeline + ' days';
+            document.getElementById('p50Value').textContent = formatCurrency(data.p50 || data.totalCost);
+            document.getElementById('p80Value').textContent = formatCurrency(data.p80);
+            document.getElementById('p90Value').textContent = formatCurrency(data.p90);
+            document.getElementById('contingencyValue').textContent = (data.contingencyPct || 0) + '%';
+            document.getElementById('sqftValue').textContent = (data.squareFootage || '--') + ' sqft';
+            
+            const weeks = data.timelineWeeks || Math.ceil((data.schedule?.total_days || 27) / 7);
+            document.getElementById('timelineValue').textContent = weeks + ' weeks';
+            
+            // Cost Breakdown
+            renderCostBreakdown(data.cost_breakdown);
+            
+            // Labor Analysis
+            renderLaborAnalysis(data.laborAnalysis);
+            
+            // Risk Analysis
+            renderRiskAnalysis(data.risk_analysis);
+            
+            // Schedule
+            renderSchedule(data.schedule);
+
+            // Granular cost ledger (stored in Firestore subcollection)
+            if (currentEstimateId) {
+                loadAndRenderCostItems(currentEstimateId);
+            }
+            
+            // Bill of Quantities
+            renderBoQ(data.bill_of_quantities);
+            
+            // Raw JSON
+            document.getElementById('rawJsonContent').textContent = JSON.stringify(data, null, 2);
+        }
+        
+        function renderCostBreakdown(costBreakdown) {
+            const panel = document.getElementById('costBreakdownPanel');
+            if (!costBreakdown || !costBreakdown.divisions || costBreakdown.divisions.length === 0) {
+                panel.innerHTML = '<div class="empty-state">No cost breakdown available</div>';
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 15px; padding: 15px; background: rgba(0,255,136,0.1); border-radius: 8px; display: flex; justify-content: space-between;">
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Material Cost</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #00ff88;">${formatCurrency(costBreakdown.total_material)}</div>
+                    </div>
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Labor Cost</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #00d4ff;">${formatCurrency(costBreakdown.total_labor)}</div>
+                    </div>
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Grand Total</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #f107a3;">${formatCurrency(costBreakdown.grand_total)}</div>
+                    </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <th style="padding: 10px; text-align: left; color: #888;">Division</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Material</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Labor</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            costBreakdown.divisions.forEach(div => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 10px; color: #e0e0e0;">${div.name || div.division_code}</td>
+                        <td style="padding: 10px; text-align: right; color: #00ff88;">${formatCurrency(div.material_cost)}</td>
+                        <td style="padding: 10px; text-align: right; color: #00d4ff;">${formatCurrency(div.labor_cost)}</td>
+                        <td style="padding: 10px; text-align: right; font-weight: 600; color: #f0f0f0;">${formatCurrency(div.total)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            panel.innerHTML = html;
+        }
+        
+        function renderLaborAnalysis(laborAnalysis) {
+            const panel = document.getElementById('laborPanel');
+            if (!laborAnalysis || !laborAnalysis.trades || laborAnalysis.trades.length === 0) {
+                panel.innerHTML = '<div class="empty-state">No labor analysis available</div>';
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 15px; padding: 15px; background: rgba(0,212,255,0.1); border-radius: 8px; display: flex; gap: 30px;">
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Hours</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #00d4ff;">${laborAnalysis.total_hours || '--'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Estimated Days</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #00d4ff;">${laborAnalysis.estimated_days || '--'}</div>
+                    </div>
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Labor Cost</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #00ff88;">${formatCurrency(laborAnalysis.total)}</div>
+                    </div>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.85rem;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05);">
+                            <th style="padding: 10px; text-align: left; color: #888;">Trade</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Hours</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Rate</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Base Cost</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Total (w/ Burden)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            laborAnalysis.trades.forEach(trade => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.05);">
+                        <td style="padding: 10px; color: #e0e0e0;">👷 ${trade.name}</td>
+                        <td style="padding: 10px; text-align: right;">${trade.hours}</td>
+                        <td style="padding: 10px; text-align: right;">${formatCurrency(trade.rate)}/hr</td>
+                        <td style="padding: 10px; text-align: right; color: #888;">${formatCurrency(trade.base_cost)}</td>
+                        <td style="padding: 10px; text-align: right; font-weight: 600; color: #00ff88;">${formatCurrency(trade.total)}</td>
+                    </tr>
+                `;
+            });
+            
+            html += '</tbody></table>';
+            panel.innerHTML = html;
+        }
+        
+        function renderRiskAnalysis(riskAnalysis) {
+            const panel = document.getElementById('riskPanel');
+            if (!riskAnalysis) {
+                panel.innerHTML = '<div class="empty-state">No risk analysis available</div>';
+                return;
+            }
+            
+            const riskLevel = riskAnalysis.overall_risk_level || 'Medium';
+            const riskColor = riskLevel === 'Low' ? '#00ff88' : riskLevel === 'High' ? '#ff4757' : '#ffa502';
+            
+            let html = `
+                <div style="display: grid; grid-template-columns: repeat(4, 1fr); gap: 15px; margin-bottom: 20px;">
+                    <div style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 0.85rem;">Risk Level</div>
+                        <div style="font-size: 1.5rem; font-weight: 600; color: ${riskColor};">${riskLevel}</div>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 0.85rem;">P50 (Most Likely)</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: #00ff88;">${formatCurrency(riskAnalysis.p50)}</div>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 0.85rem;">P80</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: #ffa502;">${formatCurrency(riskAnalysis.p80)}</div>
+                    </div>
+                    <div style="padding: 15px; background: rgba(0,0,0,0.3); border-radius: 8px; text-align: center;">
+                        <div style="color: #888; font-size: 0.85rem;">P90 (Conservative)</div>
+                        <div style="font-size: 1.2rem; font-weight: 600; color: #ff6b6b;">${formatCurrency(riskAnalysis.p90)}</div>
+                    </div>
+                </div>
+            `;
+            
+            if (riskAnalysis.risk_factors && riskAnalysis.risk_factors.length > 0) {
+                html += `<h4 style="color: #888; margin-bottom: 10px;">Risk Factors</h4><ul style="list-style: none; padding: 0;">`;
+                riskAnalysis.risk_factors.forEach(factor => {
+                    const impactColor = factor.impact === 'high' ? '#ff4757' : factor.impact === 'medium' ? '#ffa502' : '#00ff88';
+                    html += `
+                        <li style="padding: 10px; margin-bottom: 8px; background: rgba(0,0,0,0.2); border-radius: 6px; display: flex; justify-content: space-between; align-items: center;">
+                            <span>${factor.name || factor.factor}</span>
+                            <span style="padding: 4px 10px; background: ${impactColor}22; color: ${impactColor}; border-radius: 4px; font-size: 0.8rem;">${factor.impact || 'medium'} impact</span>
+                        </li>
+                    `;
+                });
+                html += '</ul>';
+            }
+            
+            panel.innerHTML = html;
+        }
+        
+        function renderSchedule(schedule) {
+            const panel = document.getElementById('schedulePanel');
+            if (!schedule || !schedule.tasks || schedule.tasks.length === 0) {
+                panel.innerHTML = '<div class="empty-state">No schedule available</div>';
+                return;
+            }
+            
+            let html = `
+                <div style="margin-bottom: 15px; padding: 15px; background: rgba(123,47,247,0.1); border-radius: 8px; display: flex; gap: 30px;">
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Duration</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #7b2ff7;">${schedule.total_days || '--'} days</div>
+                    </div>
+                    <div>
+                        <div style="color: #888; font-size: 0.85rem;">Total Tasks</div>
+                        <div style="font-size: 1.3rem; font-weight: 600; color: #7b2ff7;">${schedule.tasks.length}</div>
+                    </div>
+                </div>
+                <div style="overflow-x: auto;">
+            `;
+            
+            // Simple Gantt-style view
+            schedule.tasks.forEach((task, index) => {
+                const progress = task.critical_path ? '⚡' : '';
+                const bgColor = task.critical_path ? 'rgba(255,71,87,0.2)' : 'rgba(255,255,255,0.05)';
+                html += `
+                    <div style="display: flex; align-items: center; gap: 10px; padding: 10px; margin-bottom: 5px; background: ${bgColor}; border-radius: 6px;">
+                        <span style="width: 30px; color: #888;">${index + 1}</span>
+                        <span style="flex: 1; color: #e0e0e0;">${progress} ${task.name}</span>
+                        <span style="color: #888; font-size: 0.85rem;">Day ${task.start_day || 1} - ${(task.start_day || 1) + (task.duration || 1) - 1}</span>
+                        <span style="padding: 4px 10px; background: rgba(0,212,255,0.2); color: #00d4ff; border-radius: 4px; font-size: 0.8rem;">${task.duration || 1} days</span>
+                    </div>
+                `;
+            });
+            
+            html += '</div>';
+            panel.innerHTML = html;
+        }
+
+        async function loadAndRenderCostItems(estimateId) {
+            const panel = document.getElementById('costItemsPanel');
+            if (!panel) return;
+            panel.innerHTML = '<div class="empty-state">Loading granular cost items...</div>';
+
+            try {
+                const snap = await db
+                    .collection('estimates')
+                    .doc(estimateId)
+                    .collection('costItems')
+                    .get();
+
+                const items = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+                renderCostItems(items);
+            } catch (err) {
+                panel.innerHTML = `<div class="empty-state">Failed to load cost items: ${err.message}</div>`;
+            }
+        }
+
+        function renderCostItems(items) {
+            const panel = document.getElementById('costItemsPanel');
+            if (!panel) return;
+            if (!items || items.length === 0) {
+                panel.innerHTML = '<div class="empty-state">No granular cost items available</div>';
+                return;
+            }
+
+            // Sort for readability: division, lineItem, category
+            items.sort((a, b) => {
+                const da = (a.divisionCode || '').toString();
+                const db = (b.divisionCode || '').toString();
+                if (da !== db) return da.localeCompare(db);
+                const la = (a.lineItemId || '').toString();
+                const lb = (b.lineItemId || '').toString();
+                if (la !== lb) return la.localeCompare(lb);
+                const ca = (a.category || '').toString();
+                const cb = (b.category || '').toString();
+                return ca.localeCompare(cb);
+            });
+
+            const getLow = (x) => {
+                if (!x) return 0;
+                if (typeof x === 'number') return x;
+                if (typeof x === 'object') return x.low || x.median || x.medium || 0;
+                return 0;
+            };
+
+            let html = `
+                <div style="margin-bottom: 12px; color: #888; font-size: 0.85rem;">
+                    ${items.length} cost items saved in <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">/estimates/${currentEstimateId}/costItems</code>
+                </div>
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05); position: sticky; top: 0;">
+                            <th style="padding: 10px; text-align: left; color: #888;">Component</th>
+                            <th style="padding: 10px; text-align: left; color: #888;">Line Item</th>
+                            <th style="padding: 10px; text-align: center; color: #888;">Qty</th>
+                            <th style="padding: 10px; text-align: center; color: #888;">Unit</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Unit Cost (P50)</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Total (P50)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+
+            items.forEach(it => {
+                const name = it.name || it.description || '—';
+                const line = it.description || it.lineItemId || '—';
+                const qty = it.quantity ?? '—';
+                const unit = it.unit || '—';
+                const unitCost = formatCurrency(getLow(it.unitCost));
+                const totalCost = formatCurrency(getLow(it.totalCost));
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <td style="padding: 8px 10px; color: #e0e0e0;">${name}</td>
+                        <td style="padding: 8px 10px; color: #888;">${line}</td>
+                        <td style="padding: 8px 10px; text-align: center;">${qty}</td>
+                        <td style="padding: 8px 10px; text-align: center; color: #888;">${unit}</td>
+                        <td style="padding: 8px 10px; text-align: right; color: #888;">${unitCost}</td>
+                        <td style="padding: 8px 10px; text-align: right; color: #00ff88;">${totalCost}</td>
+                    </tr>
+                `;
+            });
+
+            html += '</tbody></table>';
+            panel.innerHTML = html;
+        }
+        
+        function renderBoQ(boq) {
+            const panel = document.getElementById('boqPanel');
+            if (!boq || !boq.items || boq.items.length === 0) {
+                panel.innerHTML = '<div class="empty-state">No bill of quantities available</div>';
+                return;
+            }
+            
+            let html = `
+                <table style="width: 100%; border-collapse: collapse; font-size: 0.8rem;">
+                    <thead>
+                        <tr style="background: rgba(255,255,255,0.05); position: sticky; top: 0;">
+                            <th style="padding: 10px; text-align: left; color: #888;">Item</th>
+                            <th style="padding: 10px; text-align: center; color: #888;">Qty</th>
+                            <th style="padding: 10px; text-align: center; color: #888;">Unit</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Unit Cost</th>
+                            <th style="padding: 10px; text-align: right; color: #888;">Total</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+            `;
+            
+            boq.items.forEach(item => {
+                html += `
+                    <tr style="border-bottom: 1px solid rgba(255,255,255,0.03);">
+                        <td style="padding: 8px 10px; color: #e0e0e0;">${item.description || item.name}</td>
+                        <td style="padding: 8px 10px; text-align: center;">${item.quantity || 1}</td>
+                        <td style="padding: 8px 10px; text-align: center; color: #888;">${item.unit || 'EA'}</td>
+                        <td style="padding: 8px 10px; text-align: right; color: #888;">${formatCurrency(item.unit_cost)}</td>
+                        <td style="padding: 8px 10px; text-align: right; color: #00ff88;">${formatCurrency(item.total_cost || (item.quantity * item.unit_cost))}</td>
+                    </tr>
+                `;
+            });
+            
+            html += `
+                    </tbody>
+                    <tfoot>
+                        <tr style="background: rgba(0,255,136,0.1);">
+                            <td colspan="4" style="padding: 12px; font-weight: 600; text-align: right;">Total:</td>
+                            <td style="padding: 12px; text-align: right; font-weight: 600; color: #00ff88; font-size: 1rem;">${formatCurrency(boq.total)}</td>
+                        </tr>
+                    </tfoot>
+                </table>
+            `;
+            panel.innerHTML = html;
         }
         
         async function startPipeline() {
@@ -818,6 +1274,12 @@
                         } else if (status === 'completed' && !loggedAgents.has(`${agent}-completed`)) {
                             addLog(`✅ ${agent.toUpperCase()} agent completed with score ${score || '--'}/100`, 'success');
                             loggedAgents.add(`${agent}-completed`);
+                            
+                            // Show agent output in the output panel
+                            const agentOutput = data[`${agent}Output`];
+                            if (agentOutput) {
+                                showOutput(agent, agentOutput);
+                            }
                         }
                     });
                     
@@ -831,6 +1293,9 @@
                         document.getElementById('startBtn').disabled = false;
                         clearInterval(pollInterval);
                         pollInterval = null;
+                        
+                        // Show the final summary with all the data
+                        showFinalSummary(data);
                     } else if (data.status === 'failed') {
                         updateStatus('failed', '❌ Pipeline failed');
                         addLog(`❌ Pipeline failed: ${data.error || 'Unknown error'}`, 'error');

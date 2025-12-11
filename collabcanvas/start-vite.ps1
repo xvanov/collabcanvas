@@ -5,3 +5,5 @@ Write-Host "🚀 Starting Vite Dev Server..." -ForegroundColor Green
 $env:VITE_USE_FIREBASE_EMULATORS = "true"
 npm run dev
 
+
+

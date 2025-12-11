@@ -131,3 +131,5 @@ All under Cloud Functions HTTPS; one per agent and role (primary/scorer/critic).
 - Use emulator for local QA (ports per firebase.json).
 - Long-running pipeline (5–15 min); rely on Firestore listeners for progress instead of polling HTTP.
 
+
+

@@ -6,6 +6,7 @@ for Monte Carlo compatibility.
 
 from typing import Dict, Any, Optional, List
 import json
+import math
 import structlog
 
 from agents.base_agent import BaseA2AAgent
@@ -94,6 +95,11 @@ class CostAgent(BaseA2AAgent):
     DEFAULT_OVERHEAD_PCT = 0.10
     DEFAULT_PROFIT_PCT = 0.10
     DEFAULT_CONTINGENCY_PCT = 0.05
+
+    # Heuristic conversion assumptions for granular takeoffs
+    # (These are intentionally simple defaults; refine with real product catalogs later.)
+    DEFAULT_WASTE_FACTOR = 1.10
+    DEFAULT_PLANK_SQFT = 1.667  # ~5" x 48" engineered hardwood plank
     
     def __init__(
         self,
@@ -155,6 +161,7 @@ class CostAgent(BaseA2AAgent):
         
         # Step 2: Calculate costs for each line item
         division_costs, total_items, exact_matches = await self._calculate_division_costs(
+            estimate_id=estimate_id,
             scope_output=scope_output,
             zip_code=zip_code
         )
@@ -240,6 +247,7 @@ class CostAgent(BaseA2AAgent):
     
     async def _calculate_division_costs(
         self,
+        estimate_id: str,
         scope_output: Dict[str, Any],
         zip_code: str
     ) -> tuple[List[DivisionCost], int, int]:
@@ -261,6 +269,7 @@ class CostAgent(BaseA2AAgent):
             div_name = div_data.get("divisionName", f"Division {div_code}")
             
             line_item_costs = []
+            granular_items: List[Dict[str, Any]] = []
             
             for item in div_data.get("lineItems", []):
                 item_cost, is_exact = await self._calculate_line_item_cost(
@@ -273,6 +282,29 @@ class CostAgent(BaseA2AAgent):
                     total_items += 1
                     if is_exact:
                         exact_matches += 1
+
+                    # Persist granular cost components incrementally (per line item)
+                    granular_items.extend(
+                        self._build_granular_cost_items(
+                            estimate_id=estimate_id,
+                            division_code=div_code,
+                            division_name=div_name,
+                            item_cost=item_cost
+                        )
+                    )
+
+            # Save granular items for this division in a batch to reduce write calls
+            if granular_items:
+                try:
+                    await self.firestore.save_cost_items(estimate_id, granular_items)
+                except Exception as e:
+                    # Non-fatal: pipeline can still succeed without granular ledger.
+                    logger.warning(
+                        "save_granular_cost_items_failed",
+                        estimate_id=estimate_id,
+                        division_code=div_code,
+                        error=str(e)
+                    )
             
             # Create division cost
             div_cost = DivisionCost(
@@ -285,6 +317,114 @@ class CostAgent(BaseA2AAgent):
             division_costs.append(div_cost)
         
         return division_costs, total_items, exact_matches
+
+    def _build_granular_cost_items(
+        self,
+        estimate_id: str,
+        division_code: str,
+        division_name: str,
+        item_cost: LineItemCost
+    ) -> List[Dict[str, Any]]:
+        """Build granular cost items (materials/labor/equipment + optional takeoff conversions).
+
+        This produces a "ledger" of components that can be stored in Firestore under
+        `/estimates/{estimateId}/costItems`.
+
+        Notes:
+        - We intentionally keep this aggregated (e.g., "planks: 120") rather than writing
+          one document per individual plank.
+        - For now, conversions are heuristics; totals are preserved by computing
+          unit_cost = total_cost / quantity for each component.
+        """
+        items: List[Dict[str, Any]] = []
+
+        li_id = item_cost.line_item_id
+        base = {
+            "estimateId": estimate_id,
+            "divisionCode": division_code,
+            "divisionName": division_name,
+            "lineItemId": li_id,
+            "costCode": item_cost.cost_code,
+            "description": item_cost.description,
+        }
+
+        def _safe_unit_cost(total: CostRange, qty: float) -> Dict[str, float]:
+            if qty <= 0:
+                return CostRange.zero().to_dict()
+            return CostRange(
+                low=round(total.low / qty, 2),
+                medium=round(total.medium / qty, 2),
+                high=round(total.high / qty, 2),
+            ).to_dict()
+
+        # 1) Material component (as-estimated)
+        items.append({
+            **base,
+            "id": f"{li_id}__material",
+            "category": "material",
+            "name": f"{item_cost.description} (material)",
+            "quantity": round(item_cost.quantity, 4),
+            "unit": item_cost.unit,
+            "unitCost": item_cost.unit_material_cost.to_dict(),
+            "totalCost": item_cost.material_cost.to_dict(),
+            "source": "cost_agent",
+        })
+
+        # 2) Labor component (hours)
+        if item_cost.labor_hours > 0:
+            items.append({
+                **base,
+                "id": f"{li_id}__labor",
+                "category": "labor",
+                "name": f"{item_cost.primary_trade.value} labor",
+                "quantity": round(item_cost.labor_hours, 2),
+                "unit": "hr",
+                "unitCost": item_cost.labor_rate.to_dict(),
+                "totalCost": item_cost.labor_cost.to_dict(),
+                "source": "cost_agent",
+            })
+
+        # 3) Equipment component
+        if item_cost.equipment_cost and (item_cost.equipment_cost.low > 0 or item_cost.equipment_cost.medium > 0 or item_cost.equipment_cost.high > 0):
+            items.append({
+                **base,
+                "id": f"{li_id}__equipment",
+                "category": "equipment",
+                "name": "Equipment / tools",
+                "quantity": round(item_cost.quantity, 4),
+                "unit": item_cost.unit,
+                "unitCost": item_cost.unit_equipment_cost.to_dict(),
+                "totalCost": item_cost.equipment_cost.to_dict(),
+                "source": "cost_agent",
+            })
+
+        # 4) Heuristic conversion: flooring SF -> planks
+        desc = (item_cost.description or "").lower()
+        unit = (item_cost.unit or "").lower()
+        is_flooring = ("floor" in desc or "hardwood" in desc or "plank" in desc) and unit in {"sf", "sqft", "square feet", "square_feet"}
+        if is_flooring and item_cost.quantity > 0:
+            plank_sqft = self.DEFAULT_PLANK_SQFT
+            waste = self.DEFAULT_WASTE_FACTOR
+            planks = int(math.ceil((item_cost.quantity / plank_sqft) * waste))
+            if planks > 0:
+                items.append({
+                    **base,
+                    "id": f"{li_id}__planks",
+                    "category": "material_component",
+                    "name": "Flooring planks (estimated count)",
+                    "quantity": planks,
+                    "unit": "plank",
+                    "unitCost": _safe_unit_cost(item_cost.material_cost, planks),
+                    "totalCost": item_cost.material_cost.to_dict(),
+                    "source": "heuristic",
+                    "assumptions": {
+                        "plank_sqft": plank_sqft,
+                        "waste_factor": waste,
+                        "derived_from_unit": item_cost.unit,
+                    }
+                })
+
+        return items
     
     async def _calculate_line_item_cost(
         self,

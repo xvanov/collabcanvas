@@ -7,10 +7,14 @@ using JSON-RPC 2.0 message format.
 from typing import Dict, Any, Optional
 from uuid import uuid4
 import asyncio
+import importlib
 import structlog
 import httpx
 
-from config.settings import settings
+# NOTE: `config/__init__.py` re-exports a `settings` attribute (a Settings instance),
+# which can shadow the `config.settings` *module* in some import patterns.
+# Use importlib to ensure we always reference the actual module.
+settings_module = importlib.import_module("config.settings")
 from config.errors import A2AError, ErrorCode
 
 logger = structlog.get_logger()
@@ -30,8 +34,13 @@ class A2AClient:
             base_url: Base URL for A2A endpoints (default from settings).
             timeout: Request timeout in seconds (default from settings).
         """
-        self.base_url = base_url or settings.a2a_base_url
-        self.timeout = timeout or settings.a2a_timeout_seconds
+        # Resolve settings safely even when test fixtures patch config.settings.settings
+        resolved_settings = getattr(settings_module, "settings", settings_module)
+        default_base_url = getattr(resolved_settings, "a2a_base_url", "http://localhost:5001")
+        default_timeout = getattr(resolved_settings, "a2a_timeout_seconds", 300)
+
+        self.base_url = base_url or default_base_url
+        self.timeout = timeout or default_timeout
     
     def _create_request_id(self) -> str:
         """Generate unique request ID."""
@@ -313,4 +322,6 @@ class A2AClient:
             )
         
         return result.get("result", {})
+
+
 

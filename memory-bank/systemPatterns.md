@@ -124,6 +124,9 @@ firestore/
 │   ├── /agentOutputs/{agentName}
 │   │   └── { status, output, summary, confidence, tokensUsed, duration }
 │   │
+│   ├── /costItems/{costItemId}
+│   │   └── { estimateId, agentName, divisionCode, lineItemId, lineItemDescription, componentType, quantity, unit, unitCost, totalCost, metadata, createdAt }
+│   │
 │   ├── /conversations/{messageId}
 │   │   └── { role, content, timestamp }
 │   │
@@ -138,6 +141,12 @@ firestore/
     ├── laborRates/{rateId}
     └── locationFactors/{zipCode}
 ```
+
+### Pattern: Large/Granular Outputs Use Subcollections
+
+Firestore documents have practical size limits; for high-granularity “ledger-like” data, store each record as a document in a subcollection and reference it from the root estimate document:
+- Root estimate holds summary + discoverability metadata (e.g., `costItemsCount`, `costItemsCollectionPath`)
+- UI/API fetches subcollection items when needed (dashboard renders “Cost Ledger”)
 
 ### Status Flows
 

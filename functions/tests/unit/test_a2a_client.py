@@ -216,3 +216,5 @@ class TestA2AClient:
             
             assert exc_info.value.code == "A2A_TIMEOUT"
 
+
+

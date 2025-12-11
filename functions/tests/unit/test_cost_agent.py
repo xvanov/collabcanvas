@@ -270,6 +270,7 @@ class TestCostAgent:
         """Create mock services."""
         firestore = AsyncMock()
         firestore.save_agent_output = AsyncMock()
+        firestore.save_cost_items = AsyncMock()
         
         llm = MagicMock()
         llm.generate_json = AsyncMock(return_value={
@@ -646,6 +647,7 @@ class TestCostAgentIntegration:
         # Create agent with mocked services
         firestore = AsyncMock()
         firestore.save_agent_output = AsyncMock()
+        firestore.save_cost_items = AsyncMock()
         
         llm = MagicMock()
         llm.generate_json = AsyncMock(return_value={
@@ -706,6 +708,7 @@ class TestCostAgentIntegration:
         """Test that P50/P80/P90 pattern is consistent throughout output."""
         firestore = AsyncMock()
         firestore.save_agent_output = AsyncMock()
+        firestore.save_cost_items = AsyncMock()
         
         llm = MagicMock()
         llm.generate_json = AsyncMock(return_value={

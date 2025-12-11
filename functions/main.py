@@ -11,6 +11,7 @@ import asyncio
 import json
 from typing import Dict, Any
 from uuid import uuid4
+from datetime import datetime, date
 
 import structlog
 from firebase_functions import https_fn, options
@@ -217,10 +218,11 @@ async def _start_pipeline_async(
     user_id: str,
     clarification_output: Dict[str, Any]
 ) -> Dict[str, Any]:
-    """Start pipeline asynchronously.
+    """Start pipeline and run to completion.
     
-    Creates the estimate document and kicks off the pipeline.
-    Returns immediately - pipeline runs in background.
+    Creates the estimate document and runs the full pipeline.
+    Note: In production, long-running pipelines should use Cloud Tasks or Pub/Sub.
+    For the emulator/testing, we run synchronously to completion.
     """
     from services.firestore_service import FirestoreService
     from agents.orchestrator import PipelineOrchestrator
@@ -234,35 +236,28 @@ async def _start_pipeline_async(
         clarification_output=clarification_output
     )
     
-    # Start pipeline (fire and forget - don't await completion)
-    # In production, this would use Cloud Tasks or Pub/Sub for long-running work
+    # Run pipeline to completion
     orchestrator = PipelineOrchestrator(firestore_service=firestore_service)
     
-    # Schedule pipeline to run (don't block)
-    asyncio.create_task(
-        _run_pipeline_background(orchestrator, estimate_id, clarification_output)
-    )
-    
-    return {
-        "estimateId": estimate_id,
-        "status": "processing"
-    }
-
-
-async def _run_pipeline_background(
-    orchestrator,
-    estimate_id: str,
-    clarification_output: Dict[str, Any]
-) -> None:
-    """Run pipeline in background."""
     try:
-        await orchestrator.run_pipeline(estimate_id, clarification_output)
+        result = await orchestrator.run_pipeline(estimate_id, clarification_output)
+        return {
+            "estimateId": estimate_id,
+            "status": result.status,
+            "completedAgents": result.completed_agents,
+            "totalDurationMs": result.total_duration_ms
+        }
     except Exception as e:
         logger.exception(
-            "background_pipeline_error",
+            "pipeline_error",
             estimate_id=estimate_id,
             error=str(e)
         )
+        return {
+            "estimateId": estimate_id,
+            "status": "failed",
+            "error": str(e)
+        }
 
 
 @https_fn.on_request(
@@ -343,10 +338,11 @@ async def _get_status_async(estimate_id: str) -> Dict[str, Any]:
         )
     
     pipeline_status = estimate.get("pipelineStatus", {})
+    status = estimate.get("status", "unknown")
     
-    return {
+    result = {
         "estimateId": estimate_id,
-        "status": estimate.get("status", "unknown"),
+        "status": status,
         "currentAgent": pipeline_status.get("currentAgent"),
         "progress": pipeline_status.get("progress", 0),
         "completedAgents": pipeline_status.get("completedAgents", []),
@@ -354,6 +350,54 @@ async def _get_status_async(estimate_id: str) -> Dict[str, Any]:
         "retries": pipeline_status.get("retries", {}),
         "error": pipeline_status.get("error")
     }
+    
+    # Include agent outputs for display
+    for output_key in ["locationOutput", "scopeOutput", "costOutput", "riskOutput", "timelineOutput", "finalOutput"]:
+        if output_key in estimate:
+            result[output_key] = estimate[output_key]
+
+    # Inject full granular cost ledger into the response (no truncation).
+    # We keep the authoritative list in the subcollection to avoid root doc size limits.
+    try:
+        if "finalOutput" in result and isinstance(result["finalOutput"], dict):
+            cost_items = await firestore_service.list_cost_items(estimate_id)
+            result["finalOutput"]["granularCostItems"] = {
+                "count": len(cost_items),
+                "collectionPath": f"/estimates/{estimate_id}/costItems",
+                "items": cost_items,
+            }
+    except Exception as e:
+        logger.warning("cost_items_attach_failed", estimate_id=estimate_id, error=str(e))
+    
+    # Include final estimate data if pipeline is completed
+    if status == "completed":
+        # Add all the summary fields for the dashboard
+        result.update({
+            "projectName": estimate.get("projectName"),
+            "address": estimate.get("address"),
+            "projectType": estimate.get("projectType"),
+            "scope": estimate.get("scope"),
+            "squareFootage": estimate.get("squareFootage"),
+            "totalCost": estimate.get("totalCost"),
+            "p50": estimate.get("p50"),
+            "p80": estimate.get("p80"),
+            "p90": estimate.get("p90"),
+            "contingencyPct": estimate.get("contingencyPct"),
+            "timelineWeeks": estimate.get("timelineWeeks"),
+            "monteCarloIterations": estimate.get("monteCarloIterations"),
+            "costDrivers": estimate.get("costDrivers"),
+            "laborAnalysis": estimate.get("laborAnalysis"),
+            "schedule": estimate.get("schedule"),
+            "cost_breakdown": estimate.get("cost_breakdown"),
+            "risk_analysis": estimate.get("risk_analysis"),
+            "bill_of_quantities": estimate.get("bill_of_quantities"),
+            "assumptions": estimate.get("assumptions"),
+            "cad_data": estimate.get("cad_data"),
+            "costItemsCount": estimate.get("costItemsCount"),
+            "costItemsCollectionPath": estimate.get("costItemsCollectionPath"),
+        })
+    
+    return result
 
 
 @https_fn.on_request(
@@ -467,8 +511,26 @@ def _cors_response() -> https_fn.Response:
 
 def _json_response(data: dict, status: int = 200) -> https_fn.Response:
     """Return JSON response with CORS headers."""
+
+    def _json_default(o: Any):
+        """JSON serializer for objects not serializable by default.
+
+        Firestore returns timestamp types like `DatetimeWithNanoseconds` which
+        behave like datetime objects but are not JSON serializable.
+        """
+        if isinstance(o, (datetime, date)):
+            return o.isoformat()
+        # Some Firestore timestamp types may not be direct datetime subclasses but
+        # still provide isoformat(). Use duck-typing fallback.
+        if hasattr(o, "isoformat"):
+            try:
+                return o.isoformat()
+            except Exception:
+                pass
+        return str(o)
+
     return https_fn.Response(
-        json.dumps(data),
+        json.dumps(data, default=_json_default),
         status=status,
         mimetype="application/json",
         headers=CORS_HEADERS

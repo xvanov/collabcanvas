@@ -605,6 +605,9 @@ class TestFinalAgent:
     def mock_services(self):
         """Create mock services."""
         firestore = AsyncMock()
+        firestore.save_agent_output = AsyncMock()
+        firestore.update_estimate = AsyncMock()
+        firestore.list_cost_items = AsyncMock(return_value=[])
         llm = AsyncMock()
         llm.generate_json.return_value = {
             "content": {
@@ -727,6 +730,9 @@ class TestPR7Integration:
     def mock_services(self):
         """Create mock services for all agents."""
         firestore = AsyncMock()
+        firestore.save_agent_output = AsyncMock()
+        firestore.update_estimate = AsyncMock()
+        firestore.list_cost_items = AsyncMock(return_value=[])
         llm = AsyncMock()
         llm.generate_json.return_value = {
             "content": {

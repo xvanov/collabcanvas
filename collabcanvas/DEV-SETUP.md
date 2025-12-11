@@ -114,3 +114,5 @@ If you get port conflicts:
 - **Terminal 1**: Press `Ctrl+C` to stop Firebase emulators
 - **Terminal 2**: Press `Ctrl+C` to stop Vite dev server
 
+
+

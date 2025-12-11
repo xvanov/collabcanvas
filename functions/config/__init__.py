@@ -10,3 +10,5 @@ from config.errors import TrueCostError
 
 __all__ = ["settings", "TrueCostError"]
 
+
+

@@ -232,14 +232,26 @@ class FinalAgent(BaseA2AAgent):
         
         # Add status update flag
         output["estimateComplete"] = True
+
+        # Load granular cost ledger (written by CostAgent) and attach lightweight metadata.
+        # We keep the full list in a subcollection to avoid Firestore document size limits.
+        cost_items = await self.firestore.list_cost_items(estimate_id)
+        output["granularCostItems"] = {
+            "count": len(cost_items),
+            "collectionPath": f"/estimates/{estimate_id}/costItems",
+            "sample": cost_items[:25],
+            "sampleTruncated": len(cost_items) > 25
+        }
         
         # Build Dev4 integration payload and persist to root estimate
         integration_payload = self._build_integration_payload(
+            estimate_id,
             clarification,
             scope_output,
             cost_output,
             risk_output,
-            timeline_output
+            timeline_output,
+            cost_items=cost_items
         )
         try:
             await self.firestore.update_estimate(estimate_id, integration_payload)
@@ -776,11 +788,13 @@ Please provide recommendations in the required JSON format."""
 
     def _build_integration_payload(
         self,
+        estimate_id: str,
         clarification: Dict[str, Any],
         scope_output: Dict[str, Any],
         cost_output: Dict[str, Any],
         risk_output: Dict[str, Any],
-        timeline_output: Dict[str, Any]
+        timeline_output: Dict[str, Any],
+        cost_items: Optional[List[Dict[str, Any]]] = None
     ) -> Dict[str, Any]:
         """Build spec-compliant payload for Dev 4 (see dev2-integration-spec.md)."""
         project_brief = clarification.get("projectBrief", {})
@@ -839,7 +853,10 @@ Please provide recommendations in the required JSON format."""
             "risk_analysis": risk_analysis,
             "bill_of_quantities": boq,
             "assumptions": assumptions,
-            "cad_data": clarification.get("cadData")
+            "cad_data": clarification.get("cadData"),
+            # Granular cost ledger metadata (actual rows are stored in subcollection)
+            "costItemsCount": len(cost_items or []),
+            "costItemsCollectionPath": f"/estimates/{estimate_id}/costItems"
         }
 
     def _join_address(self, location: Dict[str, Any]) -> str:

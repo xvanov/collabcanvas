@@ -689,3 +689,5 @@ class TestLocationAgentIntegration:
         assert len(critique["issues"]) > 0
         assert len(critique["how_to_fix"]) > 0
 
+
+
