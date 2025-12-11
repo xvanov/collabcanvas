@@ -333,15 +333,14 @@ describe('error handling', () => {
 
 describe('Unwrangle API mock tests', () => {
   it('maps retailer to correct platform', () => {
+    // aceHardware removed - no reliable API available (see priceComparison.ts line 103-104)
     const PLATFORMS: Record<string, string> = {
       homeDepot: 'homedepot_search',
       lowes: 'lowes_search',
-      aceHardware: 'acehardware_search',
     };
 
     expect(PLATFORMS.homeDepot).toBe('homedepot_search');
     expect(PLATFORMS.lowes).toBe('lowes_search');
-    expect(PLATFORMS.aceHardware).toBe('acehardware_search');
   });
 
   it('handles empty results from API', () => {
