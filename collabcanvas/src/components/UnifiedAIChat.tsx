@@ -4,9 +4,12 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from "react";
-import { useLocation, useParams } from "react-router-dom";
+import { useLocation, useParams, useNavigate } from "react-router-dom";
+import { httpsCallable } from "firebase/functions";
 import { useCanvasStore } from "../store/canvasStore";
 import { useScopeStore } from "../store/scopeStore";
+import { useEstimationStore } from "../store/estimationStore";
+import type { EstimateConfig } from "../pages/estimate/PlanView";
 import { useAuth } from "../hooks/useAuth";
 import { processDialogueRequest } from "../services/aiDialogueService";
 import { MaterialAIService } from "../services/materialAIService";
@@ -25,6 +28,7 @@ import { useScopedCanvasStore } from "../store/projectCanvasStore";
 import { useShapes } from "../hooks/useShapes";
 import { useLayers } from "../hooks/useLayers";
 import { createBoundingBoxShape } from "../services/shapeService";
+import { functions } from "../services/firebase";
 
 interface UnifiedAIChatProps {
   isVisible: boolean;
@@ -51,12 +55,39 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
   onClose,
 }) => {
   const location = useLocation();
-  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  // Support both legacy route (/projects/:projectId) and new route (/estimate/:id)
+  const { projectId: routeProjectId, id: routeId } = useParams<{ projectId?: string; id?: string }>();
+  const projectId = routeProjectId || routeId;
   const { user } = useAuth();
+  
+  // Get estimate config from location state (passed from PlanView -> Board)
+  const locationState = location.state as { estimateConfig?: EstimateConfig } | null;
+  const estimateConfig = locationState?.estimateConfig;
   const [input, setInput] = useState("");
   const [isProcessing, setIsProcessing] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
+  const [annotationCheckComplete, setAnnotationCheckComplete] = useState(false);
+  const [annotationCheckConversation, setAnnotationCheckConversation] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [showProceedAnywayButton, setShowProceedAnywayButton] = useState(false);
+  
+  // Scope clarification state
+  const [clarificationConversation, setClarificationConversation] = useState<Array<{ role: 'user' | 'assistant'; content: string }>>([]);
+  const [clarificationExtractedData, setClarificationExtractedData] = useState<Record<string, unknown>>({});
+  const [clarificationComplete, setClarificationComplete] = useState(false);
+  const [clarificationStarted, setClarificationStarted] = useState(false);
+  
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  
+  // Get estimation session for scope text
+  const { session: estimationSession, loadSession: loadEstimationSession } = useEstimationStore();
+  
+  // Load estimation session for scope text
+  useEffect(() => {
+    if (projectId) {
+      loadEstimationSession(projectId);
+    }
+  }, [projectId]);
   // Use refs to ensure single instance per component mount
   const materialAIRef = useRef<MaterialAIService | null>(null);
   const aiServiceRef = useRef<AIService | null>(null);
@@ -81,7 +112,7 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
     const pathname = location.pathname;
     if (pathname.includes("/scope")) return "scope";
     if (pathname.includes("/time")) return "time";
-    if (pathname.includes("/space")) return "space";
+    if (pathname.includes("/space") || pathname.includes("/canvas")) return "space";
     if (pathname.includes("/money")) return "money";
     return null;
   }, [location.pathname]);
@@ -204,14 +235,41 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
     setChatMessages((prev) => [...prev, userMessage]);
 
     try {
-      // PRIORITY 1: Check if this is a BOM/CPM generation request
+      // PRIORITY 0: Check if this is a "proceed to estimate" command
+      const isProceedCmd = detectProceedToEstimateCommand(messageText);
+      if (isProceedCmd) {
+        await handleProceedToEstimate();
+        return;
+      }
+
+      // PRIORITY 0.5: Check if this is an annotation check command
+      const isAnnotationCheckCmd = detectAnnotationCheckCommand(messageText);
+      if (isAnnotationCheckCmd) {
+        await handleAnnotationCheck(messageText);
+        return;
+      }
+
+      // PRIORITY 1: Check if scope clarification is in progress (continue conversation)
+      if (clarificationStarted && !clarificationComplete) {
+        await handleScopeClarification(messageText, false);
+        return;
+      }
+
+      // PRIORITY 1.5: Check if this is a scope clarification request
+      const isClarificationCmd = detectScopeClarificationCommand(messageText);
+      if (isClarificationCmd) {
+        await handleScopeClarification(messageText, true);
+        return;
+      }
+
+      // PRIORITY 2: Check if this is a BOM/CPM generation request
       const isBOMCPMRequest = detectBOMCPMGeneration(messageText);
       if (isBOMCPMRequest) {
         await handleBOMCPMGeneration();
         return;
       }
 
-      // PRIORITY 2: Check if this is an annotation command
+      // PRIORITY 3: Check if this is an annotation command
       const isAnnotationCommand = detectAnnotationCommand(messageText);
       if (isAnnotationCommand) {
         await handleAnnotationCommand();
@@ -254,6 +312,542 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
       setChatMessages((prev) => [...prev, errorMsg]);
     } finally {
       setIsProcessing(false);
+    }
+  };
+
+  /**
+   * Detect if query is requesting annotation check
+   */
+  const detectAnnotationCheckCommand = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+    const checkKeywords = [
+      "annotation check",
+      "check annotation",
+      "check annotations",
+      "verify annotations",
+      "are my annotations complete",
+      "annotation verification",
+      "check my work",
+      "what's missing",
+      "what am i missing",
+      "check if complete",
+    ];
+
+    return checkKeywords.some((kw) => lowerQuery.includes(kw));
+  };
+
+  /**
+   * Detect if query is requesting to proceed to estimate
+   */
+  const detectProceedToEstimateCommand = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+    const proceedKeywords = [
+      "proceed to estimate",
+      "go to estimate",
+      "start estimate",
+      "ready to estimate",
+      "generate estimate",
+      "create estimate",
+      "proceed anyway",
+      "continue to estimate",
+      "move to estimate",
+      "am i ready",
+      "ready for estimate",
+      "let's estimate",
+      "begin estimate",
+    ];
+
+    return proceedKeywords.some((kw) => lowerQuery.includes(kw));
+  };
+
+  /**
+   * Handle annotation check command
+   * This checks if all required annotations are present based on the project scope
+   */
+  const handleAnnotationCheck = async (userMessage: string) => {
+    if (!projectId || !user) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: "Error: Project ID or user not available",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      return;
+    }
+
+    // Get scope text from multiple sources (in priority order)
+    // 1. estimateConfig from PlanView (passed via navigation state)
+    // 2. clarificationExtractedData from clarification process
+    // 3. estimationSession from Firestore
+    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || "";
+    
+    // Build comprehensive scope including clarification data
+    let comprehensiveScopeText = baseScopeText;
+    
+    // Add clarification extracted data if available
+    if (Object.keys(clarificationExtractedData).length > 0) {
+      comprehensiveScopeText += "\n\n--- Clarification Details ---\n";
+      comprehensiveScopeText += JSON.stringify(clarificationExtractedData, null, 2);
+    }
+    
+    if (!comprehensiveScopeText.trim()) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: "❌ No project scope found. Please use 'clarify scope' first to define your project details, or go back to the Plan page to enter your project scope.",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      return;
+    }
+
+    // Show loading message
+    const loadingMessage: ChatMessage = {
+      id: `msg-loading-${Date.now()}`,
+      type: "system",
+      content: "🔍 Checking annotations against project scope...",
+      timestamp: Date.now(),
+    };
+    setChatMessages((prev) => [...prev, loadingMessage]);
+
+    try {
+      // Build annotation snapshot from current canvas state
+      const annotations = Array.from(shapes.values());
+      
+      const annotatedShapes = annotations.map((shape) => ({
+        id: shape.id,
+        type: shape.type,
+        label: shape.itemType,
+        itemType: shape.itemType,
+        points: shape.points,
+        x: shape.x,
+        y: shape.y,
+        w: shape.w,
+        h: shape.h,
+        layerId: shape.layerId,
+        confidence: shape.confidence ?? 1.0,
+        source: (shape.source || 'manual') as 'ai' | 'manual',
+      }));
+
+      const annotatedLayers = layers.map((layer) => ({
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible ?? true,
+        shapeCount: annotations.filter((s) => s.layerId === layer.id).length,
+      }));
+
+      const annotationSnapshot = {
+        shapes: annotatedShapes,
+        layers: annotatedLayers,
+        scale: scaleLine && scaleLine.realWorldLength > 0 ? {
+          pixelsPerUnit: Math.sqrt(
+            Math.pow(scaleLine.endX - scaleLine.startX, 2) +
+            Math.pow(scaleLine.endY - scaleLine.startY, 2)
+          ) / scaleLine.realWorldLength,
+          unit: scaleLine.unit as 'feet' | 'inches' | 'meters',
+        } : undefined,
+      };
+
+      // Call the annotation check agent
+      const annotationCheckAgentFn = httpsCallable<unknown, {
+        success: boolean;
+        message: string;
+        isComplete: boolean;
+        missingAnnotations: string[];
+        clarificationQuestions: string[];
+        annotationSummary: {
+          hasScale: boolean;
+          wallCount: number;
+          roomCount: number;
+          doorCount: number;
+          windowCount: number;
+          totalWallLength: number;
+          totalFloorArea: number;
+        };
+      }>(functions, 'annotationCheckAgent');
+
+      const result = await annotationCheckAgentFn({
+        projectId,
+        scopeText: comprehensiveScopeText,
+        annotationSnapshot,
+        conversationHistory: annotationCheckConversation,
+        userMessage: userMessage.includes('annotation check') ? undefined : userMessage,
+      });
+
+      // Remove loading message
+      setChatMessages((prev) => prev.filter((m) => m.id !== loadingMessage.id));
+
+      const response = result.data;
+
+      // Build response message
+      let messageContent = response.message;
+
+      // Add annotation summary
+      const summary = response.annotationSummary;
+      messageContent += "\n\n**Current Annotations:**\n";
+      messageContent += `• Scale: ${summary.hasScale ? '✅ Set' : '❌ Not set'}\n`;
+      messageContent += `• Walls: ${summary.wallCount}${summary.hasScale ? ` (${summary.totalWallLength.toFixed(1)} linear units)` : ''}\n`;
+      messageContent += `• Rooms: ${summary.roomCount}${summary.hasScale ? ` (${summary.totalFloorArea.toFixed(1)} sq units)` : ''}\n`;
+      messageContent += `• Doors: ${summary.doorCount}\n`;
+      messageContent += `• Windows: ${summary.windowCount}`;
+
+      // Add clarification questions if any
+      if (response.clarificationQuestions && response.clarificationQuestions.length > 0) {
+        messageContent += "\n\n**Questions:**\n";
+        response.clarificationQuestions.forEach((q, i) => {
+          messageContent += `${i + 1}. ${q}\n`;
+        });
+      }
+
+      // Update conversation history
+      setAnnotationCheckConversation((prev) => [
+        ...prev,
+        { role: 'user', content: userMessage },
+        { role: 'assistant', content: response.message },
+      ]);
+
+      // Check if complete
+      if (response.isComplete) {
+        setAnnotationCheckComplete(true);
+        messageContent += "\n\n✅ **All required annotations are complete!**";
+      }
+
+      const responseMessage: ChatMessage = {
+        id: `msg-response-${Date.now()}`,
+        type: response.isComplete ? "success" : "assistant",
+        content: messageContent,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, responseMessage]);
+
+    } catch (error) {
+      // Remove loading message
+      setChatMessages((prev) => prev.filter((m) => !m.id.includes("loading")));
+
+      const errorInfo = formatErrorForDisplay(error);
+      const errorMessage: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: `❌ **Annotation Check Error**\n\n${errorInfo.title}: ${errorInfo.message}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+    }
+  };
+
+  /**
+   * Navigate to estimate page (FinalView)
+   */
+  const handleNavigateToEstimate = useCallback(() => {
+    if (projectId) {
+      // Navigate to the new estimate final view, passing estimate config
+      navigate(`/estimate/${projectId}/final`, {
+        state: { estimateConfig }
+      });
+    }
+  }, [projectId, navigate, estimateConfig]);
+
+  /**
+   * Handle proceed to estimate command
+   * Checks annotations, shows suggestions, but always allows proceeding
+   */
+  const handleProceedToEstimate = async () => {
+    if (!projectId) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: "Error: Project ID not available",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      return;
+    }
+
+    // Get comprehensive scope
+    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || "";
+    let comprehensiveScopeText = baseScopeText;
+    
+    if (Object.keys(clarificationExtractedData).length > 0) {
+      comprehensiveScopeText += "\n\n--- Clarification Details ---\n";
+      comprehensiveScopeText += JSON.stringify(clarificationExtractedData, null, 2);
+    }
+
+    // Show loading message
+    const loadingMessage: ChatMessage = {
+      id: `msg-loading-${Date.now()}`,
+      type: "system",
+      content: "🔍 Checking if you're ready to estimate...",
+      timestamp: Date.now(),
+    };
+    setChatMessages((prev) => [...prev, loadingMessage]);
+
+    try {
+      // Build annotation snapshot
+      const annotations = Array.from(shapes.values());
+      
+      const annotatedShapes = annotations.map((shape) => ({
+        id: shape.id,
+        type: shape.type,
+        label: shape.itemType,
+        itemType: shape.itemType,
+        points: shape.points,
+        x: shape.x,
+        y: shape.y,
+        w: shape.w,
+        h: shape.h,
+        layerId: shape.layerId,
+        confidence: shape.confidence ?? 1.0,
+        source: (shape.source || 'manual') as 'ai' | 'manual',
+      }));
+
+      const annotatedLayers = layers.map((layer) => ({
+        id: layer.id,
+        name: layer.name,
+        visible: layer.visible ?? true,
+        shapeCount: annotations.filter((s) => s.layerId === layer.id).length,
+      }));
+
+      const annotationSnapshot = {
+        shapes: annotatedShapes,
+        layers: annotatedLayers,
+        scale: scaleLine && scaleLine.realWorldLength > 0 ? {
+          pixelsPerUnit: Math.sqrt(
+            Math.pow(scaleLine.endX - scaleLine.startX, 2) +
+            Math.pow(scaleLine.endY - scaleLine.startY, 2)
+          ) / scaleLine.realWorldLength,
+          unit: scaleLine.unit as 'feet' | 'inches' | 'meters',
+        } : undefined,
+      };
+
+      // Quick local check for basic requirements
+      const hasScale = annotationSnapshot.scale && annotationSnapshot.scale.pixelsPerUnit > 0;
+      const wallCount = annotatedShapes.filter(s => s.type === 'polyline').length;
+      const roomCount = annotatedShapes.filter(s => s.type === 'polygon').length;
+      
+      // Build status message
+      let statusMessage = "**📋 Estimation Readiness Check**\n\n";
+      
+      // Annotation summary
+      statusMessage += "**Current Annotations:**\n";
+      statusMessage += `• Scale: ${hasScale ? '✅ Set' : '⚠️ Not set (recommended)'}\n`;
+      statusMessage += `• Walls: ${wallCount} wall segments\n`;
+      statusMessage += `• Rooms: ${roomCount} room areas\n`;
+      statusMessage += `• Total shapes: ${annotatedShapes.length}\n\n`;
+
+      // Suggestions
+      const suggestions: string[] = [];
+      if (!hasScale) {
+        suggestions.push("Set a scale line for accurate measurements");
+      }
+      if (wallCount === 0 && roomCount === 0) {
+        suggestions.push("Add wall or room annotations for material calculations");
+      }
+      if (!comprehensiveScopeText.trim()) {
+        suggestions.push("Use 'clarify scope' to provide project details");
+      }
+
+      if (suggestions.length > 0) {
+        statusMessage += "**⚠️ Suggestions (optional):**\n";
+        suggestions.forEach((s, i) => {
+          statusMessage += `${i + 1}. ${s}\n`;
+        });
+        statusMessage += "\n";
+      }
+
+      statusMessage += "---\n\n";
+      statusMessage += suggestions.length > 0 
+        ? "You can still proceed with the estimate. The AI will work with the available information.\n\n**Click the button below to continue:**"
+        : "✅ Looks good! You're ready to generate an estimate.\n\n**Click the button below to continue:**";
+
+      // Remove loading message
+      setChatMessages((prev) => prev.filter((m) => m.id !== loadingMessage.id));
+
+      // Add status message
+      const responseMessage: ChatMessage = {
+        id: `msg-proceed-${Date.now()}`,
+        type: suggestions.length > 0 ? "system" : "success",
+        content: statusMessage,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, responseMessage]);
+
+      // Show the proceed button
+      setShowProceedAnywayButton(true);
+      
+    } catch (error) {
+      // Remove loading message
+      setChatMessages((prev) => prev.filter((m) => !m.id.includes("loading")));
+
+      const errorInfo = formatErrorForDisplay(error);
+      const errorMessage: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: `❌ **Error checking readiness**\n\n${errorInfo.message}\n\nYou can still try to proceed to the estimate.`,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
+      
+      // Still show the button so user can proceed
+      setShowProceedAnywayButton(true);
+    }
+  };
+
+  /**
+   * Detect if query is requesting scope clarification
+   */
+  const detectScopeClarificationCommand = (query: string): boolean => {
+    const lowerQuery = query.toLowerCase();
+    const clarificationKeywords = [
+      "clarify scope",
+      "clarify project",
+      "clarify my project",
+      "ask questions",
+      "ask clarifying questions",
+      "clarification questions",
+      "need more details",
+      "what questions",
+      "help me define",
+      "scope questions",
+      "project details",
+      "tell me more",
+      "start clarification",
+    ];
+
+    return clarificationKeywords.some((kw) => lowerQuery.includes(kw));
+  };
+
+  /**
+   * Handle scope clarification conversation
+   * Uses the clarificationAgent to ask questions about the project scope
+   */
+  const handleScopeClarification = async (userMessage: string, isInitial: boolean = false) => {
+    if (!projectId) {
+      const errorMsg: ChatMessage = {
+        id: `msg-error-${Date.now()}`,
+        type: "error",
+        content: "Error: Project ID not available",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      return;
+    }
+
+    // Get scope text from estimateConfig or session
+    const scopeText = estimateConfig?.scopeText || estimationSession?.scopeText || "";
+    
+    if (!scopeText && !clarificationStarted) {
+      const errorMsg: ChatMessage = {
+        id: `msg-info-${Date.now()}`,
+        type: "system",
+        content: "ℹ️ No project scope text found. Please provide a project description first, then I can ask clarifying questions to help refine your estimate.",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMsg]);
+      return;
+    }
+
+    // Mark clarification as started
+    if (!clarificationStarted) {
+      setClarificationStarted(true);
+    }
+
+    // Show initial message if starting clarification
+    if (isInitial) {
+      const startMessage: ChatMessage = {
+        id: `msg-clarify-start-${Date.now()}`,
+        type: "system",
+        content: "🔍 Starting scope clarification. I'll ask some questions to better understand your project...",
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, startMessage]);
+    }
+
+    try {
+      // Call the clarification agent
+      const clarificationAgentFn = httpsCallable<unknown, {
+        success: boolean;
+        message: string;
+        questions: string[];
+        extractedData: Record<string, unknown>;
+        clarificationComplete: boolean;
+        completionReason: string | null;
+        error?: string;
+      }>(functions, 'clarificationAgent');
+
+      const result = await clarificationAgentFn({
+        projectId,
+        sessionId: projectId, // Use projectId as sessionId for now
+        scopeText,
+        conversationHistory: clarificationConversation,
+        userMessage: isInitial ? "" : userMessage,
+      });
+
+      const response = result.data;
+
+      if (!response.success && response.error) {
+        throw new Error(response.error);
+      }
+
+      // Merge extracted data
+      const newExtractedData = {
+        ...clarificationExtractedData,
+        ...response.extractedData,
+      };
+      setClarificationExtractedData(newExtractedData);
+
+      // Update conversation history
+      if (!isInitial && userMessage) {
+        setClarificationConversation((prev) => [
+          ...prev,
+          { role: 'user', content: userMessage },
+        ]);
+      }
+
+      // Build assistant message
+      let assistantContent = response.message;
+      if (response.questions && response.questions.length > 0) {
+        assistantContent += '\n\n' + response.questions.map((q, i) => `${i + 1}. ${q}`).join('\n');
+      }
+
+      // Add to conversation history
+      setClarificationConversation((prev) => [
+        ...prev,
+        { role: 'assistant', content: assistantContent },
+      ]);
+
+      // Add assistant response to chat
+      const assistantMessage: ChatMessage = {
+        id: `msg-clarify-${Date.now()}`,
+        type: "assistant",
+        content: assistantContent,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, assistantMessage]);
+
+      // Check if clarification is complete
+      if (response.clarificationComplete) {
+        setClarificationComplete(true);
+        
+        const completeMessage: ChatMessage = {
+          id: `msg-clarify-complete-${Date.now()}`,
+          type: "success",
+          content: `✅ **Scope Clarification Complete!**\n\n${response.completionReason || "I have all the information I need."}\n\n📋 **Extracted Information:**\n${Object.entries(newExtractedData).map(([key, value]) => `• ${key}: ${JSON.stringify(value)}`).join('\n')}\n\nYou can now use "annotation check" to verify your annotations, or continue adding annotations to the canvas.`,
+          timestamp: Date.now(),
+        };
+        setChatMessages((prev) => [...prev, completeMessage]);
+      }
+
+    } catch (error) {
+      console.error('Clarification error:', error);
+      const errorInfo = formatErrorForDisplay(error);
+      const errorMessage: ChatMessage = {
+        id: `msg-clarify-error-${Date.now()}`,
+        type: "error",
+        content: `❌ **Clarification Error**\n\n${errorInfo.title}: ${errorInfo.message}`,
+        timestamp: Date.now(),
+      };
+      setChatMessages((prev) => [...prev, errorMessage]);
     }
   };
 
@@ -1581,6 +2175,49 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
         </div>
       </div>
 
+      {/* Generate Estimate Button - shown when annotation check is complete */}
+      {annotationCheckComplete && (
+        <div className="px-4 py-3 bg-green-50 border-b border-green-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-green-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <span className="text-sm font-medium text-green-800">Ready to generate estimate</span>
+            </div>
+            <button
+              onClick={handleNavigateToEstimate}
+              className="px-4 py-1.5 bg-green-600 text-white text-sm font-medium rounded-lg hover:bg-green-700 transition-colors"
+            >
+              Generate Estimate →
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Proceed to Estimate Button - shown after "proceed to estimate" command */}
+      {showProceedAnywayButton && !annotationCheckComplete && (
+        <div className="px-4 py-3 bg-blue-50 border-b border-blue-200">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center">
+              <svg className="w-5 h-5 text-blue-600 mr-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+              </svg>
+              <span className="text-sm font-medium text-blue-800">Continue to estimation</span>
+            </div>
+            <button
+              onClick={() => {
+                setShowProceedAnywayButton(false);
+                handleNavigateToEstimate();
+              }}
+              className="px-4 py-1.5 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition-colors"
+            >
+              Proceed to Estimate →
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {chatMessages.length === 0 ? (
@@ -1602,6 +2239,39 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
             <div className="mt-4 text-left max-w-xs mx-auto">
               <p className="text-sm font-semibold mb-2">Try these:</p>
               <div className="space-y-2">
+                <div className="bg-amber-50 p-2 rounded border border-amber-200">
+                  <p className="text-xs font-semibold text-amber-700">
+                    💬 Clarify Scope
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    "clarify scope"
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Answer questions to refine your project details
+                  </p>
+                </div>
+                <div className="bg-green-50 p-2 rounded border border-green-200">
+                  <p className="text-xs font-semibold text-green-700">
+                    ✓ Annotation Check
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    "annotation check"
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Verify all required annotations are complete
+                  </p>
+                </div>
+                <div className="bg-blue-50 p-2 rounded border border-blue-200">
+                  <p className="text-xs font-semibold text-blue-700">
+                    🚀 Proceed to Estimate
+                  </p>
+                  <p className="text-xs text-gray-600">
+                    "proceed to estimate"
+                  </p>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Check status and continue to estimation
+                  </p>
+                </div>
                 <div className="bg-purple-50 p-2 rounded">
                   <p className="text-xs font-semibold text-purple-700">
                     Shape Commands
@@ -1618,12 +2288,6 @@ export const UnifiedAIChat: React.FC<UnifiedAIChatProps> = ({
                   </p>
                   <p className="text-xs text-gray-600">
                     "estimate floor materials"
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    "estimate doors hardware"
-                  </p>
-                  <p className="text-xs text-gray-600">
-                    "estimate windows materials"
                   </p>
                 </div>
               </div>

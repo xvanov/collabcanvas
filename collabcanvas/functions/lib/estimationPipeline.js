@@ -430,17 +430,18 @@ exports.estimationPipeline = (0, https_1.onCall)({
                 layerSummary: quantities.layerSummary,
             },
         };
-        // Save to Firestore
+        // Save to Firestore (use set with merge to create if doesn't exist)
         const db = admin.firestore();
         await db.collection('projects').doc(projectId)
             .collection('estimations').doc(sessionId)
-            .update({
+            .set({
             clarificationOutput,
             status: 'complete',
             analysisPassCount: passNumber,
             lastAnalysisAt: firestore_1.FieldValue.serverTimestamp(),
             updatedAt: firestore_1.FieldValue.serverTimestamp(),
-        });
+            createdAt: firestore_1.FieldValue.serverTimestamp(), // Will only be set on create due to merge
+        }, { merge: true });
         console.log(`[ESTIMATION] Complete. Generated estimate ${estimateId}`);
         console.log(`[ESTIMATION] Used ${quantities.hasScale ? 'annotation-based' : 'pixel-only'} measurements`);
         console.log(`[ESTIMATION] Wall length: ${quantities.totalWallLength} ${quantities.scaleUnit}`);

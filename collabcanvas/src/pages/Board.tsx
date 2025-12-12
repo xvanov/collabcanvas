@@ -13,6 +13,7 @@ import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
 import { FloatingAIChat } from '../components/shared/FloatingAIChat';
 import type { BackgroundImage, Shape, ShapeType } from '../types';
+import type { EstimateConfig } from './estimate/PlanView';
 import { perfMetrics } from '../utils/harness';
 import { AuthenticatedLayout } from '../components/layouts/AuthenticatedLayout';
 // Konva types imported via Canvas component
@@ -27,8 +28,12 @@ export function Board() {
   const { projectId: routeProjectId, id } = useParams<{ projectId?: string; id?: string }>();
   const projectId = routeProjectId || id;
   const location = useLocation();
-  const locationState = location.state as { backgroundImage?: BackgroundImage } | null;
+  const locationState = location.state as { 
+    backgroundImage?: BackgroundImage;
+    estimateConfig?: EstimateConfig;
+  } | null;
   const pendingBackgroundImage = locationState?.backgroundImage;
+  const estimateConfig = locationState?.estimateConfig;
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
@@ -272,7 +277,9 @@ export function Board() {
               </button>
               <button
                 className="btn-pill-primary"
-                onClick={() => projectId && navigate(`/estimate/${projectId}/final`)}
+                onClick={() => projectId && navigate(`/estimate/${projectId}/final`, { 
+                  state: { estimateConfig } 
+                })}
                 disabled={!projectId}
               >
                 Continue to Final

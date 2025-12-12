@@ -78,7 +78,7 @@ export function ScopeInputPanel({
 
   const handleSubmit = useCallback(() => {
     if (!scopeText.trim()) {
-      setError('Please enter a scope description.');
+      setError('Please enter a scope definition.');
       return;
     }
     if (!planImage) {
@@ -94,25 +94,7 @@ export function ScopeInputPanel({
 
   return (
     <div className="space-y-6">
-      {/* Scope Text Input */}
-      <div>
-        <label htmlFor="scope-text" className="block text-sm font-medium text-gray-700 mb-2">
-          Describe Your Project Scope
-        </label>
-        <textarea
-          id="scope-text"
-          value={scopeText}
-          onChange={(e) => setScopeText(e.target.value)}
-          placeholder="Describe your project in detail. For example: 'Kitchen remodel in Denver, about 200 sq ft, mid-range finishes. We want new cabinets, granite countertops, hardwood flooring, and updated appliances. Keep existing plumbing locations.'"
-          className="w-full h-40 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 placeholder-gray-400"
-          disabled={loading}
-        />
-        <p className="mt-1 text-xs text-gray-500">
-          Include project type, location, size, finish level, and any special requirements.
-        </p>
-      </div>
-
-      {/* Plan Image Upload */}
+      {/* Plan Image Upload - Now first for better UX */}
       <div>
         <label className="block text-sm font-medium text-gray-700 mb-2">
           Upload Floor Plan / Construction Plan
@@ -124,7 +106,7 @@ export function ScopeInputPanel({
               <img
                 src={imagePreview}
                 alt="Plan preview"
-                className="w-full max-h-80 object-contain"
+                className="w-full max-h-60 object-contain"
               />
               {uploading && (
                 <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
@@ -153,10 +135,10 @@ export function ScopeInputPanel({
         ) : (
           <div
             onClick={() => fileInputRef.current?.click()}
-            className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+            className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
           >
             <svg
-              className="mx-auto h-12 w-12 text-gray-400"
+              className="mx-auto h-10 w-10 text-gray-400"
               fill="none"
               viewBox="0 0 24 24"
               stroke="currentColor"
@@ -186,6 +168,24 @@ export function ScopeInputPanel({
         />
       </div>
 
+      {/* Scope Definition Input */}
+      <div>
+        <label htmlFor="scope-text" className="block text-sm font-medium text-gray-700 mb-2">
+          Scope Definition
+        </label>
+        <textarea
+          id="scope-text"
+          value={scopeText}
+          onChange={(e) => setScopeText(e.target.value)}
+          placeholder="Describe your project in detail. For example: 'Kitchen remodel in Denver, about 200 sq ft, mid-range finishes. We want new cabinets, granite countertops, hardwood flooring, and updated appliances. Keep existing plumbing locations.'"
+          className="w-full h-32 px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 resize-none text-gray-900 placeholder-gray-400"
+          disabled={loading}
+        />
+        <p className="mt-1 text-xs text-gray-500">
+          Include project type, location, size, finish level, and any special requirements.
+        </p>
+      </div>
+
       {/* Error Display */}
       {error && (
         <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
@@ -197,7 +197,7 @@ export function ScopeInputPanel({
       <button
         onClick={handleSubmit}
         disabled={!canSubmit}
-        className={`w-full py-3 px-4 rounded-lg font-medium transition-colors ${
+        className={`w-full py-3 px-4 rounded-lg font-medium transition-colors flex items-center justify-center ${
           canSubmit
             ? 'bg-blue-600 text-white hover:bg-blue-700'
             : 'bg-gray-300 text-gray-500 cursor-not-allowed'
@@ -209,10 +209,14 @@ export function ScopeInputPanel({
             Processing...
           </span>
         ) : (
-          'Start Clarification'
+          <>
+            <span>Save Scope & Continue</span>
+            <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+            </svg>
+          </>
         )}
       </button>
     </div>
   );
 }
-

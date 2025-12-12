@@ -1,6 +1,7 @@
 /**
  * Scope View Component
- * Main component for Scope view with scope input, plan upload, and clarification chat
+ * Simplified scope input and plan upload - no chatbot on this page
+ * After upload, user proceeds to Space tab to annotate the plan
  */
 
 import { useEffect, useCallback, useState } from 'react';
@@ -8,12 +9,10 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../hooks/useAuth';
 import { useEstimationStore } from '../../store/estimationStore';
 import { ScopeInputPanel } from './ScopeInputPanel';
-import { ClarificationChat } from './ClarificationChat';
 import { saveBackgroundImage } from '../../services/firestore';
 import type { PlanImage } from '../../types/scope';
-import type { ClarificationMessage } from '../../types/estimation';
 
-type WorkflowStep = 'input' | 'clarify' | 'complete';
+type WorkflowStep = 'input' | 'ready';
 
 export function ScopeView() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -26,8 +25,6 @@ export function ScopeView() {
     error, 
     loadSession, 
     createSession, 
-    addMessage,
-    markClarificationComplete,
     cleanup,
   } = useEstimationStore();
 
@@ -45,12 +42,10 @@ export function ScopeView() {
   useEffect(() => {
     if (!session) {
       setCurrentStep('input');
-    } else if (session.clarificationComplete) {
-      setCurrentStep('complete');
-    } else if (session.clarificationMessages.length > 0) {
-      setCurrentStep('clarify');
+    } else if (session.scopeText && session.planImageUrl) {
+      setCurrentStep('ready');
     } else {
-      setCurrentStep('clarify');
+      setCurrentStep('input');
     }
   }, [session]);
 
@@ -59,45 +54,22 @@ export function ScopeView() {
     
     try {
       await createSession(projectId, scopeText, planImage, user.uid);
-      setCurrentStep('clarify');
+      setCurrentStep('ready');
     } catch (err) {
       console.error('Failed to create estimation session:', err);
     }
   }, [projectId, user, createSession]);
 
-  const handleMessageAdd = useCallback(async (message: Omit<ClarificationMessage, 'id' | 'timestamp'>) => {
-    if (!projectId || !session || !user) return;
-    
-    try {
-      await addMessage(projectId, session.id, message, user.uid);
-    } catch (err) {
-      console.error('Failed to add message:', err);
-    }
-  }, [projectId, session, user, addMessage]);
-
-  const handleClarificationComplete = useCallback(async (_extractedData: Record<string, unknown>) => {
-    if (!projectId || !session || !user) return;
-    
-    try {
-      await markClarificationComplete(projectId, session.id, user.uid);
-      setCurrentStep('complete');
-    } catch (err) {
-      console.error('Failed to complete clarification:', err);
-    }
-  }, [projectId, session, user, markClarificationComplete]);
-
-  const handleProceedToSpace = useCallback(async () => {
+  const handleProceedToAnnotate = useCallback(async () => {
     if (!projectId || !user || !session) return;
     
     // Set the plan image as background for the Space tab
     if (session.planImageUrl) {
       try {
-        // Get image dimensions if we have them from the session
-        // For now, we'll use placeholder dimensions - they'll be updated when the image loads
         await saveBackgroundImage(
           {
             url: session.planImageUrl,
-            width: 1000, // Will be overridden by actual image dimensions on load
+            width: 1000,
             height: 800,
           },
           user.uid,
@@ -105,7 +77,6 @@ export function ScopeView() {
         );
       } catch (err) {
         console.error('Failed to set plan as background:', err);
-        // Continue navigation even if background setting fails
       }
     }
     
@@ -127,14 +98,13 @@ export function ScopeView() {
     <div className="flex h-full bg-gray-50">
       {/* Main Content Area */}
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-6xl mx-auto p-6">
+        <div className="max-w-4xl mx-auto p-6">
           {/* Header */}
           <div className="mb-6">
             <h1 className="text-2xl font-bold text-gray-900">Project Scope</h1>
             <p className="text-sm text-gray-500 mt-1">
-              {currentStep === 'input' && 'Describe your project and upload the floor plan'}
-              {currentStep === 'clarify' && 'Answer questions to clarify your project scope'}
-              {currentStep === 'complete' && 'Scope clarification complete - proceed to annotate your plan'}
+              {currentStep === 'input' && 'Upload your floor plan and define the project scope'}
+              {currentStep === 'ready' && 'Scope defined - proceed to annotate your plan'}
             </p>
           </div>
 
@@ -143,33 +113,27 @@ export function ScopeView() {
             <div className="flex items-center space-x-4">
               <StepIndicator 
                 step={1} 
-                label="Input" 
+                label="Define Scope" 
                 active={currentStep === 'input'}
-                complete={currentStep !== 'input'}
+                complete={currentStep === 'ready'}
               />
               <div className="flex-1 h-0.5 bg-gray-200">
                 <div 
                   className={`h-full bg-blue-600 transition-all ${
-                    currentStep === 'input' ? 'w-0' : currentStep === 'clarify' ? 'w-1/2' : 'w-full'
+                    currentStep === 'ready' ? 'w-full' : 'w-0'
                   }`}
                 />
               </div>
               <StepIndicator 
                 step={2} 
-                label="Clarify" 
-                active={currentStep === 'clarify'}
-                complete={currentStep === 'complete'}
+                label="Annotate Plan" 
+                active={false}
+                complete={false}
               />
-              <div className="flex-1 h-0.5 bg-gray-200">
-                <div 
-                  className={`h-full bg-blue-600 transition-all ${
-                    currentStep === 'complete' ? 'w-full' : 'w-0'
-                  }`}
-                />
-              </div>
+              <div className="flex-1 h-0.5 bg-gray-200" />
               <StepIndicator 
                 step={3} 
-                label="Annotate" 
+                label="Generate Estimate" 
                 active={false}
                 complete={false}
               />
@@ -226,73 +190,107 @@ export function ScopeView() {
                     Note what's included vs excluded from scope
                   </li>
                 </ul>
-              </div>
-            </div>
-          )}
 
-          {currentStep === 'clarify' && session && (
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Plan Preview */}
-              <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-                <div className="px-4 py-3 border-b border-gray-200 bg-gray-50">
-                  <h3 className="font-medium text-gray-900">Floor Plan</h3>
-                </div>
-                <div className="p-4">
-                  {session.planImageUrl && (
-                    <img 
-                      src={session.planImageUrl} 
-                      alt="Floor plan" 
-                      className="w-full rounded-lg"
-                    />
-                  )}
-                </div>
-                <div className="px-4 py-3 border-t border-gray-200 bg-gray-50">
-                  <p className="text-sm text-gray-600 line-clamp-3">
-                    {session.scopeText}
+                <div className="mt-6 p-4 bg-blue-50 rounded-lg">
+                  <h4 className="font-medium text-blue-900 mb-2">Next Steps</h4>
+                  <p className="text-sm text-blue-700">
+                    After defining your scope, you'll annotate the plan in the Space tab 
+                    to mark walls, rooms, doors, and windows. Then use the AI chat to 
+                    verify all required annotations are complete.
                   </p>
                 </div>
               </div>
-
-              {/* Clarification Chat */}
-              <div className="h-[600px]">
-                <ClarificationChat
-                  projectId={projectId!}
-                  sessionId={session.id}
-                  scopeText={session.scopeText}
-                  messages={session.clarificationMessages}
-                  onMessageAdd={handleMessageAdd}
-                  onComplete={handleClarificationComplete}
-                />
-              </div>
             </div>
           )}
 
-          {currentStep === 'complete' && session && (
-            <div className="max-w-2xl mx-auto text-center py-12">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                <svg className="w-8 h-8 text-green-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                </svg>
+          {currentStep === 'ready' && session && (
+            <div className="space-y-6">
+              {/* Scope Summary */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <h2 className="text-lg font-semibold text-gray-900 mb-4">Scope Summary</h2>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  {/* Plan Preview */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Floor Plan</h3>
+                    {session.planImageUrl && (
+                      <img 
+                        src={session.planImageUrl} 
+                        alt="Floor plan" 
+                        className="w-full rounded-lg border border-gray-200"
+                      />
+                    )}
+                  </div>
+                  
+                  {/* Scope Text */}
+                  <div>
+                    <h3 className="text-sm font-medium text-gray-700 mb-2">Scope Definition</h3>
+                    <div className="bg-gray-50 rounded-lg p-4 h-full">
+                      <p className="text-sm text-gray-700 whitespace-pre-wrap">
+                        {session.scopeText}
+                      </p>
+                    </div>
+                  </div>
+                </div>
               </div>
-              <h2 className="text-2xl font-bold text-gray-900 mb-4">Clarification Complete!</h2>
-              <p className="text-gray-600 mb-8">
-                Your project scope has been clarified. The next step is to annotate your floor plan
-                in the Space tab to identify walls, doors, windows, and other elements.
-              </p>
-              
-              <div className="flex justify-center space-x-4">
-                <button
-                  onClick={() => setCurrentStep('clarify')}
-                  className="px-6 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
-                >
-                  Review Conversation
-                </button>
-                <button
-                  onClick={handleProceedToSpace}
-                  className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-                >
-                  Proceed to Annotate Plan →
-                </button>
+
+              {/* Action Buttons */}
+              <div className="bg-white rounded-lg border border-gray-200 p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="font-medium text-gray-900">Ready to Annotate</h3>
+                    <p className="text-sm text-gray-500 mt-1">
+                      Go to the Space tab to annotate walls, rooms, doors, and windows on your plan.
+                    </p>
+                  </div>
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setCurrentStep('input')}
+                      className="px-4 py-2 border border-gray-300 rounded-lg text-gray-700 hover:bg-gray-50"
+                    >
+                      Edit Scope
+                    </button>
+                    <button
+                      onClick={handleProceedToAnnotate}
+                      className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center"
+                    >
+                      <span>Annotate Plan</span>
+                      <svg className="w-4 h-4 ml-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" />
+                      </svg>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Annotation Instructions */}
+              <div className="bg-blue-50 rounded-lg border border-blue-200 p-6">
+                <h3 className="font-medium text-blue-900 mb-3">
+                  <span className="mr-2">📝</span>
+                  Annotation Instructions
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm text-blue-800">
+                  <div>
+                    <p className="font-medium mb-2">Required Annotations:</p>
+                    <ul className="space-y-1">
+                      <li>• <strong>Scale</strong> - Set a reference measurement</li>
+                      <li>• <strong>Walls</strong> - Draw polylines for wall segments</li>
+                      <li>• <strong>Rooms</strong> - Draw polygons for room areas</li>
+                    </ul>
+                  </div>
+                  <div>
+                    <p className="font-medium mb-2">Optional Annotations:</p>
+                    <ul className="space-y-1">
+                      <li>• <strong>Doors</strong> - Mark door locations</li>
+                      <li>• <strong>Windows</strong> - Mark window locations</li>
+                      <li>• <strong>Fixtures</strong> - Mark fixtures and equipment</li>
+                    </ul>
+                  </div>
+                </div>
+                <p className="mt-4 text-sm text-blue-700">
+                  <strong>Tip:</strong> Use the AI chat command <code className="bg-blue-100 px-1 rounded">annotation check</code> to verify all required annotations are complete before generating the estimate.
+                </p>
               </div>
             </div>
           )}
@@ -339,4 +337,3 @@ function StepIndicator({
     </div>
   );
 }
-

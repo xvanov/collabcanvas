@@ -9,6 +9,7 @@ import { sagemakerInvoke } from './sagemakerInvoke';
 import { clarificationAgent } from './clarificationAgent';
 import { estimationPipeline } from './estimationPipeline';
 import { comparePrices } from './priceComparison';
+import { annotationCheckAgent } from './annotationCheckAgent';
 // import { onProjectDeleted } from './projectDeletion'; // TODO: Uncomment when ready to deploy
 
 export { 
@@ -19,5 +20,6 @@ export {
   clarificationAgent,
   estimationPipeline,
   comparePrices,
+  annotationCheckAgent,
 };
 // export { onProjectDeleted }; // TODO: Uncomment when ready to deploy
