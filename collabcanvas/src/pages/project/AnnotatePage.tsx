@@ -13,6 +13,7 @@ import { useLocks } from '../../hooks/useLocks';
 import { useOffline } from '../../hooks/useOffline';
 import { DiagnosticsHud } from '../../components/DiagnosticsHud';
 import type { BackgroundImage, Shape, ShapeType } from '../../types';
+import type { EstimateConfig } from './ScopePage';
 import { perfMetrics } from '../../utils/harness';
 
 /**
@@ -29,14 +30,17 @@ export function AnnotatePage() {
   const navigate = useNavigate();
   const { id: projectId } = useParams<{ id: string }>();
   const location = useLocation();
-  const locationState = location.state as { backgroundImage?: BackgroundImage } | null;
+  const locationState = location.state as { 
+    backgroundImage?: BackgroundImage;
+    estimateConfig?: EstimateConfig;
+  } | null;
   const pendingBackgroundImage = locationState?.backgroundImage;
+  const estimateConfig = locationState?.estimateConfig;
 
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
   const [showAlignmentToolbar, setShowAlignmentToolbar] = useState(false);
-  const [clarificationComplete, setClarificationComplete] = useState(false);
 
   const { user } = useAuth();
   const setCurrentUser = useCanvasStore((state) => state.setCurrentUser);
@@ -239,7 +243,9 @@ export function AnnotatePage() {
 
   const handleGenerateEstimate = () => {
     if (projectId) {
-      navigate(`/project/${projectId}/estimate`);
+      navigate(`/project/${projectId}/estimate`, {
+        state: { estimateConfig }
+      });
     }
   };
 
@@ -249,11 +255,6 @@ export function AnnotatePage() {
     }
   };
 
-  // Handler for clarification completion (will be wired to actual agent)
-  const handleClarificationComplete = (complete: boolean) => {
-    setClarificationComplete(complete);
-  };
-
   return (
     <div className="h-screen bg-truecost-bg-primary flex flex-col overflow-hidden">
       {/* Integrated navbar with toolbar */}
@@ -261,7 +262,7 @@ export function AnnotatePage() {
         projectId={projectId}
         onBackToScope={handleBackToScope}
         onGenerateEstimate={handleGenerateEstimate}
-        canGenerateEstimate={clarificationComplete}
+        canGenerateEstimate={true}
         onCreateShape={handleCreateShape}
         stageRef={canvasRef.current?.getStage()}
         onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
@@ -295,26 +296,13 @@ export function AnnotatePage() {
           </div>
         </div>
 
-        {/* Chat sidebar - fixed width */}
+        {/* AI Chat sidebar - fixed width */}
         <div className="w-80 lg:w-96 flex flex-col border-l border-truecost-glass-border bg-truecost-bg-secondary/50">
-          <div className="p-3 border-b border-truecost-glass-border">
-            <h3 className="font-heading text-sm font-semibold text-truecost-text-primary">
-              Project Assistant
-            </h3>
-            <p className="text-xs text-truecost-text-secondary">
-              Clarify details for accurate estimates
-            </p>
-          </div>
-          <div className="flex-1 overflow-hidden">
-            <ChatPanel onClarificationComplete={handleClarificationComplete} />
-          </div>
-          {!clarificationComplete && (
-            <div className="p-2 border-t border-truecost-glass-border bg-truecost-bg-primary/30">
-              <p className="text-xs text-truecost-text-muted text-center">
-                Complete chat to unlock estimation
-              </p>
-            </div>
-          )}
+          <ChatPanel 
+            projectId={projectId || ''} 
+            estimateConfig={estimateConfig}
+            navigateToEstimate={`/project/${projectId}/estimate`}
+          />
         </div>
       </div>
 

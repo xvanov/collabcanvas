@@ -13,7 +13,7 @@ import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
 import { FloatingAIChat } from '../components/shared/FloatingAIChat';
 import type { BackgroundImage, Shape, ShapeType } from '../types';
-import type { EstimateConfig } from './estimate/PlanView';
+import type { EstimateConfig } from './project/ScopePage';
 import { perfMetrics } from '../utils/harness';
 import { AuthenticatedLayout } from '../components/layouts/AuthenticatedLayout';
 // Konva types imported via Canvas component

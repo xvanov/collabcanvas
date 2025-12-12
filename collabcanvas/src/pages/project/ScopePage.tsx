@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthenticatedLayout } from '../../components/layouts/AuthenticatedLayout';
 import { Button, GlassPanel, Input, Select, Textarea } from '../../components/ui';
@@ -9,6 +9,16 @@ import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useStepCompletion } from '../../hooks/useStepCompletion';
 import type { BackgroundImage } from '../../types';
+
+// Estimate configuration interface
+export interface EstimateConfig {
+  scopeText: string;
+  overheadPercent: number;
+  profitPercent: number;
+  contingencyPercent: number;
+  wasteFactorPercent: number;
+  startDate: string;
+}
 
 /**
  * ScopePage - Combined form for project creation/editing with file upload.
@@ -46,6 +56,19 @@ export function ScopePage() {
   const [preparedBackground, setPreparedBackground] = useState<BackgroundImage | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Estimate configuration state
+  const defaultStartDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 14); // 2 weeks from today
+    return date.toISOString().split('T')[0];
+  }, []);
+  
+  const [overheadPercent, setOverheadPercent] = useState(10);
+  const [profitPercent, setProfitPercent] = useState(10);
+  const [contingencyPercent, setContingencyPercent] = useState(5);
+  const [wasteFactorPercent, setWasteFactorPercent] = useState(10);
+  const [startDate, setStartDate] = useState(defaultStartDate);
 
   // Load existing project data if in edit mode
   useEffect(() => {
@@ -133,9 +156,23 @@ export function ScopePage() {
         user.uid
       );
 
-      // Navigate to Annotate page with the background image state
-      const state = preparedBackground ? { backgroundImage: preparedBackground } : undefined;
-      navigate(`/project/${project.id}/annotate`, { state });
+      // Build estimate config
+      const estimateConfig: EstimateConfig = {
+        scopeText: formData.scopeDefinition,
+        overheadPercent,
+        profitPercent,
+        contingencyPercent,
+        wasteFactorPercent,
+        startDate,
+      };
+
+      // Navigate to Annotate page with the background image and estimate config
+      navigate(`/project/${project.id}/annotate`, { 
+        state: { 
+          backgroundImage: preparedBackground,
+          estimateConfig,
+        } 
+      });
     } catch (err) {
       console.error('Failed to create project:', err);
       setError(err instanceof Error ? err.message : 'Failed to create project');
@@ -293,6 +330,83 @@ export function ScopePage() {
                         Use Union Labor Rates
                       </span>
                     </label>
+                  </div>
+                </div>
+
+                {/* Estimate Configuration */}
+                <div className="pt-4 border-t border-truecost-glass-border">
+                  <h3 className="font-heading text-lg text-truecost-text-primary mb-4">
+                    Estimate Configuration
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Overhead %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={overheadPercent}
+                        onChange={(e) => setOverheadPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Profit %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={profitPercent}
+                        onChange={(e) => setProfitPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Contingency %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={contingencyPercent}
+                        onChange={(e) => setContingencyPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Waste Factor %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={wasteFactorPercent}
+                        onChange={(e) => setWasteFactorPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="glass-input w-full"
+                      />
+                    </div>
                   </div>
                 </div>
 

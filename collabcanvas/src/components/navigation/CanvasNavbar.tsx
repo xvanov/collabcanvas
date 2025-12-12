@@ -8,7 +8,7 @@ import { FileUpload } from '../FileUpload';
 import { ScaleTool } from '../ScaleTool';
 import { ExportDialog } from '../ExportDialog';
 import { ShortcutsHelp } from '../ShortcutsHelp';
-import { UnifiedAIChat } from '../UnifiedAIChat';
+import { FloatingChatPanel } from '../estimate/FloatingChatPanel';
 import { MaterialEstimationPanel } from '../MaterialEstimationPanel';
 import logo from '../../assets/logo.png';
 import Konva from 'konva';
@@ -476,7 +476,7 @@ export function CanvasNavbar({
         isOpen={isShortcutsHelpOpen}
         onClose={() => setIsShortcutsHelpOpen(false)}
       />
-      <UnifiedAIChat
+      <FloatingChatPanel
         isVisible={isAIAssistantOpen}
         onClose={() => setIsAIAssistantOpen(false)}
       />
