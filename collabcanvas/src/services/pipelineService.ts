@@ -10,13 +10,14 @@ import { functions, firestore } from './firebase';
 
 /**
  * Pipeline stage names (from Epic 2 deep agent pipeline)
+ * Note: Clarification stage runs separately during Annotate phase (Epic 3)
+ * The estimate pipeline starts from cad_analysis
  */
 export const PIPELINE_STAGES = [
-  { id: 'clarification', name: 'Understanding requirements', weight: 10 },
-  { id: 'cad_analysis', name: 'Analyzing blueprints', weight: 10 },
+  { id: 'cad_analysis', name: 'Analyzing blueprints', weight: 15 },
   { id: 'location', name: 'Gathering location data', weight: 15 },
   { id: 'scope', name: 'Defining project scope', weight: 20 },
-  { id: 'cost', name: 'Calculating costs', weight: 20 },
+  { id: 'cost', name: 'Calculating costs', weight: 25 },
   { id: 'risk', name: 'Assessing risks', weight: 10 },
   { id: 'final', name: 'Finalizing estimate', weight: 15 },
 ] as const;
@@ -65,21 +66,19 @@ export const INITIAL_PROGRESS: PipelineProgress = {
 
 /**
  * Trigger the estimate generation pipeline
- * Calls the orchestrator Cloud Function to start the 7-agent pipeline
+ * Calls the dedicated orchestrator Cloud Function to start the 7-agent pipeline
  */
 export async function triggerEstimatePipeline(
   projectId: string,
   userId: string
 ): Promise<{ success: boolean; pipelineId?: string; error?: string }> {
   try {
-    // Call the materialEstimateCommand or a dedicated orchestrator function
-    // The deep agent pipeline from Epic 2 handles all 7 agents
-    const triggerPipelineFn = httpsCallable(functions, 'materialEstimateCommand');
+    // Call the dedicated pipeline orchestrator function
+    const triggerPipelineFn = httpsCallable(functions, 'triggerEstimatePipeline');
 
     const result = await triggerPipelineFn({
       projectId,
       userId,
-      command: 'generate_full_estimate',
     });
 
     const data = result.data as { success: boolean; pipelineId?: string; error?: string };

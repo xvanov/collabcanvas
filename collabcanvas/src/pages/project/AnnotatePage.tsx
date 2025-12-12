@@ -12,6 +12,7 @@ import { useShapes } from '../../hooks/useShapes';
 import { useLayers } from '../../hooks/useLayers';
 import { useLocks } from '../../hooks/useLocks';
 import { useOffline } from '../../hooks/useOffline';
+import { useStepCompletion } from '../../hooks/useStepCompletion';
 import { DiagnosticsHud } from '../../components/DiagnosticsHud';
 import { Button } from '../../components/ui';
 import type { BackgroundImage, Shape, ShapeType } from '../../types';
@@ -252,8 +253,8 @@ export function AnnotatePage() {
     }
   };
 
-  // Determine completed steps for the stepper
-  const completedSteps: ('scope' | 'annotate' | 'estimate')[] = ['scope'];
+  // Get actual completion state from hook
+  const { completedSteps } = useStepCompletion(projectId);
 
   // Handler for clarification completion (will be wired to actual agent)
   const handleClarificationComplete = (complete: boolean) => {

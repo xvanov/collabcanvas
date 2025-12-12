@@ -7,7 +7,8 @@ const firestore_1 = require("firebase-admin/firestore");
 const dotenv = require("dotenv");
 const path = require("path");
 const openai_1 = require("openai");
-const corsConfig_1 = require("./corsConfig");
+// Using cors: true to match other functions (aiCommand, materialEstimateCommand, sagemakerInvoke)
+// This supports Firebase preview channel URLs which have dynamic hostnames
 // Load environment variables - try multiple locations
 dotenv.config();
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
@@ -30,9 +31,9 @@ catch (_a) {
 if (process.env.FIRESTORE_EMULATOR_HOST) {
     console.log('[PRICE_COMPARISON] Using Firestore emulator:', process.env.FIRESTORE_EMULATOR_HOST);
 }
-else if (process.env.NODE_ENV !== 'production' && !process.env.FUNCTIONS_EMULATOR) {
+else if (process.env.NODE_ENV === 'development' && !process.env.FUNCTIONS_EMULATOR) {
     process.env.FIRESTORE_EMULATOR_HOST = '127.0.0.1:8081';
-    console.log('[PRICE_COMPARISON] Setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
+    console.log('[PRICE_COMPARISON] Local development detected - setting FIRESTORE_EMULATOR_HOST to 127.0.0.1:8081');
 }
 // CacheLookupResult interface reserved for future use (tracking cache hits/misses)
 // ============ CONSTANTS ============
@@ -313,10 +314,10 @@ function parseMatchResult(content) {
             reasoning: parsed.reasoning || 'No reasoning provided',
         };
     }
-    catch (_a) {
-        // Fallback if JSON parsing fails
-        console.warn('[PRICE_COMPARISON] JSON parse failed, using fallback');
-        return { index: 0, confidence: 0.5, reasoning: 'Fallback to first result (JSON parse failed)' };
+    catch (err) {
+        // Fallback if JSON parsing fails - return no match rather than guessing
+        console.warn('[PRICE_COMPARISON] JSON parse failed for content:', cleaned.substring(0, 100), 'Error:', err);
+        return { index: -1, confidence: 0, reasoning: 'Fallback - no match (JSON parse failed)' };
     }
 }
 exports.parseMatchResult = parseMatchResult;
@@ -574,10 +575,11 @@ async function compareOneProduct(productName, zipCode, db) {
 // ============ MAIN CLOUD FUNCTION ============
 // Export configuration for testing - changes here are detected by tests
 exports.comparePricesConfig = {
-    cors: (0, corsConfig_1.getCorsOrigins)(),
+    cors: true,
     maxInstances: 10,
     memory: '1GiB',
-    timeoutSeconds: 540, // Max for 2nd gen - handles large product lists
+    timeoutSeconds: 540,
+    secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret for product matching
 };
 exports.comparePrices = (0, https_1.onCall)(exports.comparePricesConfig, async (req) => {
     var _a, _b, _c;
@@ -636,10 +638,11 @@ exports.comparePrices = (0, https_1.onCall)(exports.comparePricesConfig, async (
         return { cached: false };
     }
     catch (error) {
-        // Handle errors gracefully
+        // Handle errors gracefully - preserve partial results
         console.error('[PRICE_COMPARISON] Error during comparison:', error);
         await docRef.update({
             status: 'error',
+            results: results,
             error: error instanceof Error ? error.message : 'Unknown error',
         });
         throw new https_1.HttpsError('internal', 'Price comparison failed');

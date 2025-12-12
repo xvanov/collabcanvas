@@ -7,6 +7,7 @@ import { FilePreview } from '../../components/estimate/FilePreview';
 import { EstimateStepper } from '../../components/estimate/EstimateStepper';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
+import { useStepCompletion } from '../../hooks/useStepCompletion';
 import type { BackgroundImage } from '../../types';
 
 /**
@@ -145,8 +146,8 @@ export function ScopePage() {
 
   const isFormValid = formData.name.trim() && formData.location.trim() && uploadedFile;
 
-  // Determine completed steps for the stepper
-  const completedSteps: ('scope' | 'annotate' | 'estimate')[] = [];
+  // Get actual completion state from hook
+  const { completedSteps } = useStepCompletion(projectId);
 
   return (
     <AuthenticatedLayout>

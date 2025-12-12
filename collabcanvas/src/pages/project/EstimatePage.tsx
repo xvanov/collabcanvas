@@ -20,8 +20,10 @@ import { MoneyView } from '../../components/money/MoneyView';
 import { ComparisonView } from '../../components/money/ComparisonView';
 import { TimeView } from '../../components/time/TimeView';
 import { PriceComparisonPanel } from '../../components/estimate/PriceComparisonPanel';
+import { PipelineDebugPanel } from '../../components/estimate/PipelineDebugPanel';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useAuth } from '../../hooks/useAuth';
+import { useStepCompletion } from '../../hooks/useStepCompletion';
 import { getBOM } from '../../services/bomService';
 import {
   subscribeToPipelineProgress,
@@ -68,37 +70,63 @@ export function EstimatePage() {
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [pdfType, setPdfType] = useState<'contractor' | 'client' | null>(null);
 
+  // Debug panel state
+  const [showDebug, setShowDebug] = useState(false);
+
   // BOM state from store
   const billOfMaterials = useCanvasStore((state) => state.billOfMaterials);
   const setBillOfMaterials = useCanvasStore((state) => state.setBillOfMaterials);
 
-  // Check if estimate already exists on mount
+  // Check if estimate already exists OR if pipeline is running on mount
   useEffect(() => {
     if (!projectId) return;
 
-    const checkExistingEstimate = async () => {
+    const checkExistingState = async () => {
       try {
+        // First check if BOM exists (estimate complete)
         const bom = await getBOM(projectId);
         if (bom && bom.totalMaterials.length > 0) {
           setBillOfMaterials(bom);
           setPhase('results');
+          return;
+        }
+
+        // If no BOM, check if pipeline is running
+        const { getPipelineStatus } = await import('../../services/pipelineService');
+        const pipelineStatus = await getPipelineStatus(projectId);
+
+        if (pipelineStatus.status === 'running') {
+          // Resume tracking the running pipeline
+          setIsGenerating(true);
+          setProgress(pipelineStatus);
         }
       } catch (err) {
-        console.error('Error checking existing estimate:', err);
+        console.error('Error checking existing state:', err);
       }
     };
 
-    checkExistingEstimate();
+    checkExistingState();
   }, [projectId, setBillOfMaterials]);
 
-  // Subscribe to pipeline progress
+  // Subscribe to pipeline progress - subscribe whenever in generate phase
+  // This handles both new pipelines and resuming existing ones
   useEffect(() => {
-    if (!projectId || phase !== 'generate' || !isGenerating) return;
+    if (!projectId || phase !== 'generate') return;
 
     const unsubscribe = subscribeToPipelineProgress(
       projectId,
       (newProgress) => {
+        // Only update if pipeline is actually doing something
+        if (newProgress.status === 'idle' && !isGenerating) {
+          return; // Don't update for idle status if we haven't started
+        }
+
         setProgress(newProgress);
+
+        // If pipeline is running, make sure isGenerating is true
+        if (newProgress.status === 'running' && !isGenerating) {
+          setIsGenerating(true);
+        }
 
         // Check if pipeline completed
         if (newProgress.status === 'complete') {
@@ -116,6 +144,12 @@ export function EstimatePage() {
         }
       },
       (err) => {
+        // Don't set error for permission errors on initial load
+        // (pipeline doc may not exist yet)
+        if (!isGenerating) {
+          console.warn('[PIPELINE] Subscription warning:', err.message);
+          return;
+        }
         setError(err.message);
         setIsGenerating(false);
       }
@@ -182,8 +216,21 @@ export function EstimatePage() {
     }
   };
 
-  // Completed steps for stepper
-  const completedSteps: ('scope' | 'annotate' | 'estimate')[] = ['scope', 'annotate'];
+  // Get actual completion state from hook
+  const { completedSteps } = useStepCompletion(projectId);
+
+  // Debug panel keyboard shortcut (Shift+D)
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.shiftKey && e.key.toLowerCase() === 'd') {
+        e.preventDefault();
+        setShowDebug((prev) => !prev);
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Render Phase 1: Generate Estimate
   const renderGeneratePhase = () => (
@@ -436,12 +483,33 @@ export function EstimatePage() {
               <button onClick={handleBackToAnnotate} className="btn-pill-secondary">
                 Back to Annotate
               </button>
+              {/* Debug toggle button */}
+              <button
+                onClick={() => setShowDebug((prev) => !prev)}
+                className={`px-3 py-2 rounded-lg text-xs font-mono transition-colors ${
+                  showDebug
+                    ? 'bg-truecost-cyan/20 text-truecost-cyan border border-truecost-cyan/50'
+                    : 'bg-truecost-glass-bg text-truecost-text-muted hover:text-truecost-text-primary border border-truecost-glass-border'
+                }`}
+                title="Toggle debug panel (Shift+D)"
+              >
+                🔧 Debug
+              </button>
             </div>
           </div>
 
           {/* Main content */}
           {phase === 'generate' ? renderGeneratePhase() : renderResultsPhase()}
         </div>
+
+        {/* Debug Panel */}
+        {projectId && (
+          <PipelineDebugPanel
+            projectId={projectId}
+            isVisible={showDebug}
+            onClose={() => setShowDebug(false)}
+          />
+        )}
       </AuthenticatedLayout>
     </div>
   );

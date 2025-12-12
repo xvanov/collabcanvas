@@ -433,6 +433,42 @@ service cloud.firestore {
         allow delete: if request.auth != null
           && (!projectExists() || getProject().data.ownerId == request.auth.uid);
       }
+
+      // Pipeline subcollection - estimate pipeline status and progress tracking
+      // Story: 6-2 - Two-phase UI with progress tracking
+      match /pipeline/{pipelineDocId} {
+        // Helper function to get project document safely
+        function getProject() {
+          return get(/databases/$(database)/documents/projects/$(projectId));
+        }
+
+        // Helper function to check if project exists
+        function projectExists() {
+          return exists(/databases/$(database)/documents/projects/$(projectId));
+        }
+
+        // Helper function to check if user is owner or collaborator
+        function isOwnerOrCollaborator() {
+          return request.auth != null
+            && projectExists()
+            && (getProject().data.ownerId == request.auth.uid
+                || getProject().data.collaborators != null);
+        }
+
+        // Read: Allow authenticated users to read pipeline status
+        // Needed for real-time progress tracking in the UI
+        allow read: if request.auth != null
+          && (!projectExists() || isOwnerOrCollaborator());
+
+        // Create/Update: Cloud Functions use Admin SDK (bypasses rules)
+        // Allow authenticated project members for triggering pipelines
+        allow create, update: if request.auth != null
+          && (!projectExists() || isOwnerOrCollaborator());
+
+        // Delete: Only owner (if project exists)
+        allow delete: if request.auth != null
+          && (!projectExists() || getProject().data.ownerId == request.auth.uid);
+      }
     }
 
     // Estimates collection - TrueCost deep pipeline
