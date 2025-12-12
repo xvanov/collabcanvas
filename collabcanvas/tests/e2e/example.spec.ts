@@ -15,7 +15,8 @@ test.describe('Example Test Suite', () => {
     await page.goto('/');
 
     // Then: Page should load successfully
-    await expect(page).toHaveTitle(/Projective/i);
+    // App title is "TrueCost" in the current product.
+    await expect(page).toHaveTitle(/TrueCost/i);
   });
 
   test('should demonstrate user factory usage', async ({ userFactory }) => {
