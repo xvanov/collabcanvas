@@ -13,12 +13,18 @@ import { Terms } from './pages/Terms';
 import { Dashboard } from './pages/Dashboard';
 import { Project } from './pages/Project';
 import { Account } from './pages/Account';
-import { NewEstimate } from './pages/estimate/NewEstimate';
+import { Board } from './pages/Board';
+import { PriceComparisonPage } from './components/PriceComparisonPage';
+
+// Project flow pages (new)
+import { ScopePage } from './pages/project/ScopePage';
+import { AnnotatePage } from './pages/project/AnnotatePage';
+import { EstimatePage } from './pages/project/EstimatePage';
+
+// Legacy estimate pages (to be removed after full migration)
 import { EstimateView } from './pages/estimate/EstimateView';
 import { PlanView } from './pages/estimate/PlanView';
 import { FinalView } from './pages/estimate/FinalView';
-import { Board } from './pages/Board';
-import { PriceComparisonPage } from './components/PriceComparisonPage';
 
 /**
  * Protected Route Component
@@ -29,10 +35,10 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-truecost-bg-primary">
         <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
-          <p className="text-gray-600">Loading...</p>
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-truecost-cyan border-t-transparent"></div>
+          <p className="text-truecost-text-secondary">Loading...</p>
         </div>
       </div>
     );
@@ -92,14 +98,44 @@ function App() {
           }
         />
 
-        {/* Estimate routes (placeholders for now) */}
+        {/* Project routes (new flow) */}
         <Route
-          path="/estimate/new"
+          path="/project/new"
           element={
             <ProtectedRoute>
-              <NewEstimate />
+              <ScopePage />
             </ProtectedRoute>
           }
+        />
+        <Route
+          path="/project/:id/scope"
+          element={
+            <ProtectedRoute>
+              <ScopePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:id/annotate"
+          element={
+            <ProtectedRoute>
+              <AnnotatePage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/project/:id/estimate"
+          element={
+            <ProtectedRoute>
+              <EstimatePage />
+            </ProtectedRoute>
+          }
+        />
+
+        {/* Legacy estimate routes - redirect to new routes */}
+        <Route
+          path="/estimate/new"
+          element={<Navigate to="/project/new" replace />}
         />
         <Route
           path="/estimate/:id"

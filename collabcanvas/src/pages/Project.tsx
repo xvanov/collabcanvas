@@ -357,7 +357,7 @@ export function Project() {
             <Route path="scope" element={<ScopeView />} />
             <Route path="space" element={<Board />} />
             <Route path="estimate" element={<EstimationView />} />
-            <Route path="time" element={<TimeView />} />
+            <Route path="time" element={<TimeView projectId={projectId || ''} />} />
             <Route path="money" element={<MoneyView />} />
             <Route path="*" element={<ScopeView />} />
           </Routes>
@@ -463,7 +463,7 @@ export function Project() {
           <Route path="scope" element={<ScopeView />} />
           <Route path="space" element={<Board />} />
           <Route path="estimate" element={<EstimationView />} />
-          <Route path="time" element={<TimeView />} />
+          <Route path="time" element={<TimeView projectId={projectId || ''} />} />
           <Route path="money" element={<MoneyView />} />
           <Route path="*" element={<ScopeView />} />
         </Routes>

@@ -578,7 +578,8 @@ exports.comparePricesConfig = {
     cors: true,
     maxInstances: 10,
     memory: '1GiB',
-    timeoutSeconds: 540, // Max for 2nd gen - handles large product lists
+    timeoutSeconds: 540,
+    secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret for product matching
 };
 exports.comparePrices = (0, https_1.onCall)(exports.comparePricesConfig, async (req) => {
     var _a, _b, _c;

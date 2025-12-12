@@ -8,21 +8,35 @@ interface Message {
   timestamp: Date;
 }
 
+interface ChatPanelProps {
+  onClarificationComplete?: (complete: boolean) => void;
+}
+
+// Clarification questions for the agent to ask
+const clarificationQuestions = [
+  "Hello! I'll help you create an accurate estimate. Could you tell me more about the materials you prefer for this project?",
+  "Great choice! What's your preferred timeline for completing this project?",
+  "Are there any specific quality requirements or certifications needed for the materials?",
+  "Do you have any existing infrastructure that needs to be integrated or worked around?",
+  "Perfect! I have all the information I need to generate an accurate estimate. Click 'Generate Estimate' when you're ready!",
+];
+
 /**
- * ChatPanel - Glass chat UI with fixed input bar and mock agent replies.
+ * ChatPanel - Glass chat UI with fixed input bar and clarification agent.
+ * The agent asks clarifying questions back-and-forth and signals when complete.
  */
-export function ChatPanel() {
+export function ChatPanel({ onClarificationComplete }: ChatPanelProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       role: 'agent',
-      content:
-        "Hello! I'll help you create an accurate estimate. Could you tell me more about the materials you prefer for this project?",
+      content: clarificationQuestions[0],
       timestamp: new Date(),
     },
   ]);
   const [inputValue, setInputValue] = useState('');
   const [isTyping, setIsTyping] = useState(false);
+  const [questionIndex, setQuestionIndex] = useState(0);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -43,16 +57,25 @@ export function ChatPanel() {
     setInputValue('');
     setIsTyping(true);
 
+    // Simulate agent response with next clarification question
     setTimeout(() => {
+      const nextIndex = questionIndex + 1;
+      const isComplete = nextIndex >= clarificationQuestions.length - 1;
+
       const agentMessage: Message = {
         id: `agent-${Date.now()}`,
         role: 'agent',
-        content:
-          "Thanks for the details. I'll incorporate that into the estimate. Is there anything else you'd like to specify?",
+        content: clarificationQuestions[Math.min(nextIndex, clarificationQuestions.length - 1)],
         timestamp: new Date(),
       };
       setMessages((prev) => [...prev, agentMessage]);
       setIsTyping(false);
+      setQuestionIndex(nextIndex);
+
+      // Signal clarification complete when all questions are answered
+      if (isComplete && onClarificationComplete) {
+        onClarificationComplete(true);
+      }
     }, 1500);
   };
 

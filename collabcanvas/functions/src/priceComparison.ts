@@ -742,6 +742,7 @@ export const comparePricesConfig = {
   maxInstances: 10,
   memory: '1GiB' as const,
   timeoutSeconds: 540, // Max for 2nd gen - handles large product lists
+  secrets: ['OPENAI_API_KEY'], // Grant access to OpenAI API key secret for product matching
 };
 
 export const comparePrices = onCall<{ request: CompareRequest }>(comparePricesConfig, async (req) => {

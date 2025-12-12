@@ -6,7 +6,8 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist', 'functions/lib']),
+  // Ignore generated artifacts and build outputs (they may contain disable comments for rules we don't load in JS contexts)
+globalIgnores(['dist', 'functions/lib', 'functions/lib/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -11,6 +11,13 @@ import { useOffline } from '../hooks/useOffline';
 vi.mock('../store/canvasStore');
 vi.mock('../hooks/usePresence');
 vi.mock('../hooks/useOffline');
+vi.mock('../hooks/useShapes', () => ({
+  useShapes: () => ({
+    deleteShapes: vi.fn(),
+    createShape: vi.fn(),
+    updateShape: vi.fn(),
+  }),
+}));
 vi.mock('./UnifiedAIChat', () => ({
   UnifiedAIChat: () => null, // Mock UnifiedAIChat to avoid Router dependency
 }));

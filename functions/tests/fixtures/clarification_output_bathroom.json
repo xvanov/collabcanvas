@@ -1,0 +1,924 @@
+{
+  "estimateId": "est_bath456",
+  "schemaVersion": "3.0.0",
+  "timestamp": "2025-12-10T15:00:00Z",
+  "clarificationStatus": "complete",
+
+  "projectBrief": {
+    "projectType": "bathroom_remodel",
+
+    "location": {
+      "fullAddress": "2500 Lawrence Street, Unit 1A, Denver, CO 80205",
+      "streetAddress": "2500 Lawrence Street",
+      "unit": "1A",
+      "city": "Denver",
+      "state": "CO",
+      "zipCode": "80205",
+      "county": "Denver County",
+      "coordinates": {
+        "lat": 39.7621,
+        "lng": -104.9789
+      }
+    },
+
+    "scopeSummary": {
+      "description": "Master bathroom remodel with new vanity, walk-in shower conversion, new flooring, and updated lighting.",
+      "totalSqft": 75,
+      "rooms": ["master_bathroom"],
+      "finishLevel": "mid_range",
+      "projectComplexity": "moderate",
+      "includedDivisions": ["01", "02", "06", "08", "09", "10", "22", "26"],
+      "excludedDivisions": ["03", "04", "05", "07", "11", "12", "13", "14", "21", "23", "25", "27", "28", "31", "32", "33"],
+      "byOwnerDivisions": [],
+      "notApplicableDivisions": [],
+      "totalIncluded": 8,
+      "totalExcluded": 16
+    },
+
+    "specialRequirements": [
+      "ADA-compliant grab bars near toilet and in shower",
+      "Curbless shower entry for accessibility",
+      "GFCI protection for all outlets"
+    ],
+
+    "exclusions": [
+      "Structural changes",
+      "HVAC modifications",
+      "Permit fees (by owner)"
+    ],
+
+    "timeline": {
+      "desiredStart": "2025-03-01",
+      "deadline": null,
+      "flexibility": "flexible"
+    }
+  },
+
+  "csiScope": {
+    "div01_general_requirements": {
+      "code": "01",
+      "name": "General Requirements",
+      "status": "included",
+      "description": "Project management, cleanup, and protection of existing surfaces.",
+      "items": [
+        {
+          "id": "01-001",
+          "item": "Project supervision and coordination",
+          "subdivisionCode": "01 31 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum for project duration",
+          "specifications": "Daily site coordination, scheduling, subcontractor management",
+          "notes": null,
+          "confidence": 1.0,
+          "source": "standard_allowance"
+        },
+        {
+          "id": "01-002",
+          "item": "Floor protection",
+          "subdivisionCode": "01 56 00",
+          "quantity": 100,
+          "unit": "sf",
+          "unitDescription": "square feet of protected area",
+          "specifications": "Ram board or equivalent for adjacent areas during construction",
+          "notes": "Protect hallway and bedroom leading to bathroom",
+          "confidence": 0.95,
+          "source": "inferred"
+        },
+        {
+          "id": "01-003",
+          "item": "Daily cleanup",
+          "subdivisionCode": "01 74 00",
+          "quantity": 10,
+          "unit": "days",
+          "unitDescription": "working days",
+          "specifications": "End of day debris removal, dust control",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div02_existing_conditions": {
+      "code": "02",
+      "name": "Existing Conditions",
+      "status": "included",
+      "description": "Demolition of existing bathroom fixtures, flooring, and finishes.",
+      "items": [
+        {
+          "id": "02-001",
+          "item": "Tub/shower demolition",
+          "subdivisionCode": "02 41 19",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "tub unit removed",
+          "specifications": "Remove existing fiberglass tub/shower combo, haul away",
+          "notes": "Convert to walk-in shower",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "02-002",
+          "item": "Vanity demolition",
+          "subdivisionCode": "02 41 19",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "vanity removed",
+          "specifications": "Remove existing 36-inch vanity and mirror",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "02-003",
+          "item": "Flooring demolition",
+          "subdivisionCode": "02 41 19",
+          "quantity": 75,
+          "unit": "sf",
+          "unitDescription": "square feet of flooring removed",
+          "specifications": "Remove existing vinyl flooring down to subfloor",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "02-004",
+          "item": "Dumpster rental",
+          "subdivisionCode": "02 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "dumpster rental period",
+          "specifications": "6-yard dumpster, 1 week rental",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div03_concrete": {
+      "code": "03",
+      "name": "Concrete",
+      "status": "excluded",
+      "exclusionReason": "No concrete work required. Existing subfloor in good condition.",
+      "description": "",
+      "items": []
+    },
+
+    "div04_masonry": {
+      "code": "04",
+      "name": "Masonry",
+      "status": "excluded",
+      "exclusionReason": "No masonry work in bathroom remodel scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div05_metals": {
+      "code": "05",
+      "name": "Metals",
+      "status": "excluded",
+      "exclusionReason": "No structural metal work required.",
+      "description": "",
+      "items": []
+    },
+
+    "div06_wood_plastics_composites": {
+      "code": "06",
+      "name": "Wood, Plastics, and Composites",
+      "status": "included",
+      "description": "New vanity cabinet and trim.",
+      "items": [
+        {
+          "id": "06-001",
+          "item": "Bathroom vanity cabinet",
+          "subdivisionCode": "06 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "vanity unit",
+          "specifications": "48-inch double-sink vanity, shaker style, white painted finish, soft-close drawers",
+          "notes": "Upgrade from existing 36-inch single sink",
+          "confidence": 0.92,
+          "source": "user_input"
+        },
+        {
+          "id": "06-002",
+          "item": "Base trim",
+          "subdivisionCode": "06 22 00",
+          "quantity": 30,
+          "unit": "lf",
+          "unitDescription": "linear feet installed",
+          "specifications": "3.5-inch colonial base, painted white",
+          "notes": "Room perimeter minus vanity",
+          "confidence": 0.85,
+          "source": "cad_extraction"
+        }
+      ]
+    },
+
+    "div07_thermal_moisture": {
+      "code": "07",
+      "name": "Thermal and Moisture Protection",
+      "status": "excluded",
+      "exclusionReason": "Waterproofing included in tile work (Division 09). No additional insulation required.",
+      "description": "",
+      "items": []
+    },
+
+    "div08_openings": {
+      "code": "08",
+      "name": "Openings",
+      "status": "included",
+      "description": "Shower door and hardware.",
+      "items": [
+        {
+          "id": "08-001",
+          "item": "Frameless shower door",
+          "subdivisionCode": "08 81 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "door installed",
+          "specifications": "36-inch frameless hinged glass door, clear tempered glass, chrome hardware",
+          "notes": "Curbless entry compatible",
+          "confidence": 0.90,
+          "source": "user_input"
+        },
+        {
+          "id": "08-002",
+          "item": "Cabinet hardware",
+          "subdivisionCode": "08 71 00",
+          "quantity": 6,
+          "unit": "each",
+          "unitDescription": "pulls installed",
+          "specifications": "Brushed nickel bar pulls for vanity drawers and doors",
+          "notes": null,
+          "confidence": 0.85,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div09_finishes": {
+      "code": "09",
+      "name": "Finishes",
+      "status": "included",
+      "description": "Floor tile, shower tile, wall paint, and vanity countertop.",
+      "items": [
+        {
+          "id": "09-001",
+          "item": "Floor tile",
+          "subdivisionCode": "09 30 00",
+          "quantity": 80,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "12x24 porcelain tile, gray matte finish, includes 7% waste factor",
+          "notes": "Slip-resistant rating required",
+          "confidence": 0.92,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-002",
+          "item": "Shower wall tile",
+          "subdivisionCode": "09 30 00",
+          "quantity": 90,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "Large format porcelain tile, floor to ceiling, matching floor tile",
+          "notes": "Includes waterproof membrane system",
+          "confidence": 0.90,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-003",
+          "item": "Shower niche",
+          "subdivisionCode": "09 30 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "niche installed",
+          "specifications": "16x28 inch recessed shower niche, tiled to match walls",
+          "notes": null,
+          "confidence": 0.88,
+          "source": "user_input"
+        },
+        {
+          "id": "09-004",
+          "item": "Wall paint",
+          "subdivisionCode": "09 91 00",
+          "quantity": 180,
+          "unit": "sf",
+          "unitDescription": "square feet painted",
+          "specifications": "2 coats, semi-gloss finish, moisture-resistant bathroom paint",
+          "notes": "Non-tiled walls only",
+          "confidence": 0.88,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "09-005",
+          "item": "Quartz countertop",
+          "subdivisionCode": "09 66 00",
+          "quantity": 8,
+          "unit": "sf",
+          "unitDescription": "square feet installed",
+          "specifications": "White quartz, 48x22 inch, with double undermount sink cutouts",
+          "notes": "4-inch backsplash included",
+          "confidence": 0.90,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div10_specialties": {
+      "code": "10",
+      "name": "Specialties",
+      "status": "included",
+      "description": "Bathroom accessories and grab bars.",
+      "items": [
+        {
+          "id": "10-001",
+          "item": "Grab bars",
+          "subdivisionCode": "10 28 00",
+          "quantity": 3,
+          "unit": "each",
+          "unitDescription": "bars installed",
+          "specifications": "ADA-compliant stainless steel grab bars, 18-inch and 24-inch lengths",
+          "notes": "One near toilet, two in shower area",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "10-002",
+          "item": "Toilet paper holder",
+          "subdivisionCode": "10 28 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "holder installed",
+          "specifications": "Brushed nickel finish to match other hardware",
+          "notes": null,
+          "confidence": 0.90,
+          "source": "inferred"
+        },
+        {
+          "id": "10-003",
+          "item": "Towel bar",
+          "subdivisionCode": "10 28 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "bars installed",
+          "specifications": "24-inch towel bars, brushed nickel finish",
+          "notes": null,
+          "confidence": 0.85,
+          "source": "inferred"
+        },
+        {
+          "id": "10-004",
+          "item": "Medicine cabinet",
+          "subdivisionCode": "10 28 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "cabinet installed",
+          "specifications": "36-inch wide recessed medicine cabinet with mirror, LED lighting",
+          "notes": "Centered above vanity",
+          "confidence": 0.88,
+          "source": "user_input"
+        }
+      ]
+    },
+
+    "div11_equipment": {
+      "code": "11",
+      "name": "Equipment",
+      "status": "excluded",
+      "exclusionReason": "No specialty equipment in bathroom scope. Fixtures covered in Division 22.",
+      "description": "",
+      "items": []
+    },
+
+    "div12_furnishings": {
+      "code": "12",
+      "name": "Furnishings",
+      "status": "excluded",
+      "exclusionReason": "No furnishings in bathroom scope. Vanity covered in Division 06.",
+      "description": "",
+      "items": []
+    },
+
+    "div13_special_construction": {
+      "code": "13",
+      "name": "Special Construction",
+      "status": "excluded",
+      "exclusionReason": "No special construction elements applicable to bathroom remodel.",
+      "description": "",
+      "items": []
+    },
+
+    "div14_conveying_equipment": {
+      "code": "14",
+      "name": "Conveying Equipment",
+      "status": "excluded",
+      "exclusionReason": "No elevators or conveying systems in bathroom remodel scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div21_fire_suppression": {
+      "code": "21",
+      "name": "Fire Suppression",
+      "status": "excluded",
+      "exclusionReason": "No modifications to existing fire suppression system.",
+      "description": "",
+      "items": []
+    },
+
+    "div22_plumbing": {
+      "code": "22",
+      "name": "Plumbing",
+      "status": "included",
+      "description": "New fixtures and drain relocation for curbless shower.",
+      "items": [
+        {
+          "id": "22-001",
+          "item": "Toilet",
+          "subdivisionCode": "22 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "toilet installed",
+          "specifications": "Elongated comfort height toilet, white, WaterSense certified",
+          "notes": "Existing rough-in location",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "22-002",
+          "item": "Undermount sinks",
+          "subdivisionCode": "22 41 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "sinks installed",
+          "specifications": "Rectangular undermount sinks, white porcelain",
+          "notes": "For double-sink vanity",
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "22-003",
+          "item": "Vanity faucets",
+          "subdivisionCode": "22 41 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "faucets installed",
+          "specifications": "Single-hole faucets, brushed nickel finish",
+          "notes": null,
+          "confidence": 0.95,
+          "source": "user_input"
+        },
+        {
+          "id": "22-004",
+          "item": "Shower valve and trim",
+          "subdivisionCode": "22 41 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "valve set installed",
+          "specifications": "Pressure-balance valve with rain showerhead and handheld combo",
+          "notes": "Thermostatic option preferred for safety",
+          "confidence": 0.90,
+          "source": "user_input"
+        },
+        {
+          "id": "22-005",
+          "item": "Linear shower drain",
+          "subdivisionCode": "22 13 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "drain installed",
+          "specifications": "36-inch linear drain for curbless shower, brushed nickel grate",
+          "notes": "Requires subfloor modification for slope",
+          "confidence": 0.88,
+          "source": "user_input"
+        },
+        {
+          "id": "22-006",
+          "item": "Supply line rough-in adjustment",
+          "subdivisionCode": "22 11 00",
+          "quantity": 1,
+          "unit": "allowance",
+          "unitDescription": "lump sum",
+          "specifications": "Adjust supply lines for new vanity location",
+          "notes": "Moving from 36-inch to 48-inch vanity",
+          "confidence": 0.85,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div23_hvac": {
+      "code": "23",
+      "name": "Heating, Ventilating, and Air Conditioning (HVAC)",
+      "status": "excluded",
+      "exclusionReason": "No HVAC modifications. Existing exhaust fan adequate. New fan covered in Division 26.",
+      "description": "",
+      "items": []
+    },
+
+    "div25_integrated_automation": {
+      "code": "25",
+      "name": "Integrated Automation",
+      "status": "excluded",
+      "exclusionReason": "No smart home integration in base scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div26_electrical": {
+      "code": "26",
+      "name": "Electrical",
+      "status": "included",
+      "description": "Updated lighting, exhaust fan, and outlets.",
+      "items": [
+        {
+          "id": "26-001",
+          "item": "Vanity light fixture",
+          "subdivisionCode": "26 51 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "fixture installed",
+          "specifications": "48-inch LED vanity light bar, brushed nickel, 3000K",
+          "notes": "Above medicine cabinet",
+          "confidence": 0.90,
+          "source": "user_input"
+        },
+        {
+          "id": "26-002",
+          "item": "Recessed shower light",
+          "subdivisionCode": "26 51 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "fixture installed",
+          "specifications": "Wet-rated recessed LED, 3000K, IP65",
+          "notes": "Centered in shower area",
+          "confidence": 0.88,
+          "source": "inferred"
+        },
+        {
+          "id": "26-003",
+          "item": "Exhaust fan",
+          "subdivisionCode": "26 24 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "fan installed",
+          "specifications": "Quiet exhaust fan, 110 CFM, humidity sensor, LED light",
+          "notes": "Replace existing fan",
+          "confidence": 0.92,
+          "source": "user_input"
+        },
+        {
+          "id": "26-004",
+          "item": "GFCI outlets",
+          "subdivisionCode": "26 27 00",
+          "quantity": 2,
+          "unit": "each",
+          "unitDescription": "outlets installed",
+          "specifications": "20A GFCI outlets, white",
+          "notes": "One each side of vanity",
+          "confidence": 0.95,
+          "source": "cad_extraction"
+        },
+        {
+          "id": "26-005",
+          "item": "Dimmer switch",
+          "subdivisionCode": "26 27 00",
+          "quantity": 1,
+          "unit": "each",
+          "unitDescription": "switch installed",
+          "specifications": "LED-compatible dimmer for vanity light",
+          "notes": null,
+          "confidence": 0.85,
+          "source": "inferred"
+        }
+      ]
+    },
+
+    "div27_communications": {
+      "code": "27",
+      "name": "Communications",
+      "status": "excluded",
+      "exclusionReason": "No communications wiring in bathroom scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div28_electronic_safety_security": {
+      "code": "28",
+      "name": "Electronic Safety and Security",
+      "status": "excluded",
+      "exclusionReason": "No security systems in bathroom scope.",
+      "description": "",
+      "items": []
+    },
+
+    "div31_earthwork": {
+      "code": "31",
+      "name": "Earthwork",
+      "status": "excluded",
+      "exclusionReason": "Interior remodel only - no earthwork applicable.",
+      "description": "",
+      "items": []
+    },
+
+    "div32_exterior_improvements": {
+      "code": "32",
+      "name": "Exterior Improvements",
+      "status": "excluded",
+      "exclusionReason": "Interior remodel only - no exterior improvements.",
+      "description": "",
+      "items": []
+    },
+
+    "div33_utilities": {
+      "code": "33",
+      "name": "Utilities",
+      "status": "excluded",
+      "exclusionReason": "No site utility work required.",
+      "description": "",
+      "items": []
+    }
+  },
+
+  "cadData": {
+    "fileUrl": "gs://truecost-bucket/cad/est_bath456/bathroom_plan.pdf",
+    "fileType": "pdf",
+    "extractionMethod": "vision",
+    "extractionConfidence": 0.89,
+
+    "spaceModel": {
+      "totalSqft": 75,
+      "boundingBox": {
+        "length": 10,
+        "width": 7.5,
+        "height": 8,
+        "units": "feet"
+      },
+      "scale": {
+        "detected": true,
+        "ratio": 48,
+        "units": "feet"
+      },
+      "rooms": [
+        {
+          "id": "room_1",
+          "name": "Master Bathroom",
+          "type": "bathroom",
+          "sqft": 75,
+          "dimensions": {
+            "length": 10,
+            "width": 7.5,
+            "height": 8
+          },
+          "confidence": 0.92,
+          "needsVerification": false
+        }
+      ],
+      "walls": [
+        {
+          "id": "wall_north",
+          "length": 7.5,
+          "height": 8,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_east", "wall_west"],
+          "confidence": 0.90
+        },
+        {
+          "id": "wall_east",
+          "length": 10,
+          "height": 8,
+          "thickness": 0.5,
+          "type": "exterior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_north", "wall_south"],
+          "confidence": 0.92
+        },
+        {
+          "id": "wall_south",
+          "length": 7.5,
+          "height": 8,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_east", "wall_west"],
+          "confidence": 0.90
+        },
+        {
+          "id": "wall_west",
+          "length": 10,
+          "height": 8,
+          "thickness": 0.5,
+          "type": "interior",
+          "material": "drywall_on_studs",
+          "connectsRooms": ["room_1"],
+          "adjacentWalls": ["wall_north", "wall_south"],
+          "confidence": 0.88
+        }
+      ],
+      "openings": [
+        {
+          "id": "door_1",
+          "type": "door",
+          "width": 2.5,
+          "height": 6.8,
+          "inWall": "wall_west",
+          "connectsRooms": ["room_1"],
+          "position": {
+            "distanceFromCorner": 1,
+            "side": "left"
+          },
+          "swing": "in",
+          "confidence": 0.90
+        },
+        {
+          "id": "window_1",
+          "type": "window",
+          "width": 2,
+          "height": 2,
+          "inWall": "wall_east",
+          "connectsRooms": ["room_1"],
+          "position": {
+            "distanceFromCorner": 4,
+            "side": "center"
+          },
+          "confidence": 0.88
+        }
+      ]
+    },
+
+    "spatialRelationships": {
+      "layoutNarrative": "The master bathroom is a 10x7.5 foot rectangular room with 8-foot ceilings. Entering through a 2.5-foot door on the west wall, you step into the main bathroom space. The toilet is positioned on the south wall, approximately 15 inches from the southwest corner with proper clearances. The vanity runs along the north wall, with the new 48-inch double-sink cabinet centered under the existing plumbing rough-ins. A 2-foot window on the east wall provides natural light, positioned high for privacy. The shower occupies the southeast corner of the room, converting the former tub/shower alcove into a 36x48 inch curbless walk-in shower with a linear drain along the east wall. The glass shower door swings outward into the main bathroom area. Grab bars are mounted near the toilet and inside the shower area for accessibility. The exhaust fan is centered in the ceiling, with vanity lighting above the medicine cabinet on the north wall.",
+
+      "roomAdjacencies": [
+        {
+          "room1": "room_1",
+          "room2": "master_bedroom",
+          "connection": "door",
+          "openingId": "door_1"
+        }
+      ],
+
+      "entryPoints": [
+        {
+          "openingId": "door_1",
+          "fromSpace": "master_bedroom",
+          "isPrimary": true
+        }
+      ]
+    },
+
+    "bathroomSpecific": {
+      "fixtures": {
+        "toilet": {
+          "present": true,
+          "location": "south wall, near southwest corner",
+          "type": "elongated",
+          "adjacentTo": ["wall_south", "grab_bar"],
+          "clearanceToWall": 15,
+          "clearanceToVanity": 24
+        },
+        "vanity": {
+          "type": "double",
+          "width": 48,
+          "location": "north wall, centered",
+          "sinkCount": 2,
+          "adjacentTo": ["wall_north", "mirror", "outlets"]
+        },
+        "shower": {
+          "present": true,
+          "type": "curbless",
+          "dimensions": {
+            "width": 36,
+            "depth": 48
+          },
+          "location": "southeast corner",
+          "doorType": "frameless",
+          "showerhead": "multi",
+          "hasNiche": true,
+          "hasBench": false
+        },
+        "tub": {
+          "present": false,
+          "type": null,
+          "dimensions": null,
+          "location": null,
+          "hasJets": null
+        },
+        "mirror": {
+          "present": true,
+          "type": "medicine_cabinet",
+          "width": 36,
+          "height": 30,
+          "location": "north wall, above vanity",
+          "aboveVanity": true
+        }
+      },
+      "ventilation": {
+        "type": "exhaust_fan",
+        "cfm": 110
+      },
+      "floorDrain": false,
+      "heatedFloor": false
+    },
+
+    "rawExtraction": null
+  },
+
+  "conversation": {
+    "inputMethod": "text",
+    "messageCount": 6,
+    "clarificationQuestions": [
+      {
+        "question": "What's your full project address?",
+        "answer": "2500 Lawrence Street, Unit 1A, Denver CO 80205",
+        "inputMethod": "text",
+        "extractedData": {
+          "fullAddress": "2500 Lawrence Street, Unit 1A, Denver, CO 80205",
+          "streetAddress": "2500 Lawrence Street",
+          "unit": "1A",
+          "city": "Denver",
+          "state": "CO",
+          "zipCode": "80205"
+        }
+      },
+      {
+        "question": "I see you have a tub/shower combo. Do you want to keep the tub or convert to a walk-in shower?",
+        "answer": "Walk-in shower please. We want a curbless entry for accessibility.",
+        "inputMethod": "text",
+        "extractedData": {
+          "showerType": "curbless",
+          "tubRemoval": true,
+          "accessibilityRequired": true
+        }
+      },
+      {
+        "question": "What size vanity are you looking at? And single or double sink?",
+        "answer": "48 inch double sink vanity. We need the extra sink and counter space.",
+        "inputMethod": "text",
+        "extractedData": {
+          "vanityWidth": 48,
+          "sinkCount": 2,
+          "vanityType": "double"
+        }
+      },
+      {
+        "question": "For accessibility, do you need grab bars installed?",
+        "answer": "Yes, we need ADA compliant grab bars near the toilet and in the shower.",
+        "inputMethod": "text",
+        "extractedData": {
+          "grabBars": true,
+          "grabBarLocations": ["toilet", "shower"],
+          "adaCompliant": true
+        }
+      },
+      {
+        "question": "What finish level are you targeting for materials?",
+        "answer": "Mid-range. Good quality but not luxury. White quartz countertop, porcelain tile.",
+        "inputMethod": "text",
+        "extractedData": {
+          "finishLevel": "mid_range",
+          "countertopMaterial": "quartz",
+          "countertopColor": "white",
+          "floorMaterial": "porcelain"
+        }
+      },
+      {
+        "question": "When would you like to start the project?",
+        "answer": "Early March if possible. We're flexible on the exact date.",
+        "inputMethod": "text",
+        "extractedData": {
+          "desiredStart": "2025-03-01",
+          "flexibility": "flexible"
+        }
+      }
+    ],
+    "confidenceScore": 0.90
+  },
+
+  "flags": {
+    "lowConfidenceItems": [
+      {
+        "field": "cadData.spaceModel.walls[3].confidence",
+        "confidence": 0.88,
+        "reason": "West wall dimensions slightly uncertain - recommend verification during site visit."
+      }
+    ],
+    "missingData": [
+      "Exact ceiling exhaust fan duct routing"
+    ],
+    "userVerificationRequired": false,
+    "verificationItems": []
+  }
+}
+
+
+
