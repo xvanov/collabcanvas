@@ -32,7 +32,7 @@ export default defineConfig({
 
   outputDir: 'test-results/output',
   reporter: [
-    ['html', { outputFolder: 'test-results/html' }],
+    ['html', { outputFolder: 'playwright-report' }],
     ['junit', { outputFile: 'test-results/junit.xml' }],
     ['list'],
   ],

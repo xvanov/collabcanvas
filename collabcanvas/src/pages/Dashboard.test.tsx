@@ -92,8 +92,8 @@ describe('Dashboard Component', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText('My Projects')).toBeInTheDocument();
-    expect(screen.getByText('New Project')).toBeInTheDocument();
+    expect(screen.getByText('Your Projects')).toBeInTheDocument();
+    expect(screen.getByText('New Estimate')).toBeInTheDocument();
   });
 
   it('should display projects when available', () => {
@@ -141,7 +141,7 @@ describe('Dashboard Component', () => {
       </BrowserRouter>
     );
 
-    expect(screen.getByText(/You don't have any projects yet/)).toBeInTheDocument();
+    expect(screen.getByText(/No projects yet/i)).toBeInTheDocument();
   });
 
   it('should show loading state', () => {

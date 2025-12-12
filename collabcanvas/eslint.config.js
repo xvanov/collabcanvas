@@ -7,7 +7,7 @@ import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
   // Ignore generated artifacts and build outputs (they may contain disable comments for rules we don't load in JS contexts)
-  globalIgnores(['dist', 'functions/lib/**']),
+globalIgnores(['dist', 'functions/lib', 'functions/lib/**']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [

@@ -1,0 +1,280 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>4.2</storyId>
+    <title>Cost Data &amp; Monte Carlo Simulation</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-2-cost-data-monte-carlo.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>system (Cost Agent and Risk Agent)</asA>
+    <iWant>to retrieve material costs from the database and run Monte Carlo simulations on cost estimates</iWant>
+    <soThat>estimates include accurate material pricing and probabilistic risk analysis with confidence intervals (P50/P80/P90)</soThat>
+    <tasks>
+      <task id="1" name="Create Data Models">
+        <subtask>1.1 Create MaterialCost dataclass with all RSMeans fields</subtask>
+        <subtask>1.2 Create LaborRate dataclass for trade-specific rates</subtask>
+        <subtask>1.3 Create LineItemInput dataclass for Monte Carlo input</subtask>
+        <subtask>1.4 Create MonteCarloResult dataclass with percentiles, risks, histogram</subtask>
+        <subtask>1.5 Create RiskFactor dataclass for top risk items</subtask>
+        <subtask>1.6 Create HistogramBin dataclass for distribution visualization</subtask>
+        <subtask>1.7 Add type hints and docstrings per Python conventions</subtask>
+        <acceptanceCriteria>4.2.1, 4.2.7</acceptanceCriteria>
+      </task>
+      <task id="2" name="Implement Cost Data Service Functions">
+        <subtask>2.1 Add to functions/services/cost_data_service.py</subtask>
+        <subtask>2.2 Implement async def get_material_cost(item_code: str) -> MaterialCost</subtask>
+        <subtask>2.3 Implement async def get_labor_rate(trade: str, zip_code: str) -> LaborRate</subtask>
+        <subtask>2.4 Implement async def search_materials(query: str, csi_division: Optional[str], limit: int) -> List[MaterialCost]</subtask>
+        <subtask>2.5 Add Firestore lookup from /costData/materials/{itemCode}</subtask>
+        <subtask>2.6 Raise ItemNotFoundError for missing items</subtask>
+        <acceptanceCriteria>4.2.1</acceptanceCriteria>
+      </task>
+      <task id="3" name="Implement Monte Carlo Service">
+        <subtask>3.1 Create functions/services/monte_carlo.py</subtask>
+        <subtask>3.2 Implement def run_simulation(line_items, iterations=1000, confidence_levels=[50,80,90]) -> MonteCarloResult</subtask>
+        <subtask>3.3 Use numpy.random.triangular(low, likely, high) for each item</subtask>
+        <subtask>3.4 Aggregate totals across all iterations</subtask>
+        <subtask>3.5 Calculate percentiles using numpy.percentile()</subtask>
+        <subtask>3.6 Implement sensitivity analysis via correlation coefficients</subtask>
+        <subtask>3.7 Identify top 5 variance contributors</subtask>
+        <subtask>3.8 Calculate recommended contingency: (p80 - p50) / p50 * 100</subtask>
+        <subtask>3.9 Generate histogram bins for visualization</subtask>
+        <acceptanceCriteria>4.2.2, 4.2.3, 4.2.4, 4.2.5, 4.2.6, 4.2.7</acceptanceCriteria>
+      </task>
+      <task id="4" name="Add Structured Logging">
+        <subtask>4.1 Log monte_carlo_complete with iterations, p50, p90, duration_ms</subtask>
+        <subtask>4.2 Log material_not_found errors with item_code</subtask>
+        <subtask>4.3 Log material_lookup with item_code, latency_ms</subtask>
+        <acceptanceCriteria>all</acceptanceCriteria>
+      </task>
+      <task id="5" name="Write Unit Tests">
+        <subtask>5.1 Create functions/tests/unit/test_cost_data_service.py</subtask>
+        <subtask>5.2 Test: get_material_cost returns all required fields</subtask>
+        <subtask>5.3 Test: get_material_cost raises ItemNotFoundError for invalid code</subtask>
+        <subtask>5.4 Test: search_materials returns matching items</subtask>
+        <subtask>5.5 Create functions/tests/unit/test_monte_carlo.py</subtask>
+        <subtask>5.6 Test: Simulation runs 1000+ iterations</subtask>
+        <subtask>5.7 Test: P50 &lt; P80 &lt; P90 always holds</subtask>
+        <subtask>5.8 Test: Contingency formula is correctly applied</subtask>
+        <subtask>5.9 Test: Top 5 risks are sorted by impact descending</subtask>
+        <subtask>5.10 Test: Histogram bins sum to iteration count</subtask>
+        <subtask>5.11 Performance test: 100 items completes &lt; 2 seconds</subtask>
+        <acceptanceCriteria>4.2.1, 4.2.2, 4.2.3, 4.2.4, 4.2.5, 4.2.6, 4.2.7</acceptanceCriteria>
+      </task>
+      <task id="6" name="Create Demo Script for User Verification">
+        <subtask>6.1 Create functions/demo_monte_carlo.py</subtask>
+        <subtask>6.2 Define sample 20-item kitchen remodel estimate with cost ranges</subtask>
+        <subtask>6.3 Run Monte Carlo simulation on sample data</subtask>
+        <subtask>6.4 Print P50/P80/P90 results to console with formatted output</subtask>
+        <subtask>6.5 Print top 5 risk factors with impact amounts</subtask>
+        <subtask>6.6 Generate monte_carlo_results.html with Chart.js histogram</subtask>
+        <subtask>6.7 Print recommended contingency percentage</subtask>
+        <acceptanceCriteria>all</acceptanceCriteria>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="4.2.1">get_material_cost returns unit cost, labor hours, crew for valid RSMeans item codes - Verification: Unit test with mock data</criterion>
+    <criterion id="4.2.2">Monte Carlo simulation runs 1000+ iterations using triangular distributions - Verification: Unit test verifying iteration count</criterion>
+    <criterion id="4.2.3">Simulation calculates P50, P80, P90 percentiles correctly (P50 &lt; P80 &lt; P90) - Verification: Unit test with known distribution</criterion>
+    <criterion id="4.2.4">Recommended contingency is derived from P80-P50 spread using formula: (P80-P50)/P50 * 100 - Verification: Formula validation test</criterion>
+    <criterion id="4.2.5">Top 5 risk factors identified by variance contribution (sensitivity analysis) - Verification: Sensitivity analysis test</criterion>
+    <criterion id="4.2.6">Simulation completes in &lt; 2 seconds for 100 line items - Verification: Performance test</criterion>
+    <criterion id="4.2.7">Histogram data returned in format suitable for chart visualization - Verification: Schema validation test</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.2: Cost Data &amp; Monte Carlo Simulation</section>
+        <snippet>Provides RSMeans-schema compatible cost data and runs probabilistic risk simulations to calculate confidence intervals (P50/P80/P90). Contains full API contracts, data models, and workflows.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>Novel Pattern Designs - Probabilistic Estimation</section>
+        <snippet>Monte Carlo simulation using NumPy triangular distributions. ADR-007 specifies NumPy for Monte Carlo (standard library, efficient). Uses structlog for logging.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 4.2: Cost Data &amp; Monte Carlo Simulation</section>
+        <snippet>Dev 4 owns functions/services/cost_data_service.py and functions/services/monte_carlo.py. Firestore /costData/materials/{itemCode} collection.</snippet>
+      </doc>
+      <doc>
+        <path>docs/prd.md</path>
+        <title>Product Requirements Document</title>
+        <section>FR48-51 Risk Analysis</section>
+        <snippet>FR48: System performs Monte Carlo simulation (1000+ iterations). FR49: Calculate confidence intervals (P50, P80, P90). FR50: Identify top risk factors. FR51: Recommend contingency percentage.</snippet>
+      </doc>
+      <doc>
+        <path>docs/sprint-artifacts/4-1-location-intelligence-service.md</path>
+        <title>Story 4.1 (DONE)</title>
+        <section>Dev Agent Record - Learnings</section>
+        <snippet>cost_data_service.py (~650 lines) exists. Follow dataclass patterns, structlog integration, async/await patterns. Use same testing structure (34 unit tests). Cache approach with LRU eviction and 24h TTL.</snippet>
+      </doc>
+    </docs>
+
+    <code>
+      <artifact>
+        <path>functions/services/cost_data_service.py</path>
+        <kind>service</kind>
+        <symbol>LocationFactors, PermitCosts, WeatherFactors, LaborRate, LocationCache, get_location_factors</symbol>
+        <lines>1-910</lines>
+        <reason>EXTEND this file with MaterialCost dataclass and get_material_cost(), get_labor_rate(), search_materials() functions. Follow established patterns for dataclasses, caching, async, logging.</reason>
+      </artifact>
+      <artifact>
+        <path>functions/services/__init__.py</path>
+        <kind>module</kind>
+        <symbol>__init__</symbol>
+        <lines>all</lines>
+        <reason>Already created, add exports for new Monte Carlo module</reason>
+      </artifact>
+      <artifact>
+        <path>functions/tests/unit/test_location_service.py</path>
+        <kind>test</kind>
+        <symbol>test fixtures, async tests, validation tests</symbol>
+        <lines>1-575</lines>
+        <reason>Follow same testing patterns: pytest fixtures, pytest.mark.asyncio, AC-aligned tests, validation tests, performance tests</reason>
+      </artifact>
+      <artifact>
+        <path>functions/demo_location_service.py</path>
+        <kind>demo</kind>
+        <symbol>demo script</symbol>
+        <lines>all</lines>
+        <reason>Follow same pattern for demo_monte_carlo.py: command-line args, formatted output, example data</reason>
+      </artifact>
+      <artifact>
+        <path>functions/__init__.py</path>
+        <kind>module</kind>
+        <symbol>__init__</symbol>
+        <lines>all</lines>
+        <reason>Package init already exists</reason>
+      </artifact>
+      <artifact>
+        <path>functions/tests/__init__.py</path>
+        <kind>module</kind>
+        <symbol>__init__</symbol>
+        <lines>all</lines>
+        <reason>Tests package init already exists</reason>
+      </artifact>
+      <artifact>
+        <path>functions/tests/unit/__init__.py</path>
+        <kind>module</kind>
+        <symbol>__init__</symbol>
+        <lines>all</lines>
+        <reason>Unit tests package init already exists</reason>
+      </artifact>
+    </code>
+
+    <dependencies>
+      <python>
+        <package name="firebase-admin" version="&gt;=6.0.0,&lt;7.0.0">Firestore access for /costData/materials/{itemCode}</package>
+        <package name="firebase-functions" version="&gt;=0.4.0,&lt;1.0.0">Cloud Functions framework</package>
+        <package name="structlog" version="&gt;=23.0.0,&lt;25.0.0">Structured logging (existing)</package>
+        <package name="pytest" version="&gt;=7.0.0,&lt;9.0.0">Unit testing framework (existing)</package>
+        <package name="pytest-asyncio" version="&gt;=0.21.0,&lt;1.0.0">Async test support (existing)</package>
+        <package name="numpy" version="&gt;=1.26.0,&lt;2.0.0">Monte Carlo simulation - UNCOMMENT in requirements.txt</package>
+      </python>
+      <notes>
+        - numpy is listed but commented in requirements.txt - must be uncommented for this story
+        - No new packages needed beyond numpy
+      </notes>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint type="architecture">ADR-005: Firestore for cost data storage - /costData/materials/{itemCode}</constraint>
+    <constraint type="architecture">ADR-007: NumPy for Monte Carlo (standard library, efficient vectorized ops)</constraint>
+    <constraint type="pattern">Follow dataclass patterns from Story 4.1 with type hints and docstrings</constraint>
+    <constraint type="pattern">Use structlog.get_logger() for all logging - consistent with existing service</constraint>
+    <constraint type="pattern">Async/await patterns for Firestore operations</constraint>
+    <constraint type="pattern">LRU cache consideration for frequently accessed materials (from 4.1 advisory)</constraint>
+    <constraint type="performance">Monte Carlo (1000 iter, 100 items) must complete in &lt; 2 seconds</constraint>
+    <constraint type="performance">Material cost lookup &lt; 200ms</constraint>
+    <constraint type="ownership">Dev 4 exclusive ownership of cost_data_service.py, monte_carlo.py, /costData/** collections</constraint>
+    <constraint type="data">MaterialCost must follow RSMeans schema: unitCost, laborHours, crew, productivity, cost_low/likely/high</constraint>
+    <constraint type="error">ItemNotFoundError must be raised for missing items - create custom exception</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="get_material_cost" kind="function">
+      <signature>async def get_material_cost(item_code: str) -> MaterialCost</signature>
+      <path>functions/services/cost_data_service.py</path>
+      <description>Retrieve cost data for a material item from Firestore /costData/materials/{itemCode}</description>
+    </interface>
+    <interface name="get_labor_rate" kind="function">
+      <signature>async def get_labor_rate(trade: str, zip_code: str) -> LaborRate</signature>
+      <path>functions/services/cost_data_service.py</path>
+      <description>Get labor rate for a specific trade at a location - uses existing LocationFactors</description>
+    </interface>
+    <interface name="search_materials" kind="function">
+      <signature>async def search_materials(query: str, csi_division: Optional[str] = None, limit: int = 20) -> List[MaterialCost]</signature>
+      <path>functions/services/cost_data_service.py</path>
+      <description>Search materials database by description or code</description>
+    </interface>
+    <interface name="run_simulation" kind="function">
+      <signature>def run_simulation(line_items: List[LineItemInput], iterations: int = 1000, confidence_levels: List[int] = [50, 80, 90]) -> MonteCarloResult</signature>
+      <path>functions/services/monte_carlo.py</path>
+      <description>Run Monte Carlo simulation on cost estimate using triangular distributions</description>
+    </interface>
+    <interface name="MaterialCost" kind="dataclass">
+      <signature>@dataclass class MaterialCost: item_code, description, unit, unit_cost, labor_hours, crew, crew_daily_output, productivity_factor, cost_low, cost_likely, cost_high, csi_division, subdivision</signature>
+      <path>functions/services/cost_data_service.py</path>
+      <description>RSMeans-compatible material cost data structure</description>
+    </interface>
+    <interface name="LineItemInput" kind="dataclass">
+      <signature>@dataclass class LineItemInput: id, description, quantity, unit_cost_low, unit_cost_likely, unit_cost_high</signature>
+      <path>functions/services/monte_carlo.py</path>
+      <description>Input structure for Monte Carlo simulation</description>
+    </interface>
+    <interface name="MonteCarloResult" kind="dataclass">
+      <signature>@dataclass class MonteCarloResult: iterations, p50, p80, p90, mean, std_dev, min_value, max_value, recommended_contingency, top_risks: List[RiskFactor], histogram: List[HistogramBin]</signature>
+      <path>functions/services/monte_carlo.py</path>
+      <description>Complete Monte Carlo simulation result with percentiles, risks, and distribution</description>
+    </interface>
+    <interface name="RiskFactor" kind="dataclass">
+      <signature>@dataclass class RiskFactor: item, impact, probability, sensitivity</signature>
+      <path>functions/services/monte_carlo.py</path>
+      <description>Individual risk factor identified by sensitivity analysis</description>
+    </interface>
+    <interface name="HistogramBin" kind="dataclass">
+      <signature>@dataclass class HistogramBin: range_low, range_high, count, percentage</signature>
+      <path>functions/services/monte_carlo.py</path>
+      <description>Single histogram bin for distribution visualization</description>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use pytest with pytest-asyncio for async tests. Follow the testing patterns established in test_location_service.py: AC-aligned tests with clear naming (test_ac_4_2_X_description), pytest fixtures for test data, @pytest.mark.asyncio decorator for async tests, clear separation of validation/error handling/performance tests. Use structlog for test logging. All tests should be independent and use fixtures to clear state.
+    </standards>
+    <locations>
+      <location>functions/tests/unit/test_cost_data_service.py - Material cost lookup tests (create new)</location>
+      <location>functions/tests/unit/test_monte_carlo.py - Monte Carlo simulation tests (create new)</location>
+      <location>functions/tests/unit/test_location_service.py - Reference for patterns (existing)</location>
+    </locations>
+    <ideas>
+      <idea ac="4.2.1">Test get_material_cost("092900") returns MaterialCost with all required fields (unit_cost, labor_hours, crew, cost_low/likely/high)</idea>
+      <idea ac="4.2.1">Test get_material_cost with invalid code raises ItemNotFoundError</idea>
+      <idea ac="4.2.1">Test search_materials returns filtered results by CSI division</idea>
+      <idea ac="4.2.2">Test run_simulation with iterations=1000 verifies len(results)==1000</idea>
+      <idea ac="4.2.2">Test uses numpy.random.triangular distribution for sampling</idea>
+      <idea ac="4.2.3">Test with known seed: P50 &lt; P80 &lt; P90 always holds</idea>
+      <idea ac="4.2.3">Test with uniform distribution: percentiles are ordered correctly</idea>
+      <idea ac="4.2.4">Test contingency = (p80-p50)/p50 * 100 with known values</idea>
+      <idea ac="4.2.5">Test top_risks has exactly 5 items sorted by impact descending</idea>
+      <idea ac="4.2.5">Test sensitivity analysis identifies high-variance items</idea>
+      <idea ac="4.2.6">Performance test: 100 items, 1000 iterations &lt; 2 seconds</idea>
+      <idea ac="4.2.7">Test histogram bins sum to iteration count</idea>
+      <idea ac="4.2.7">Test histogram has reasonable bin count (10-50 bins)</idea>
+    </ideas>
+  </tests>
+</story-context>

@@ -1,0 +1,155 @@
+{# CAD Plan Section - AC 4.3.8
+   Shows CAD floor plan image with annotations (if available)
+#}
+<div class="section page-break">
+    <h2>CAD Floor Plan</h2>
+
+    {% if cad_data and cad_data.image_url %}
+    <p class="text-muted">
+        Annotated floor plan showing project scope and key measurements.
+        {% if cad_data.source %}
+        Source: {{ cad_data.source }}
+        {% endif %}
+    </p>
+
+    <div class="cad-container no-break">
+        <img src="{{ cad_data.image_url }}" alt="Floor Plan" class="cad-image"/>
+        {% if cad_data.caption %}
+        <div class="cad-caption">{{ cad_data.caption }}</div>
+        {% endif %}
+    </div>
+
+    {% if cad_data.annotations %}
+    <h3>Plan Annotations</h3>
+    <table class="table-striped">
+        <thead>
+            <tr>
+                <th style="width: 10%;">Ref</th>
+                <th style="width: 30%;">Area / Feature</th>
+                <th style="width: 60%;">Description</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for annotation in cad_data.annotations %}
+            <tr>
+                <td><span class="badge badge-blue">{{ annotation.ref }}</span></td>
+                <td>{{ annotation.area }}</td>
+                <td>{{ annotation.description }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    {% endif %}
+
+    {% if cad_data.dimensions %}
+    <h3>Key Dimensions</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 40%;">Area</th>
+                <th class="text-right" style="width: 20%;">Length</th>
+                <th class="text-right" style="width: 20%;">Width</th>
+                <th class="text-right" style="width: 20%;">Area (SF)</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for dim in cad_data.dimensions %}
+            <tr>
+                <td>{{ dim.area }}</td>
+                <td class="text-right">{{ dim.length }}'</td>
+                <td class="text-right">{{ dim.width }}'</td>
+                <td class="text-right">{{ dim.area_sf }} SF</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+        <tfoot>
+            {% if cad_data.total_area %}
+            <tr class="summary-row">
+                <td colspan="3"><strong>Total Project Area</strong></td>
+                <td class="text-right"><strong>{{ cad_data.total_area }} SF</strong></td>
+            </tr>
+            {% endif %}
+        </tfoot>
+    </table>
+    {% endif %}
+
+    {% if cad_data.notes %}
+    <h3>Plan Notes</h3>
+    <ul>
+        {% for note in cad_data.notes %}
+        <li>{{ note }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+
+    {% else %}
+    {# No CAD data available #}
+    <div class="card">
+        <p class="text-center text-muted" style="padding: 2em;">
+            <strong>CAD Floor Plan Not Available</strong><br><br>
+            No CAD file was provided for this estimate.
+            Contact your TrueCost representative to add floor plan visualization.
+        </p>
+    </div>
+
+    {% if project.square_footage %}
+    <h3>Project Area Summary</h3>
+    <table>
+        <tr>
+            <td style="width: 50%;"><strong>Total Project Area:</strong></td>
+            <td>{{ project.square_footage }} square feet</td>
+        </tr>
+        {% if project.room_count %}
+        <tr>
+            <td><strong>Number of Rooms:</strong></td>
+            <td>{{ project.room_count }}</td>
+        </tr>
+        {% endif %}
+        {% if project.floor_count %}
+        <tr>
+            <td><strong>Number of Floors:</strong></td>
+            <td>{{ project.floor_count }}</td>
+        </tr>
+        {% endif %}
+    </table>
+    {% endif %}
+    {% endif %}
+
+    <h3>Drawing Legend</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 20%;">Symbol</th>
+                <th style="width: 80%;">Meaning</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr>
+                <td><span class="badge badge-blue">A1</span></td>
+                <td>Annotation reference number</td>
+            </tr>
+            <tr>
+                <td style="border-left: 3px solid #dc2626; padding-left: 0.5em;">Red outline</td>
+                <td>Demolition / removal area</td>
+            </tr>
+            <tr>
+                <td style="border-left: 3px solid #059669; padding-left: 0.5em;">Green outline</td>
+                <td>New construction area</td>
+            </tr>
+            <tr>
+                <td style="border-left: 3px solid #2563eb; padding-left: 0.5em;">Blue outline</td>
+                <td>Renovation / modification area</td>
+            </tr>
+            <tr>
+                <td style="background: #f3f4f6; padding: 0.25em 0.5em;">Shaded area</td>
+                <td>No work in this area</td>
+            </tr>
+        </tbody>
+    </table>
+
+    {% if not client_ready and cad_data and cad_data.internal_notes %}
+    <div class="internal-only">
+        {{ cad_data.internal_notes }}
+    </div>
+    {% endif %}
+</div>
