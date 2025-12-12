@@ -40,6 +40,10 @@ class Settings:
     # Pipeline Configuration
     pipeline_max_retries: int = int(os.getenv("PIPELINE_MAX_RETRIES", "2"))
     pipeline_passing_score: int = int(os.getenv("PIPELINE_PASSING_SCORE", "80"))
+
+    # Monte Carlo Configuration
+    # Default to higher iterations for smoother percentiles; override in CI/tests if needed.
+    monte_carlo_iterations: int = int(os.getenv("MONTE_CARLO_ITERATIONS", "10000"))
     
     # Logging
     log_level: str = os.getenv("LOG_LEVEL", "INFO")

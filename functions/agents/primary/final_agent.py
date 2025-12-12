@@ -155,7 +155,7 @@ class FinalAgent(BaseA2AAgent):
         scope_summary = project_brief.get("scopeSummary", {})
         
         # Build cost breakdown
-        cost_breakdown = self._build_cost_breakdown(cost_output, risk_output)
+        cost_breakdown = self._build_cost_breakdown(cost_output, risk_output, clarification)
         
         # Build confidence range from risk analysis
         confidence_range = self._build_confidence_range(risk_output, cost_output)
@@ -286,7 +286,8 @@ class FinalAgent(BaseA2AAgent):
     def _build_cost_breakdown(
         self,
         cost_output: Dict[str, Any],
-        risk_output: Dict[str, Any]
+        risk_output: Dict[str, Any],
+        clarification: Dict[str, Any],
     ) -> CostBreakdownSummary:
         """Build cost breakdown summary.
         
@@ -335,10 +336,44 @@ class FinalAgent(BaseA2AAgent):
         else:
             profit_amount = float(profit) if profit else 0
         
-        # Get contingency from risk analysis
+        # Contingency:
+        # Prefer user-selected contingency (from scope definition) if present in the input JSON.
+        # Otherwise, fall back to risk agent recommendation.
+        user_contingency_pct = None
+        try:
+            prefs = None
+            pb = clarification.get("projectBrief") if isinstance(clarification, dict) else None
+            if isinstance(pb, dict):
+                prefs = pb.get("costPreferences")
+            if not prefs and isinstance(clarification, dict):
+                prefs = clarification.get("costPreferences")
+            if isinstance(prefs, dict):
+                raw = prefs.get("contingencyPct", prefs.get("contingency_pct"))
+                if raw is not None:
+                    user_contingency_pct = float(raw)
+                    if user_contingency_pct > 1.0 and user_contingency_pct <= 100.0:
+                        user_contingency_pct = user_contingency_pct / 100.0
+                    if user_contingency_pct < 0:
+                        user_contingency_pct = None
+                    if user_contingency_pct is not None and user_contingency_pct > 1.0:
+                        user_contingency_pct = 1.0
+        except Exception:
+            user_contingency_pct = None
+
         contingency_info = risk_output.get("contingency", {})
-        contingency_pct = contingency_info.get("recommended", 10)
-        contingency_amount = contingency_info.get("dollarAmount", 0)
+        if user_contingency_pct is not None:
+            contingency_pct = user_contingency_pct * 100.0
+            contingency_amount = 0.0  # computed after total_before_contingency is known
+        else:
+            # Do not invent contingency if RiskAgent could not compute it.
+            if isinstance(contingency_info, dict) and "recommended" in contingency_info:
+                contingency_pct = contingency_info.get("recommended")
+            else:
+                contingency_pct = 0
+            if isinstance(contingency_info, dict) and "dollarAmount" in contingency_info:
+                contingency_amount = contingency_info.get("dollarAmount", 0)
+            else:
+                contingency_amount = 0
         
         # Get permits
         permits = adjustments.get("permitCosts", {})
@@ -358,6 +393,8 @@ class FinalAgent(BaseA2AAgent):
         total_before_contingency = (
             direct_costs + overhead_amount + profit_amount + permit_cost + tax_amount
         )
+        if user_contingency_pct is not None:
+            contingency_amount = total_before_contingency * user_contingency_pct
         total_with_contingency = total_before_contingency + contingency_amount
         
         return CostBreakdownSummary(
@@ -816,9 +853,9 @@ Please provide recommendations in the required JSON format."""
         p80 = total.get("medium", p50 * 1.15 if p50 else 0)
         p90 = total.get("high", p80 * 1.1 if p80 else 0)
 
-        contingency_pct = (
-            risk_output.get("contingency", {}).get("recommended", 10.0)
-        )
+        contingency_pct = risk_output.get("contingency", {}).get("recommended")
+        if contingency_pct is None:
+            contingency_pct = 0.0
         monte_carlo = risk_output.get("monteCarlo", {}) or {}
         iterations = monte_carlo.get("iterations")
 
