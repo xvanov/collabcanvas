@@ -29,34 +29,38 @@ import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerT
 // Component to properly load and display background image
 const BackgroundImageComponent = ({ backgroundImage }: { backgroundImage: BackgroundImage }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  
+
   useEffect(() => {
+    let isMounted = true;
+
     // Reset image state when backgroundImage changes
     setImage(null);
-    
+
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      console.log('✅ Background image loaded:', { url: backgroundImage.url, width: img.width, height: img.height });
-      setImage(img);
+      if (isMounted) {
+        console.log('✅ Background image loaded:', { url: backgroundImage.url, width: img.width, height: img.height });
+        setImage(img);
+      }
     };
     img.onerror = (error) => {
-      console.error('❌ Failed to load background image:', error, backgroundImage.url);
-      setImage(null);
+      if (isMounted) {
+        console.error('❌ Failed to load background image:', error, backgroundImage.url);
+        setImage(null);
+      }
     };
     img.src = backgroundImage.url;
-    
+
     return () => {
-      // Cleanup: remove event listeners
-      img.onload = null;
-      img.onerror = null;
+      isMounted = false;
     };
   }, [backgroundImage.url, backgroundImage.id]); // Include id to detect when the entire object changes
-  
+
   if (!image) {
     return null;
   }
-  
+
   return (
     <Image
       image={image}

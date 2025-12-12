@@ -342,7 +342,7 @@ export function Project() {
         <div className="flex-1 overflow-hidden">
           <Routes>
             <Route path="scope" element={<ScopeView />} />
-            <Route path="time" element={<TimeView />} />
+            <Route path="time" element={<TimeView projectId={projectId || ''} />} />
             <Route path="space" element={<Board />} />
             <Route path="money" element={<MoneyView />} />
             <Route path="*" element={<ScopeView />} />
@@ -430,7 +430,7 @@ export function Project() {
       <div className="flex-1 overflow-hidden">
         <Routes>
           <Route path="scope" element={<ScopeView />} />
-          <Route path="time" element={<TimeView />} />
+          <Route path="time" element={<TimeView projectId={projectId || ''} />} />
           <Route path="space" element={<Board />} />
           <Route path="money" element={<MoneyView />} />
           <Route path="*" element={<ScopeView />} />

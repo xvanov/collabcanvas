@@ -7,7 +7,7 @@ import { MarginControls } from '../../components/estimate/MarginControls';
 import { RiskChart } from '../../components/estimate/RiskChart';
 
 /**
- * FinalView - Final estimate summary with breakdown, controls, and risk.
+ * FinalView - Project estimate summary with breakdown, controls, and risk.
  */
 export function FinalView() {
   const [activeTab, setActiveTab] = useState('overview');
@@ -67,7 +67,7 @@ export function FinalView() {
         {/* Header */}
         <div className="flex flex-col gap-4 mb-8 md:flex-row md:items-center md:justify-between">
           <div className="inline-flex px-4 py-2 rounded-full border border-truecost-glass-border text-white font-heading text-body">
-            Final Estimate
+            Project Estimate
           </div>
           <button onClick={handleDownloadPDF} className="btn-pill-primary flex items-center gap-2">
             <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
