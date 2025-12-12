@@ -402,3 +402,23 @@ export async function startEstimationAnalysis(
   // See estimationPipeline Cloud Function
 }
 
+/**
+ * Mark the estimation analysis as failed
+ * Called when the Cloud Function throws an error
+ */
+export async function markEstimationFailed(
+  projectId: string,
+  sessionId: string,
+  errorMessage: string,
+  userId: string
+): Promise<void> {
+  const sessionRef = doc(firestore, 'projects', projectId, 'estimations', sessionId);
+
+  await updateDoc(sessionRef, {
+    status: 'error',
+    errorMessage,
+    updatedAt: serverTimestamp(),
+    updatedBy: userId,
+  });
+}
+

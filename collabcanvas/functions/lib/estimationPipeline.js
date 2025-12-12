@@ -1,8 +1,8 @@
 "use strict";
 /**
  * Estimation Pipeline Cloud Function
- * Analyzes plan images and annotations to generate ClarificationOutput
- * Uses OpenAI Vision for multi-pass analysis
+ * PRIMARY: Uses user annotations (polylines, polygons, bounding boxes) with scale for accurate measurements
+ * SECONDARY: Uses OpenAI Vision only for inference/gap-filling when annotations are insufficient
  */
 var _a;
 Object.defineProperty(exports, "__esModule", { value: true });
@@ -13,7 +13,7 @@ const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
 const dotenv = require("dotenv");
 const path = require("path");
-// Node.js 20 has native fetch - no import needed
+const annotationQuantifier_1 = require("./annotationQuantifier");
 // Initialize Firebase Admin if not already
 if (!admin.apps.length) {
     admin.initializeApp();
@@ -27,88 +27,12 @@ const apiKeyFromProcess = process.env.OPENAI_API_KEY;
 const apiKey = (isEmulator && apiKeyFromEnv) ? apiKeyFromEnv : (apiKeyFromProcess || apiKeyFromEnv || '');
 const openai = new openai_1.OpenAI({ apiKey });
 if (!apiKey) {
-    console.warn('⚠️ OPENAI_API_KEY not found. Estimation pipeline will not work.');
+    console.warn('⚠️ OPENAI_API_KEY not found. LLM inference will not work.');
 }
 // ===================
-// SYSTEM PROMPTS
+// CSI DIVISION TEMPLATE
 // ===================
-const VISION_ANALYSIS_PROMPT = `You are an expert construction estimator analyzing a floor plan image.
-Your task is to identify and quantify all construction elements visible in the plan.
-
-Analyze the image and identify:
-1. ROOMS - identify each room, estimate dimensions and square footage
-2. WALLS - count walls, estimate lengths, identify interior vs exterior
-3. DOORS - count doors, identify types (entry, interior, sliding, pocket)
-4. WINDOWS - count windows, estimate sizes
-5. FIXTURES - identify kitchen/bathroom fixtures if visible
-6. ANNOTATIONS - pay attention to any labels, dimensions, or annotations
-
-For each element, provide:
-- Type and description
-- Quantity or count
-- Estimated dimensions (length, width, area as applicable)
-- Confidence level (0.0 to 1.0)
-- Location description
-
-Return your analysis as structured JSON.`;
-const QUANTIFICATION_PROMPT = `You are generating a detailed Bill of Quantities for a construction project.
-
-Based on the plan analysis and user's scope description, generate quantities for all CSI MasterFormat divisions.
-
-For EACH of the 24 CSI divisions, you must:
-1. Determine if it's: included, excluded, by_owner, or not_applicable
-2. If excluded, provide a clear exclusion reason
-3. If included, list specific line items with:
-   - Item description
-   - Quantity (MUST be accurate based on plan measurements)
-   - Unit (sf, lf, each, etc.)
-   - Specifications
-   - Confidence (0.0 to 1.0)
-   - Source (cad_extraction, user_input, inferred, annotation, standard_allowance)
-
-CSI Divisions to cover:
-01 General Requirements, 02 Existing Conditions, 03 Concrete, 04 Masonry,
-05 Metals, 06 Wood/Plastics/Composites, 07 Thermal/Moisture, 08 Openings,
-09 Finishes, 10 Specialties, 11 Equipment, 12 Furnishings,
-13 Special Construction, 14 Conveying Equipment, 21 Fire Suppression,
-22 Plumbing, 23 HVAC, 25 Integrated Automation, 26 Electrical,
-27 Communications, 28 Electronic Safety/Security, 31 Earthwork,
-32 Exterior Improvements, 33 Utilities
-
-Be PRECISE with quantities. Use measurements from the plan.`;
-// ===================
-// HELPER FUNCTIONS
-// ===================
-function buildAnnotationContext(annotations) {
-    var _a;
-    if (!annotations.shapes || annotations.shapes.length === 0) {
-        return 'No user annotations provided.';
-    }
-    const annotationsByType = {};
-    for (const shape of annotations.shapes) {
-        const type = shape.itemType || shape.type;
-        if (!annotationsByType[type]) {
-            annotationsByType[type] = [];
-        }
-        annotationsByType[type].push(shape);
-    }
-    let context = 'User annotations from the plan:\n';
-    for (const [type, shapes] of Object.entries(annotationsByType)) {
-        context += `\n${type.toUpperCase()} (${shapes.length} marked):\n`;
-        for (const shape of shapes) {
-            const label = shape.label || 'unlabeled';
-            const dims = shape.type === 'polygon' || shape.type === 'polyline'
-                ? `points: ${((_a = shape.points) === null || _a === void 0 ? void 0 : _a.length) || 0}`
-                : `${Math.round(shape.w)}x${Math.round(shape.h)}`;
-            context += `  - ${label}: ${dims} at (${Math.round(shape.x)}, ${Math.round(shape.y)})\n`;
-        }
-    }
-    if (annotations.scale) {
-        context += `\nScale: ${annotations.scale.pixelsPerUnit} pixels per ${annotations.scale.unit}\n`;
-    }
-    return context;
-}
-function createEmptyCSIScope() {
+function createCSIScope(computedItems) {
     const divisions = [
         { code: '01', key: 'div01_general_requirements', name: 'General Requirements' },
         { code: '02', key: 'div02_existing_conditions', name: 'Existing Conditions' },
@@ -137,24 +61,27 @@ function createEmptyCSIScope() {
     ];
     const scope = {};
     for (const div of divisions) {
-        scope[div.key] = {
+        const items = computedItems[div.key] || [];
+        const hasItems = items.length > 0;
+        // Build division object - Firestore doesn't accept undefined values
+        const divisionObj = {
             code: div.code,
             name: div.name,
-            status: 'not_applicable',
-            exclusionReason: 'Not analyzed yet',
-            description: '',
-            items: [],
+            status: hasItems ? 'included' : 'not_applicable',
+            description: hasItems ? `${items.length} items from user annotations` : '',
+            items: items,
         };
+        // Only add exclusionReason when division is excluded/not_applicable
+        if (!hasItems) {
+            divisionObj.exclusionReason = 'No items identified in annotations';
+        }
+        scope[div.key] = divisionObj;
     }
     return scope;
 }
 // ===================
 // IMAGE HELPERS
 // ===================
-/**
- * Downloads an image from URL and converts to base64 data URI
- * This is needed because OpenAI can't access local emulator URLs
- */
 async function imageUrlToBase64(imageUrl) {
     try {
         const response = await fetch(imageUrl);
@@ -164,7 +91,6 @@ async function imageUrlToBase64(imageUrl) {
         const arrayBuffer = await response.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
         const base64 = buffer.toString('base64');
-        // Detect content type from URL or default to jpeg
         let mimeType = 'image/jpeg';
         if (imageUrl.toLowerCase().includes('.png')) {
             mimeType = 'image/png';
@@ -179,9 +105,6 @@ async function imageUrlToBase64(imageUrl) {
         throw new Error(`Failed to process image: ${error instanceof Error ? error.message : String(error)}`);
     }
 }
-/**
- * Checks if URL is a local emulator URL that OpenAI can't access
- */
 function isLocalUrl(url) {
     return url.includes('127.0.0.1') ||
         url.includes('localhost') ||
@@ -189,118 +112,110 @@ function isLocalUrl(url) {
         url.includes('192.168.');
 }
 // ===================
-// MAIN PIPELINE
+// LLM INFERENCE (SECONDARY - only for gap-filling)
 // ===================
-async function analyzeWithVision(imageUrl, annotationContext) {
-    var _a, _b;
-    // Convert local URLs to base64 since OpenAI can't access them
-    let imageContent;
-    if (isLocalUrl(imageUrl)) {
-        console.log('[ESTIMATION] Converting local image URL to base64...');
-        imageContent = await imageUrlToBase64(imageUrl);
-    }
-    else {
-        imageContent = imageUrl;
-    }
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            {
-                role: 'system',
-                content: VISION_ANALYSIS_PROMPT,
-            },
-            {
-                role: 'user',
-                content: [
-                    {
-                        type: 'image_url',
-                        image_url: {
-                            url: imageContent,
-                            detail: 'high',
-                        },
-                    },
-                    {
-                        type: 'text',
-                        text: `Analyze this floor plan.\n\n${annotationContext}\n\nProvide detailed element identification and measurements.`,
-                    },
-                ],
-            },
-        ],
-        max_tokens: 4000,
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-    });
-    const content = (_b = (_a = response.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
-    if (!content) {
-        throw new Error('No response from vision analysis');
-    }
-    return JSON.parse(content);
-}
-async function generateQuantification(visionAnalysis, scopeText, clarificationData, annotationContext) {
-    var _a, _b;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            {
-                role: 'system',
-                content: QUANTIFICATION_PROMPT,
-            },
-            {
-                role: 'user',
-                content: `Generate Bill of Quantities based on:
+const INFERENCE_PROMPT = `You are a construction estimation assistant. The user has provided annotations on a floor plan with the following computed quantities:
+
+COMPUTED FROM ANNOTATIONS:
+{computedQuantities}
 
 SCOPE DESCRIPTION:
-${scopeText}
+{scopeText}
 
 CLARIFICATION DATA:
-${JSON.stringify(clarificationData, null, 2)}
+{clarificationData}
 
-PLAN ANALYSIS:
-${JSON.stringify(visionAnalysis, null, 2)}
+Based on the computed quantities, provide ONLY the following inferences (do not override the computed quantities):
+1. Room types based on layout (kitchen, bathroom, bedroom, etc.)
+2. Spatial relationships (what rooms are adjacent, traffic flow)
+3. Missing items that should be inferred (electrical outlets per room, HVAC returns, etc.)
+4. Standard allowances for items not annotated
 
-USER ANNOTATIONS:
-${annotationContext}
-
-Generate complete CSI scope with accurate quantities. Return as JSON with csiScope object containing all 24 divisions.`,
-            },
-        ],
-        max_tokens: 8000,
-        temperature: 0.2,
-        response_format: { type: 'json_object' },
-    });
-    const content = (_b = (_a = response.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
-    if (!content) {
-        throw new Error('No response from quantification');
-    }
-    return JSON.parse(content);
+Return JSON with:
+{
+  "roomTypes": [{ "roomId": "...", "inferredType": "kitchen|bathroom|bedroom|living|other" }],
+  "spatialNarrative": "Description of the layout...",
+  "inferredItems": [{ "division": "div26_electrical", "item": "...", "quantity": N, "reason": "..." }],
+  "standardAllowances": [{ "division": "...", "item": "...", "quantity": N, "basis": "..." }]
 }
-async function generateSpatialModel(visionAnalysis, _annotations) {
+
+IMPORTANT: Do NOT provide quantities for walls, floors, doors, or windows - those are computed from annotations.`;
+async function inferMissingData(quantities, scopeText, clarificationData, planImageUrl) {
     var _a, _b;
-    const response = await openai.chat.completions.create({
-        model: 'gpt-4o',
-        messages: [
-            {
-                role: 'user',
-                content: `Based on this plan analysis, generate a spatial model:
-
-${JSON.stringify(visionAnalysis, null, 2)}
-
-Generate JSON with:
-- spaceModel: { totalSqft, boundingBox, scale, rooms[], walls[], openings[] }
-- spatialRelationships: { layoutNarrative (min 200 chars describing the space), roomAdjacencies[], entryPoints[] }
-
-The layoutNarrative should describe what's next to what, traffic flow, and key spatial relationships.`,
-            },
-        ],
-        max_tokens: 3000,
-        temperature: 0.3,
-        response_format: { type: 'json_object' },
-    });
-    const content = (_b = (_a = response.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
-    if (!content) {
-        throw new Error('No response from spatial model generation');
+    if (!apiKey) {
+        console.log('[ESTIMATION] No API key - skipping LLM inference');
+        return {
+            roomTypes: [],
+            spatialNarrative: 'Layout analysis requires OpenAI API key',
+            inferredItems: [],
+            standardAllowances: [],
+        };
     }
-    return JSON.parse(content);
+    const prompt = INFERENCE_PROMPT
+        .replace('{computedQuantities}', JSON.stringify({
+        totalWallLength: quantities.totalWallLength,
+        totalFloorArea: quantities.totalFloorArea,
+        totalRoomCount: quantities.totalRoomCount,
+        totalDoorCount: quantities.totalDoorCount,
+        totalWindowCount: quantities.totalWindowCount,
+        rooms: quantities.rooms.map(r => ({ id: r.id, name: r.name, area: r.areaReal })),
+        layerSummary: quantities.layerSummary,
+    }, null, 2))
+        .replace('{scopeText}', scopeText)
+        .replace('{clarificationData}', JSON.stringify(clarificationData, null, 2));
+    try {
+        // Build messages for OpenAI
+        let response;
+        if (planImageUrl && apiKey) {
+            let imageContent = planImageUrl;
+            if (isLocalUrl(planImageUrl)) {
+                imageContent = await imageUrlToBase64(planImageUrl);
+            }
+            response = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'user',
+                        content: [
+                            { type: 'text', text: prompt },
+                            { type: 'image_url', image_url: { url: imageContent, detail: 'high' } },
+                        ],
+                    },
+                ],
+                max_tokens: 2000,
+                temperature: 0.3,
+                response_format: { type: 'json_object' },
+            });
+        }
+        else {
+            response = await openai.chat.completions.create({
+                model: 'gpt-4o',
+                messages: [
+                    {
+                        role: 'user',
+                        content: prompt,
+                    },
+                ],
+                max_tokens: 2000,
+                temperature: 0.3,
+                response_format: { type: 'json_object' },
+            });
+        }
+        const content = (_b = (_a = response.choices[0]) === null || _a === void 0 ? void 0 : _a.message) === null || _b === void 0 ? void 0 : _b.content;
+        if (!content) {
+            return { roomTypes: [], spatialNarrative: '', inferredItems: [], standardAllowances: [] };
+        }
+        return JSON.parse(content);
+    }
+    catch (error) {
+        console.error('[ESTIMATION] LLM inference error:', error);
+        return {
+            roomTypes: [],
+            spatialNarrative: 'Inference failed - using annotation data only',
+            inferredItems: [],
+            standardAllowances: [],
+        };
+    }
 }
 // ===================
 // CLOUD FUNCTION
@@ -311,28 +226,119 @@ exports.estimationPipeline = (0, https_1.onCall)({
     timeoutSeconds: 300,
     memory: '1GiB',
 }, async (request) => {
-    var _a;
     try {
         const data = request.data;
         const { projectId, sessionId, planImageUrl, scopeText, clarificationData, annotationSnapshot, passNumber = 1, } = data;
-        if (!planImageUrl || !scopeText) {
-            throw new https_1.HttpsError('invalid-argument', 'Plan image URL and scope text are required');
+        if (!scopeText) {
+            throw new https_1.HttpsError('invalid-argument', 'Scope text is required');
         }
         console.log(`[ESTIMATION] Starting pass ${passNumber} for session ${sessionId}`);
-        // Build annotation context
-        const annotationContext = buildAnnotationContext(annotationSnapshot);
-        // Pass 1: Vision analysis of the plan
-        console.log('[ESTIMATION] Running vision analysis...');
-        const visionAnalysis = await analyzeWithVision(planImageUrl, annotationContext);
-        // Pass 2: Generate spatial model
-        console.log('[ESTIMATION] Generating spatial model...');
-        const spatialData = await generateSpatialModel(visionAnalysis, annotationSnapshot);
-        // Pass 3: Generate CSI quantification
-        console.log('[ESTIMATION] Generating quantification...');
-        const quantificationData = await generateQuantification(visionAnalysis, scopeText, clarificationData, annotationContext);
-        // Assemble ClarificationOutput
+        // ===================
+        // STEP 1: COMPUTE QUANTITIES FROM ANNOTATIONS (PRIMARY)
+        // ===================
+        console.log('[ESTIMATION] Computing quantities from user annotations...');
+        // Ensure layers have required fields
+        const normalizedSnapshot = {
+            shapes: annotationSnapshot.shapes || [],
+            layers: (annotationSnapshot.layers || []).map(layer => {
+                var _a, _b;
+                return ({
+                    id: layer.id,
+                    name: layer.name,
+                    visible: (_a = layer.visible) !== null && _a !== void 0 ? _a : true,
+                    shapeCount: (_b = layer.shapeCount) !== null && _b !== void 0 ? _b : 0,
+                });
+            }),
+            scale: annotationSnapshot.scale,
+            capturedAt: annotationSnapshot.capturedAt || Date.now(),
+        };
+        const quantities = (0, annotationQuantifier_1.computeQuantitiesFromAnnotations)(normalizedSnapshot);
+        console.log('[ESTIMATION] Computed from annotations:', {
+            hasScale: quantities.hasScale,
+            scaleUnit: quantities.scaleUnit,
+            totalWallLength: quantities.totalWallLength,
+            totalFloorArea: quantities.totalFloorArea,
+            roomCount: quantities.totalRoomCount,
+            doorCount: quantities.totalDoorCount,
+            windowCount: quantities.totalWindowCount,
+        });
+        // ===================
+        // STEP 2: BUILD SPACE MODEL FROM ANNOTATIONS
+        // ===================
+        console.log('[ESTIMATION] Building space model from computed quantities...');
+        const spaceModel = (0, annotationQuantifier_1.buildSpaceModelFromQuantities)(quantities);
+        // ===================
+        // STEP 3: BUILD CSI ITEMS FROM ANNOTATIONS
+        // ===================
+        console.log('[ESTIMATION] Building CSI items from computed quantities...');
+        const computedCSIItems = (0, annotationQuantifier_1.buildCSIItemsFromQuantities)(quantities);
+        // ===================
+        // STEP 4: LLM INFERENCE FOR GAP-FILLING (SECONDARY)
+        // ===================
+        let inferredData = {
+            roomTypes: [],
+            spatialNarrative: '',
+            inferredItems: [],
+            standardAllowances: [],
+        };
+        // Only use LLM if we have annotations but need inference for non-measured items
+        if (quantities.hasScale && (quantities.totalWallLength > 0 || quantities.totalFloorArea > 0)) {
+            console.log('[ESTIMATION] Running LLM inference for gap-filling...');
+            inferredData = await inferMissingData(quantities, scopeText, clarificationData, planImageUrl);
+        }
+        else if (!quantities.hasScale) {
+            console.log('[ESTIMATION] No scale set - skipping LLM inference, using annotation data only');
+        }
+        else {
+            console.log('[ESTIMATION] No annotations - LLM inference would have no basis');
+        }
+        // ===================
+        // STEP 5: MERGE INFERRED ITEMS INTO CSI SCOPE
+        // ===================
+        const inferredItems = inferredData.inferredItems || [];
+        const standardAllowances = inferredData.standardAllowances || [];
+        // Add inferred items with lower confidence
+        for (const inferred of [...inferredItems, ...standardAllowances]) {
+            if (inferred.division && computedCSIItems[inferred.division]) {
+                computedCSIItems[inferred.division].push({
+                    id: `inferred-${Date.now()}-${Math.random().toString(36).substr(2, 5)}`,
+                    item: inferred.item,
+                    quantity: inferred.quantity,
+                    unit: 'each',
+                    confidence: 0.7,
+                    source: 'inferred',
+                    notes: inferred.reason || inferred.basis,
+                });
+            }
+        }
+        // Create CSI scope with computed + inferred items
+        const csiScope = createCSIScope(computedCSIItems);
+        // ===================
+        // STEP 6: ASSEMBLE CLARIFICATION OUTPUT
+        // ===================
         const estimateId = `est_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
-        // Extract project brief from clarification data
+        // Count divisions by status
+        const divisionCounts = { included: 0, excluded: 0, byOwner: 0, notApplicable: 0 };
+        const includedDivisions = [];
+        const excludedDivisions = [];
+        const notApplicableDivisions = [];
+        for (const [, div] of Object.entries(csiScope)) {
+            const divObj = div;
+            switch (divObj.status) {
+                case 'included':
+                    divisionCounts.included++;
+                    includedDivisions.push(divObj.code);
+                    break;
+                case 'excluded':
+                    divisionCounts.excluded++;
+                    excludedDivisions.push(divObj.code);
+                    break;
+                case 'not_applicable':
+                    divisionCounts.notApplicable++;
+                    notApplicableDivisions.push(divObj.code);
+                    break;
+            }
+        }
         const projectBrief = {
             projectType: clarificationData.projectType || 'other',
             location: clarificationData.location || {
@@ -344,16 +350,16 @@ exports.estimationPipeline = (0, https_1.onCall)({
             },
             scopeSummary: {
                 description: scopeText,
-                totalSqft: ((_a = spatialData.spaceModel) === null || _a === void 0 ? void 0 : _a.totalSqft) || 0,
-                rooms: [],
+                totalSqft: quantities.totalFloorArea,
+                rooms: quantities.rooms.map(r => r.name),
                 finishLevel: clarificationData.finishLevel || 'mid_range',
-                projectComplexity: 'moderate',
-                includedDivisions: [],
-                excludedDivisions: [],
+                projectComplexity: quantities.totalRoomCount > 3 ? 'complex' : quantities.totalRoomCount > 1 ? 'moderate' : 'simple',
+                includedDivisions,
+                excludedDivisions,
                 byOwnerDivisions: [],
-                notApplicableDivisions: [],
-                totalIncluded: 0,
-                totalExcluded: 0,
+                notApplicableDivisions,
+                totalIncluded: divisionCounts.included,
+                totalExcluded: divisionCounts.excluded,
             },
             specialRequirements: clarificationData.specialRequirements || [],
             exclusions: clarificationData.exclusions || [],
@@ -361,61 +367,23 @@ exports.estimationPipeline = (0, https_1.onCall)({
                 flexibility: clarificationData.flexibility || 'flexible',
             },
         };
-        // Only add timeline fields if they have values (Firestore rejects undefined)
         if (clarificationData.desiredStart) {
             projectBrief.timeline.desiredStart = clarificationData.desiredStart;
         }
         if (clarificationData.deadline) {
             projectBrief.timeline.deadline = clarificationData.deadline;
         }
-        // Get CSI scope from quantification or create empty
-        const csiScope = quantificationData.csiScope || createEmptyCSIScope();
-        // Count divisions by status
-        const divisionCounts = { included: 0, excluded: 0, byOwner: 0, notApplicable: 0 };
-        for (const [, div] of Object.entries(csiScope)) {
-            const divObj = div;
-            const status = divObj.status;
-            const code = divObj.code;
-            // Skip if code is undefined
-            if (!code)
-                continue;
-            switch (status) {
-                case 'included':
-                    divisionCounts.included++;
-                    projectBrief.scopeSummary.includedDivisions.push(code);
-                    break;
-                case 'excluded':
-                    divisionCounts.excluded++;
-                    projectBrief.scopeSummary.excludedDivisions.push(code);
-                    break;
-                case 'by_owner':
-                    divisionCounts.byOwner++;
-                    projectBrief.scopeSummary.byOwnerDivisions.push(code);
-                    break;
-                default:
-                    divisionCounts.notApplicable++;
-                    projectBrief.scopeSummary.notApplicableDivisions.push(code);
-            }
-        }
-        projectBrief.scopeSummary.totalIncluded = divisionCounts.included;
-        projectBrief.scopeSummary.totalExcluded = divisionCounts.excluded;
         // Build CAD data
         const cadData = {
-            fileUrl: planImageUrl,
-            fileType: planImageUrl.toLowerCase().includes('.png') ? 'png' :
-                planImageUrl.toLowerCase().includes('.jpg') ? 'jpg' : 'jpeg',
-            extractionMethod: 'vision',
-            extractionConfidence: 0.85,
-            spaceModel: spatialData.spaceModel || {
-                totalSqft: 0,
-                boundingBox: { length: 0, width: 0, height: 0, units: 'feet' },
-                scale: { detected: false, units: 'feet' },
-                rooms: [],
-                walls: [],
-                openings: [],
-            },
-            spatialRelationships: spatialData.spatialRelationships || {
-                layoutNarrative: 'Space analysis pending.',
+            fileUrl: planImageUrl || '',
+            fileType: (planImageUrl === null || planImageUrl === void 0 ? void 0 : planImageUrl.toLowerCase().includes('.png')) ? 'png' :
+                (planImageUrl === null || planImageUrl === void 0 ? void 0 : planImageUrl.toLowerCase().includes('.jpg')) ? 'jpg' : 'jpeg',
+            extractionMethod: 'annotation',
+            extractionConfidence: quantities.hasScale ? 0.95 : 0.6,
+            spaceModel,
+            spatialRelationships: {
+                layoutNarrative: inferredData.spatialNarrative ||
+                    `Space contains ${quantities.totalRoomCount} rooms with ${quantities.totalWallLength.toFixed(1)} ${quantities.scaleUnit} of walls and ${quantities.totalFloorArea.toFixed(1)} square ${quantities.scaleUnit} of floor area.`,
                 roomAdjacencies: [],
                 entryPoints: [],
             },
@@ -423,30 +391,44 @@ exports.estimationPipeline = (0, https_1.onCall)({
         // Build flags
         const flags = {
             lowConfidenceItems: [],
-            missingData: [],
-            userVerificationRequired: false,
+            missingData: quantities.warnings,
+            userVerificationRequired: !quantities.hasScale,
             verificationItems: [],
         };
-        // Check for low confidence items
-        if (cadData.spaceModel.totalSqft === 0) {
-            flags.missingData.push('Total square footage not detected');
-            flags.userVerificationRequired = true;
+        if (!quantities.hasScale) {
+            flags.lowConfidenceItems.push({
+                field: 'scale',
+                confidence: 0.0,
+                reason: 'No scale set - all measurements are in pixels',
+            });
         }
         const clarificationOutput = {
             estimateId,
             schemaVersion: '3.0.0',
             timestamp: new Date().toISOString(),
-            clarificationStatus: 'complete',
+            clarificationStatus: quantities.hasScale ? 'complete' : 'needs_review',
             projectBrief,
             csiScope,
             cadData,
             conversation: {
-                inputMethod: 'text',
+                inputMethod: 'annotation',
                 messageCount: 0,
                 clarificationQuestions: [],
-                confidenceScore: 0.85,
+                confidenceScore: quantities.hasScale ? 0.95 : 0.5,
             },
             flags,
+            // Include computed quantities summary for transparency
+            computedQuantities: {
+                source: 'user_annotations',
+                hasScale: quantities.hasScale,
+                scaleUnit: quantities.scaleUnit,
+                totalWallLength: quantities.totalWallLength,
+                totalFloorArea: quantities.totalFloorArea,
+                totalRoomCount: quantities.totalRoomCount,
+                totalDoorCount: quantities.totalDoorCount,
+                totalWindowCount: quantities.totalWindowCount,
+                layerSummary: quantities.layerSummary,
+            },
         };
         // Save to Firestore
         const db = admin.firestore();
@@ -460,11 +442,15 @@ exports.estimationPipeline = (0, https_1.onCall)({
             updatedAt: firestore_1.FieldValue.serverTimestamp(),
         });
         console.log(`[ESTIMATION] Complete. Generated estimate ${estimateId}`);
+        console.log(`[ESTIMATION] Used ${quantities.hasScale ? 'annotation-based' : 'pixel-only'} measurements`);
+        console.log(`[ESTIMATION] Wall length: ${quantities.totalWallLength} ${quantities.scaleUnit}`);
+        console.log(`[ESTIMATION] Floor area: ${quantities.totalFloorArea} sq ${quantities.scaleUnit}`);
         return {
             success: true,
             estimateId,
             clarificationOutput,
             passNumber,
+            quantitiesSource: 'annotation',
         };
     }
     catch (error) {

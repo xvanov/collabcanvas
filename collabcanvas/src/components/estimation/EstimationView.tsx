@@ -14,6 +14,7 @@ import {
   subscribeToEstimationSession,
   startEstimationAnalysis,
   saveAnnotationSnapshot,
+  markEstimationFailed,
 } from '../../services/estimationService';
 import type { EstimationSession, CSIDivision, AnnotationSnapshot, AnnotatedShape, AnnotatedLayer } from '../../types/estimation';
 
@@ -150,8 +151,18 @@ export function EstimationView() {
       });
     } catch (err) {
       console.error('Analysis failed:', err);
-      setError(err instanceof Error ? err.message : 'Analysis failed');
+      const errorMessage = err instanceof Error ? err.message : 'Analysis failed';
+      setError(errorMessage);
       setAnalyzing(false);
+      
+      // Update session status to 'error' so the button becomes clickable again
+      if (projectId && session && user) {
+        try {
+          await markEstimationFailed(projectId, session.id, errorMessage, user.uid);
+        } catch (updateErr) {
+          console.error('Failed to update session status:', updateErr);
+        }
+      }
     }
   }, [projectId, user, session]);
 
@@ -236,18 +247,22 @@ export function EstimationView() {
             
             <button
               onClick={handleStartAnalysis}
-              disabled={analyzing || session.status === 'analyzing'}
+              disabled={analyzing}
               className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                analyzing || session.status === 'analyzing'
+                analyzing
                   ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : session.status === 'error'
+                  ? 'bg-red-600 text-white hover:bg-red-700'
                   : 'bg-blue-600 text-white hover:bg-blue-700'
               }`}
             >
-              {analyzing || session.status === 'analyzing' ? (
+              {analyzing ? (
                 <span className="flex items-center">
                   <span className="inline-block h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent mr-2"></span>
                   Analyzing...
                 </span>
+              ) : session.status === 'error' ? (
+                'Retry Analysis'
               ) : session.analysisPassCount > 0 ? (
                 `Re-analyze (Pass ${session.analysisPassCount + 1})`
               ) : (
@@ -259,20 +274,49 @@ export function EstimationView() {
       </div>
 
       {/* Error Display */}
-      {error && (
+      {(error || session.status === 'error') && (
         <div className="mx-6 mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
-          <p className="text-red-700">{error}</p>
+          <div className="flex items-start justify-between">
+            <div className="flex items-start">
+              <svg className="w-5 h-5 text-red-500 mt-0.5 mr-3 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+              </svg>
+              <div>
+                <p className="font-medium text-red-800">Analysis Failed</p>
+                <p className="text-sm text-red-700 mt-1">{error || 'An error occurred during analysis. Please try again.'}</p>
+                <p className="text-xs text-red-600 mt-2">Click "Retry Analysis" to try again.</p>
+              </div>
+            </div>
+            <button
+              onClick={() => setError(null)}
+              className="text-red-400 hover:text-red-600"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
+          </div>
         </div>
       )}
 
       {/* Content */}
       <div className="flex-1 overflow-y-auto p-6">
-        {session.status === 'analyzing' ? (
+        {analyzing || session.status === 'analyzing' ? (
           <div className="flex flex-col items-center justify-center py-16">
             <div className="inline-block h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent"></div>
             <p className="mt-4 text-lg font-medium text-gray-900">Analyzing Plan...</p>
             <p className="mt-2 text-sm text-gray-500">
               Pass {session.analysisPassCount + 1} - This may take a few minutes
+            </p>
+          </div>
+        ) : session.status === 'error' && !output ? (
+          <div className="flex flex-col items-center justify-center py-16">
+            <svg className="h-16 w-16 text-red-300" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <p className="mt-4 text-lg font-medium text-gray-900">Analysis Failed</p>
+            <p className="mt-2 text-sm text-gray-500 text-center max-w-md">
+              The analysis could not be completed. Please check your annotations and scale settings, then click "Retry Analysis".
             </p>
           </div>
         ) : output ? (
