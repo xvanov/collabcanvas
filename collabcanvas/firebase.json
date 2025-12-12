@@ -70,6 +70,20 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint"
       ]
+    },
+    {
+      "source": "../functions",
+      "codebase": "python-agents",
+      "runtime": "python311",
+      "ignore": [
+        "venv",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "__pycache__",
+        ".pytest_cache",
+        "*.pyc"
+      ]
     }
   ]
 }

@@ -243,13 +243,13 @@ export function Project() {
   // Show project not found
   if (projectNotFound) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-truecost-bg-primary">
         <div className="text-center">
-          <h2 className="text-2xl font-bold text-gray-900 mb-4">Project Not Found</h2>
-          <p className="text-gray-600 mb-4">The project you're looking for doesn't exist or you don't have access to it.</p>
+          <h2 className="text-2xl font-bold text-truecost-text-primary mb-4">Project Not Found</h2>
+          <p className="text-truecost-text-secondary mb-4">The project you're looking for doesn't exist or you don't have access to it.</p>
           <button
             onClick={() => navigate('/')}
-            className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+            className="px-4 py-2 bg-truecost-accent text-white rounded hover:bg-truecost-accent/80"
           >
             Back to Dashboard
           </button>
@@ -263,10 +263,10 @@ export function Project() {
   // Also, if we have a project available (from localProject), don't show loading
   if ((loadingProject || !project) && !hasEverLoadedRef.current && !projectNotFound && !localProject) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50">
+      <div className="flex min-h-screen items-center justify-center bg-truecost-bg-primary">
         <div className="text-center">
-          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-blue-600 border-t-transparent mx-auto"></div>
-          <p className="text-gray-600">Loading project...</p>
+          <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-truecost-accent border-t-transparent mx-auto"></div>
+          <p className="text-truecost-text-secondary">Loading project...</p>
         </div>
       </div>
     );
@@ -278,16 +278,16 @@ export function Project() {
   if (!project && hasEverLoadedRef.current && !projectNotFound) {
     const basePath = `/projects/${projectId}`;
     return (
-      <div className="flex h-screen flex-col">
-        <div className="border-b border-gray-200 bg-white">
+      <div className="flex h-screen flex-col bg-truecost-bg-primary">
+        <div className="border-b border-truecost-border bg-truecost-bg-surface">
           <div className="flex">
             <NavLink
               to={`${basePath}/scope`}
               className={({ isActive }) =>
                 `px-6 py-4 font-medium transition-colors ${
                   isActive
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                    : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
                 }`
               }
             >
@@ -298,8 +298,8 @@ export function Project() {
               className={({ isActive }) =>
                 `px-6 py-4 font-medium transition-colors ${
                   isActive
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                    : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
                 }`
               }
             >
@@ -310,8 +310,8 @@ export function Project() {
               className={({ isActive }) =>
                 `px-6 py-4 font-medium transition-colors ${
                   isActive
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                    : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
                 }`
               }
             >
@@ -322,8 +322,8 @@ export function Project() {
               className={({ isActive }) =>
                 `px-6 py-4 font-medium transition-colors ${
                   isActive
-                    ? 'border-b-2 border-blue-600 text-blue-600'
-                    : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                    ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                    : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
                 }`
               }
             >
@@ -332,7 +332,7 @@ export function Project() {
             <div className="ml-auto flex items-center px-6">
               <button
                 onClick={() => navigate('/')}
-                className="text-sm text-gray-600 hover:text-gray-900"
+                className="text-sm text-truecost-text-secondary hover:text-truecost-text-primary"
               >
                 ← Back to Projects
               </button>
@@ -355,17 +355,17 @@ export function Project() {
   const basePath = `/projects/${projectId}`;
 
   return (
-    <div className="flex h-screen flex-col">
+    <div className="flex h-screen flex-col bg-truecost-bg-primary">
       {/* Four-View Navigation Tabs */}
-      <div className="border-b border-gray-200 bg-white">
+      <div className="border-b border-truecost-border bg-truecost-bg-surface">
         <div className="flex">
           <NavLink
             to={`${basePath}/scope`}
             className={({ isActive }) =>
               `px-6 py-4 font-medium transition-colors ${
                 isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                  : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
               }`
             }
           >
@@ -378,8 +378,8 @@ export function Project() {
             className={({ isActive }) =>
               `px-6 py-4 font-medium transition-colors ${
                 isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                  : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
               }`
             }
           >
@@ -392,8 +392,8 @@ export function Project() {
             className={({ isActive }) =>
               `px-6 py-4 font-medium transition-colors ${
                 isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                  : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
               }`
             }
           >
@@ -406,8 +406,8 @@ export function Project() {
             className={({ isActive }) =>
               `px-6 py-4 font-medium transition-colors ${
                 isActive
-                  ? 'border-b-2 border-blue-600 text-blue-600'
-                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-50'
+                  ? 'border-b-2 border-truecost-accent text-truecost-accent'
+                  : 'text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-bg-primary/50'
               }`
             }
           >
@@ -418,7 +418,7 @@ export function Project() {
           <div className="ml-auto flex items-center px-6">
             <button
               onClick={() => navigate('/')}
-              className="text-sm text-gray-600 hover:text-gray-900"
+              className="text-sm text-truecost-text-secondary hover:text-truecost-text-primary"
             >
               ← Back to Projects
             </button>

@@ -73,10 +73,15 @@ interface PipelineStatus {
  * Get the Python pipeline URL based on environment
  */
 function getPythonPipelineUrl(): string {
+  // Allow override via environment variable for flexible local dev
+  if (process.env.PYTHON_FUNCTIONS_URL) {
+    return `${process.env.PYTHON_FUNCTIONS_URL}/collabcanvas-dev/us-central1/start_deep_pipeline`;
+  }
   // Check if we're running in the emulator
   if (process.env.FUNCTIONS_EMULATOR === 'true') {
-    // Python functions emulator runs separately
-    return 'http://127.0.0.1:5001/collabcanvas-dev/us-central1/start_deep_pipeline';
+    // Python functions run on separate port (5002) to avoid conflict with TS emulator (5001)
+    // Start Python server: cd ../functions && source venv/bin/activate && python serve_local.py
+    return 'http://127.0.0.1:5002/collabcanvas-dev/us-central1/start_deep_pipeline';
   }
   // Production URL
   return 'https://us-central1-collabcanvas-dev.cloudfunctions.net/start_deep_pipeline';
