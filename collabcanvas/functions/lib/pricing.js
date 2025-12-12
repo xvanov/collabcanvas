@@ -6,6 +6,7 @@ const admin = require("firebase-admin");
 const firestore_1 = require("firebase-admin/firestore");
 const dotenv = require("dotenv");
 const path = require("path");
+// Using cors: true to match other functions (aiCommand, materialEstimateCommand, sagemakerInvoke)
 // Load environment variables - try multiple locations
 dotenv.config(); // Default: .env in functions directory
 dotenv.config({ path: path.resolve(__dirname, '../.env') }); // Explicit path
@@ -171,12 +172,7 @@ async function fetchFromSerpApi(query, storeId, deliveryZip, attempt = 1) {
     }
 }
 exports.getHomeDepotPrice = (0, https_1.onCall)({
-    cors: [
-        'http://localhost:5173',
-        'http://127.0.0.1:5173',
-        'http://localhost:4173',
-        'http://127.0.0.1:4173',
-    ],
+    cors: true,
     maxInstances: 20,
     memory: '256MiB',
     timeoutSeconds: 60, // Allow up to 60 seconds for SerpAPI calls

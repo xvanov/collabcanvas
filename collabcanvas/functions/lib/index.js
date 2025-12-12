@@ -3,7 +3,7 @@
  * Firebase Cloud Functions Entry Point
  */
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.estimationPipeline = exports.clarificationAgent = exports.sagemakerInvoke = exports.getHomeDepotPrice = exports.materialEstimateCommand = exports.aiCommand = void 0;
+exports.comparePrices = exports.estimationPipeline = exports.clarificationAgent = exports.sagemakerInvoke = exports.getHomeDepotPrice = exports.materialEstimateCommand = exports.aiCommand = void 0;
 const aiCommand_1 = require("./aiCommand");
 Object.defineProperty(exports, "aiCommand", { enumerable: true, get: function () { return aiCommand_1.aiCommand; } });
 const materialEstimateCommand_1 = require("./materialEstimateCommand");
@@ -16,5 +16,7 @@ const clarificationAgent_1 = require("./clarificationAgent");
 Object.defineProperty(exports, "clarificationAgent", { enumerable: true, get: function () { return clarificationAgent_1.clarificationAgent; } });
 const estimationPipeline_1 = require("./estimationPipeline");
 Object.defineProperty(exports, "estimationPipeline", { enumerable: true, get: function () { return estimationPipeline_1.estimationPipeline; } });
+const priceComparison_1 = require("./priceComparison");
+Object.defineProperty(exports, "comparePrices", { enumerable: true, get: function () { return priceComparison_1.comparePrices; } });
 // export { onProjectDeleted }; // TODO: Uncomment when ready to deploy
 //# sourceMappingURL=index.js.map

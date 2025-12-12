@@ -1,10 +1,10 @@
 import { useState, useEffect, useRef, useMemo } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import Canvas, { type CanvasHandle } from '../components/Canvas';
 import { ShapePropertiesPanel } from '../components/ShapePropertiesPanel';
 import { useCanvasStore } from '../store/canvasStore';
-import { getProjectCanvasStoreApi } from '../store/projectCanvasStore';
+import { getProjectCanvasStoreApi, useScopedCanvasStore } from '../store/projectCanvasStore';
 import { useAuth } from '../hooks/useAuth';
 import { useShapes } from '../hooks/useShapes';
 import { useLayers } from '../hooks/useLayers';
@@ -12,8 +12,9 @@ import { useLocks } from '../hooks/useLocks';
 import { useOffline } from '../hooks/useOffline';
 import { DiagnosticsHud } from '../components/DiagnosticsHud';
 import { FloatingAIChat } from '../components/shared/FloatingAIChat';
-import type { Shape, ShapeType } from '../types';
+import type { BackgroundImage, Shape, ShapeType } from '../types';
 import { perfMetrics } from '../utils/harness';
+import { AuthenticatedLayout } from '../components/layouts/AuthenticatedLayout';
 // Konva types imported via Canvas component
 
 /**
@@ -22,7 +23,12 @@ import { perfMetrics } from '../utils/harness';
  * Contains the Konva canvas with pan/zoom support
  */
 export function Board() {
-  const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
+  const { projectId: routeProjectId, id } = useParams<{ projectId?: string; id?: string }>();
+  const projectId = routeProjectId || id;
+  const location = useLocation();
+  const locationState = location.state as { backgroundImage?: BackgroundImage } | null;
+  const pendingBackgroundImage = locationState?.backgroundImage;
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
   const [showLayersPanel, setShowLayersPanel] = useState(false);
@@ -33,6 +39,7 @@ export function Board() {
   const clearSelection = useCanvasStore((state) => state.clearSelection);
   const moveSelectedShapes = useCanvasStore((state) => state.moveSelectedShapes);
   const rotateSelectedShapes = useCanvasStore((state) => state.rotateSelectedShapes);
+  const setBackgroundImage = useScopedCanvasStore(projectId, (state) => state.setBackgroundImage);
   const { createShape, reloadShapesFromFirestore, deleteShapes, duplicateShapes, updateShapeRotation } = useShapes(projectId);
   useLayers(projectId); // Initialize layer synchronization
   const { clearStaleLocks } = useLocks();
@@ -62,6 +69,13 @@ export function Board() {
       console.log('✅ Synced currentUser to project-scoped store:', { projectId, userId: user.uid });
     }
   }, [user, setCurrentUser, projectId]);
+
+  // If a background image was passed from the Plan page via navigation state, apply it to the canvas store.
+  useEffect(() => {
+    if (projectId && pendingBackgroundImage && setBackgroundImage) {
+      setBackgroundImage(pendingBackgroundImage, true); // skip Firestore sync for local preview
+    }
+  }, [projectId, pendingBackgroundImage, setBackgroundImage]);
 
   // Initialize board state subscription (background image, scale line) when projectId is available.
   // Note: This should NOT depend on `user` being loaded; board state is project-scoped and can be
@@ -235,39 +249,79 @@ export function Board() {
   };
 
   return (
-    <div className="flex h-screen flex-col">
-      <Toolbar 
-        fps={fps} 
-        zoom={zoom} 
-        onCreateShape={handleCreateShape}
-        stageRef={canvasRef.current?.getStage()}
-        onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
-        onToggleAlignment={() => setShowAlignmentToolbar(!showAlignmentToolbar)}
-        onToggleGrid={() => {}}
-        onActivatePolylineTool={() => canvasRef.current?.activatePolylineTool()}
-        onActivatePolygonTool={() => canvasRef.current?.activatePolygonTool()}
-        onActivateBoundingBoxTool={() => canvasRef.current?.activateBoundingBoxTool()}
-        projectId={projectId}
-      >
-        {/* Additional toolbar controls will be added in future PRs */}
-      </Toolbar>
-      <div className="flex flex-1">
-        <div className="flex-1">
-          <Canvas 
-            ref={canvasRef}
-            projectId={projectId}
-            onFpsUpdate={setFps} 
-            onZoomChange={setZoom}
-            showLayersPanel={showLayersPanel}
-            showAlignmentToolbar={showAlignmentToolbar}
-            onCloseLayersPanel={() => setShowLayersPanel(false)}
-            onCloseAlignmentToolbar={() => setShowAlignmentToolbar(false)}
-          />
+    <div className="min-h-screen bg-truecost-bg-primary">
+      <AuthenticatedLayout>
+        <div className="container-spacious max-w-full pt-20 pb-14 md:pt-24">
+          <div className="flex flex-col gap-3 mb-6 md:flex-row md:items-center md:justify-between">
+            <div className="space-y-1">
+              <span className="inline-flex items-center px-3 py-1 rounded-full text-body-meta font-medium text-white border border-truecost-glass-border">
+                Canvas
+              </span>
+              <h1 className="font-heading text-h1 text-truecost-text-primary">Project Canvas</h1>
+              <p className="font-body text-body text-truecost-text-secondary/90">
+                Edit shapes, layers, and annotations before finalizing your estimate.
+              </p>
+            </div>
+            <div className="flex flex-wrap gap-3">
+              <button
+                className="btn-pill-secondary"
+                onClick={() => projectId && navigate(`/estimate/${projectId}/plan`)}
+                disabled={!projectId}
+              >
+                Back to Plan
+              </button>
+              <button
+                className="btn-pill-primary"
+                onClick={() => projectId && navigate(`/estimate/${projectId}/final`)}
+                disabled={!projectId}
+              >
+                Continue to Final
+              </button>
+            </div>
+          </div>
+
+          <div className="glass-panel p-3 md:p-4">
+            <div className="rounded-xl border border-truecost-glass-border/70 bg-truecost-glass-bg/40">
+              <div className="mb-3">
+                <Toolbar
+                  fps={fps}
+                  zoom={zoom}
+                  onCreateShape={handleCreateShape}
+                  stageRef={canvasRef.current?.getStage()}
+                  onToggleLayers={() => setShowLayersPanel(!showLayersPanel)}
+                  onToggleAlignment={() => setShowAlignmentToolbar(!showAlignmentToolbar)}
+                  onToggleGrid={() => {}}
+                  onActivatePolylineTool={() => canvasRef.current?.activatePolylineTool()}
+                  onActivatePolygonTool={() => canvasRef.current?.activatePolygonTool()}
+                  onActivateBoundingBoxTool={() => canvasRef.current?.activateBoundingBoxTool()}
+                  projectId={projectId}
+                >
+                  {/* Additional toolbar controls will be added in future PRs */}
+                </Toolbar>
+              </div>
+
+              <div className="flex flex-col lg:flex-row gap-3 lg:gap-4 min-h-[70vh]">
+                <div className="flex-1 min-h-[60vh]">
+                  <Canvas
+                    ref={canvasRef}
+                    projectId={projectId}
+                    onFpsUpdate={setFps}
+                    onZoomChange={setZoom}
+                    showLayersPanel={showLayersPanel}
+                    showAlignmentToolbar={showAlignmentToolbar}
+                    onCloseLayersPanel={() => setShowLayersPanel(false)}
+                    onCloseAlignmentToolbar={() => setShowAlignmentToolbar(false)}
+                  />
+                </div>
+                <ShapePropertiesPanel className="w-full lg:w-80" projectId={projectId} />
+              </div>
+            </div>
+          </div>
+
+          <DiagnosticsHud fps={fps} visible={showDiagnostics} />
+          <FloatingAIChat />
         </div>
-        <ShapePropertiesPanel className="w-80" projectId={projectId} />
-      </div>
-      <DiagnosticsHud fps={fps} visible={showDiagnostics} />
-      <FloatingAIChat />
+      </AuthenticatedLayout>
     </div>
   );
 }

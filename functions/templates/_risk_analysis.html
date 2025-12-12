@@ -1,0 +1,198 @@
+{# Risk Analysis Section - AC 4.3.6
+   Shows P50/P80/P90 percentiles, histogram, and top risks
+#}
+<div class="section page-break">
+    <h2>Risk Analysis</h2>
+
+    <p class="text-muted">
+        Monte Carlo simulation with {{ risk_analysis.iterations | default(1000) }} iterations
+        to model cost uncertainty and identify key risk factors.
+    </p>
+
+    <h3>Cost Confidence Intervals</h3>
+    <div class="stats-grid">
+        <div class="stat-card">
+            <div class="stat-value success">${{ "{:,.0f}".format(risk_analysis.p50 | default(estimate.p50)) }}</div>
+            <div class="stat-label">P50 (Median)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value warning">${{ "{:,.0f}".format(risk_analysis.p80 | default(estimate.p80)) }}</div>
+            <div class="stat-label">P80 (Likely)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value danger">${{ "{:,.0f}".format(risk_analysis.p90 | default(estimate.p90)) }}</div>
+            <div class="stat-label">P90 (Conservative)</div>
+        </div>
+        <div class="stat-card">
+            <div class="stat-value primary">{{ risk_analysis.contingency_pct | default(estimate.contingency_pct) }}%</div>
+            <div class="stat-label">Contingency</div>
+        </div>
+    </div>
+
+    <h3>Cost Distribution</h3>
+    <p class="text-muted text-small">
+        Distribution of simulated project costs showing probability density.
+        Vertical lines indicate P50, P80, and P90 percentiles.
+    </p>
+
+    {# SVG Histogram Chart #}
+    <div class="histogram">
+        <svg viewBox="0 0 600 200" style="width: 100%; max-height: 200px;">
+            {# Y-axis #}
+            <line class="histogram-axis" x1="50" y1="20" x2="50" y2="160"/>
+            {# X-axis #}
+            <line class="histogram-axis" x1="50" y1="160" x2="580" y2="160"/>
+
+            {# Histogram bars #}
+            {% for bin in risk_analysis.get('histogram', []) %}
+            {% set bar_width = 500 / (risk_analysis.get('histogram', []) | length | default(1)) %}
+            {% set bar_height = (bin.percentage / (risk_analysis.max_percentage | default(20))) * 130 %}
+            <rect class="histogram-bar {% if bin.contains_p50 | default(false) %}highlight{% endif %}"
+                  x="{{ 55 + loop.index0 * bar_width }}"
+                  y="{{ 160 - bar_height }}"
+                  width="{{ bar_width - 2 }}"
+                  height="{{ bar_height }}"/>
+            {% else %}
+            {# Default histogram for demo (20 bars, bell curve shape) #}
+            {% set bar_heights = [2, 4, 7, 12, 18, 28, 42, 58, 72, 85, 92, 85, 72, 58, 42, 28, 18, 12, 7, 4] %}
+            {% for height in bar_heights %}
+            <rect class="histogram-bar {% if loop.index in [9, 10, 11] %}highlight{% endif %}"
+                  x="{{ 55 + loop.index0 * 25 }}"
+                  y="{{ 160 - height * 1.4 }}"
+                  width="23"
+                  height="{{ height * 1.4 }}"/>
+            {% endfor %}
+            {% endfor %}
+
+            {# P50 line (green) #}
+            <line x1="280" y1="20" x2="280" y2="160" stroke="#059669" stroke-width="2" stroke-dasharray="4"/>
+            <text x="280" y="15" class="histogram-label" text-anchor="middle" fill="#059669">P50</text>
+
+            {# P80 line (orange) #}
+            <line x1="380" y1="20" x2="380" y2="160" stroke="#d97706" stroke-width="2" stroke-dasharray="4"/>
+            <text x="380" y="15" class="histogram-label" text-anchor="middle" fill="#d97706">P80</text>
+
+            {# P90 line (red) #}
+            <line x1="430" y1="20" x2="430" y2="160" stroke="#dc2626" stroke-width="2" stroke-dasharray="4"/>
+            <text x="430" y="15" class="histogram-label" text-anchor="middle" fill="#dc2626">P90</text>
+
+            {# X-axis labels #}
+            <text x="50" y="175" class="histogram-label">${{ "{:,.0f}".format((risk_analysis.min | default(estimate.p50 * 0.85)) / 1000) | replace(',', '') }}k</text>
+            <text x="315" y="175" class="histogram-label" text-anchor="middle">Cost Range</text>
+            <text x="580" y="175" class="histogram-label" text-anchor="end">${{ "{:,.0f}".format((risk_analysis.max | default(estimate.p90 * 1.1)) / 1000) | replace(',', '') }}k</text>
+        </svg>
+    </div>
+
+    <h3>Top Risk Factors</h3>
+    <p class="text-muted text-small">
+        Items with the greatest contribution to cost uncertainty, ranked by impact.
+    </p>
+
+    <table class="table-striped">
+        <thead>
+            <tr>
+                <th style="width: 5%;">Rank</th>
+                <th style="width: 35%;">Risk Item</th>
+                <th class="text-right" style="width: 20%;">Potential Impact</th>
+                <th class="text-center" style="width: 15%;">Probability</th>
+                <th class="text-center" style="width: 15%;">Sensitivity</th>
+                <th class="text-center" style="width: 10%;">Rating</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for risk in risk_analysis.get('top_risks', []) %}
+            <tr>
+                <td>{{ loop.index }}</td>
+                <td>{{ risk.item }}</td>
+                <td class="currency">+${{ "{:,.0f}".format(risk.impact) }}</td>
+                <td class="text-center">{{ "{:.0%}".format(risk.probability) }}</td>
+                <td class="text-center">{{ "{:.2f}".format(risk.sensitivity) }}</td>
+                <td class="text-center">
+                    {% if risk.sensitivity > 0.7 %}
+                    <span class="risk-high">HIGH</span>
+                    {% elif risk.sensitivity > 0.4 %}
+                    <span class="risk-medium">MED</span>
+                    {% else %}
+                    <span class="risk-low">LOW</span>
+                    {% endif %}
+                </td>
+            </tr>
+            {% else %}
+            {# Default risks for demo #}
+            <tr>
+                <td>1</td>
+                <td>Cabinet installation</td>
+                <td class="currency">+$2,500</td>
+                <td class="text-center">33%</td>
+                <td class="text-center">0.85</td>
+                <td class="text-center"><span class="risk-high">HIGH</span></td>
+            </tr>
+            <tr>
+                <td>2</td>
+                <td>Appliance package</td>
+                <td class="currency">+$2,000</td>
+                <td class="text-center">33%</td>
+                <td class="text-center">0.72</td>
+                <td class="text-center"><span class="risk-high">HIGH</span></td>
+            </tr>
+            <tr>
+                <td>3</td>
+                <td>Electrical rough-in</td>
+                <td class="currency">+$1,000</td>
+                <td class="text-center">33%</td>
+                <td class="text-center">0.58</td>
+                <td class="text-center"><span class="risk-medium">MED</span></td>
+            </tr>
+            <tr>
+                <td>4</td>
+                <td>Countertops</td>
+                <td class="currency">+$1,600</td>
+                <td class="text-center">33%</td>
+                <td class="text-center">0.45</td>
+                <td class="text-center"><span class="risk-medium">MED</span></td>
+            </tr>
+            <tr>
+                <td>5</td>
+                <td>Flooring installation</td>
+                <td class="currency">+$1,200</td>
+                <td class="text-center">33%</td>
+                <td class="text-center">0.38</td>
+                <td class="text-center"><span class="risk-low">LOW</span></td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <h3>Contingency Recommendation</h3>
+    <div class="card">
+        <p>
+            Based on the Monte Carlo analysis, we recommend a contingency of
+            <strong>{{ risk_analysis.contingency_pct | default(estimate.contingency_pct) }}%</strong>
+            (${{ "{:,.0f}".format(risk_analysis.contingency_amount | default(estimate.total_cost * estimate.contingency_pct / 100)) }})
+            to account for cost uncertainty.
+        </p>
+        <p class="text-muted text-small">
+            This contingency is calculated as (P80 - P50) / P50 and provides an 80% confidence level
+            that the actual project cost will not exceed the budgeted amount.
+        </p>
+    </div>
+
+    <h3>Risk Mitigation Strategies</h3>
+    <ul>
+        {% for strategy in risk_analysis.get('mitigation_strategies', []) %}
+        <li>{{ strategy }}</li>
+        {% else %}
+        <li>Lock in material prices early through supplier agreements</li>
+        <li>Obtain multiple bids for high-value items</li>
+        <li>Include contingency allowances for unforeseen conditions</li>
+        <li>Schedule work to avoid peak seasonal labor demand</li>
+        <li>Pre-order long-lead items to avoid delays and price increases</li>
+        {% endfor %}
+    </ul>
+
+    {% if not client_ready and risk_analysis.internal_notes %}
+    <div class="internal-only">
+        {{ risk_analysis.internal_notes }}
+    </div>
+    {% endif %}
+</div>

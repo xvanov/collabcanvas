@@ -48,7 +48,7 @@ test.describe('Story 2.1: Project Isolation', () => {
       expect(shapesInProjectB).toBe(0);
     });
 
-    test('should not show shapes from Project A in Project B', async ({ page, projectFactory, shapeFactory }) => {
+    test('should not show shapes from Project A in Project B', async ({ page, projectFactory, shapeFactory: _shapeFactory }) => {
       // GIVEN: I have Project A with a shape
       const _projectA = projectFactory.createProject({ name: 'Project A' });
       const projectB = projectFactory.createProject({ name: 'Project B' });

@@ -63,12 +63,13 @@ development_status:
   3-3-voice-input-processing: backlog
   epic-3-retrospective: optional
 
-  # Epic 4: Data Services & PDF Output (Dev 4) - 4 stories
-  epic-4: backlog
-  4-1-location-intelligence-service: backlog
-  4-2-cost-data-monte-carlo-simulation: backlog
-  4-3-pdf-report-generation: backlog
-  4-4-cost-data-seeding-maintenance: backlog
+  # Epic 4: Data Services & PDF Output (Dev 4) - 5 stories
+  epic-4: contexted
+  4-1-location-intelligence-service: done
+  4-2-cost-data-monte-carlo-simulation: done
+  4-3-pdf-report-generation: review  # REWORK COMPLETE: client-ready mode fully implemented
+  4-4-cost-data-seeding: done
+  4-5-real-data-integration: done  # APPROVED: Senior code review passed 2025-12-10. All 16 ACs implemented, 90 tests pass.
   epic-4-retrospective: optional
 
   # Epic 5: Multi-Retailer Price Optimization (Dev 5) - 5 stories

@@ -1,0 +1,214 @@
+<story-context id="bmad/bmm/workflows/4-implementation/story-context/template" v="1.0">
+  <metadata>
+    <epicId>4</epicId>
+    <storyId>3</storyId>
+    <title>PDF Report Generation</title>
+    <status>drafted</status>
+    <generatedAt>2025-12-10</generatedAt>
+    <generator>BMAD Story Context Workflow</generator>
+    <sourceStoryPath>docs/sprint-artifacts/4-3-pdf-report-generation.md</sourceStoryPath>
+  </metadata>
+
+  <story>
+    <asA>user (contractor/homeowner)</asA>
+    <iWant>to receive a professional PDF estimate report</iWant>
+    <soThat>I can review, share, and present the cost estimate to clients or stakeholders</soThat>
+    <tasks>
+      <task id="1" title="Create Jinja2 Templates" acs="4.3.1-4.3.8">
+        <subtask id="1.1">Create functions/templates/ directory</subtask>
+        <subtask id="1.2">Create estimate_report.html base template</subtask>
+        <subtask id="1.3">Create _executive_summary.html partial</subtask>
+        <subtask id="1.4">Create _cost_breakdown.html partial with CSI division tables</subtask>
+        <subtask id="1.5">Create _bill_of_quantities.html partial</subtask>
+        <subtask id="1.6">Create _labor_analysis.html partial</subtask>
+        <subtask id="1.7">Create _schedule.html partial</subtask>
+        <subtask id="1.8">Create _risk_analysis.html partial with histogram chart</subtask>
+        <subtask id="1.9">Create _assumptions.html partial</subtask>
+        <subtask id="1.10">Create _cad_plan.html partial for CAD image</subtask>
+        <subtask id="1.11">Create styles.css for PDF styling</subtask>
+      </task>
+      <task id="2" title="Implement PDF Generator Service" acs="4.3.9-4.3.12">
+        <subtask id="2.1">Create functions/services/pdf_generator.py</subtask>
+        <subtask id="2.2">Implement async def generate_pdf(estimate_id, sections, client_ready) -> PDFGenerationResult</subtask>
+        <subtask id="2.3">Load estimate data from Firestore /estimates/{id}</subtask>
+        <subtask id="2.4">Load related data: costEstimate, riskAnalysis, billOfQuantities, cadData</subtask>
+        <subtask id="2.5">Render Jinja2 template with context</subtask>
+        <subtask id="2.6">Convert HTML to PDF using WeasyPrint</subtask>
+        <subtask id="2.7">Upload PDF to Firebase Storage /pdfs/{estimateId}/estimate.pdf</subtask>
+        <subtask id="2.8">Generate signed download URL</subtask>
+        <subtask id="2.9">Implement section filtering (skip sections not in list)</subtask>
+        <subtask id="2.10">Implement client-ready mode (hide internal notes, raw data)</subtask>
+      </task>
+      <task id="3" title="Create Data Models" acs="4.3.10">
+        <subtask id="3.1">Create PDFGenerationRequest dataclass</subtask>
+        <subtask id="3.2">Create PDFGenerationResult dataclass with pdf_url, storage_path, page_count, file_size</subtask>
+      </task>
+      <task id="4" title="Add Structured Logging" acs="all">
+        <subtask id="4.1">Log pdf_generated with estimate_id, page_count, file_size_kb, duration_ms</subtask>
+        <subtask id="4.2">Log pdf_generation_error with estimate_id, error details</subtask>
+        <subtask id="4.3">Log storage_upload with path, size</subtask>
+      </task>
+      <task id="5" title="Write Unit Tests" acs="4.3.9, 4.3.11">
+        <subtask id="5.1">Create functions/tests/unit/test_pdf_generator.py</subtask>
+        <subtask id="5.2">Test: Template renders with all sections</subtask>
+        <subtask id="5.3">Test: Section filtering excludes specified sections</subtask>
+        <subtask id="5.4">Test: Client-ready mode hides internal notes</subtask>
+        <subtask id="5.5">Test: PDF generation completes in under 10 seconds</subtask>
+        <subtask id="5.6">Test: Result contains valid URL and metadata</subtask>
+      </task>
+      <task id="6" title="Create Demo Script for User Verification" acs="all">
+        <subtask id="6.1">Create functions/demo_pdf_generator.py</subtask>
+        <subtask id="6.2">Create mock estimate data (kitchen remodel, $45k)</subtask>
+        <subtask id="6.3">Generate sample_estimate.pdf in current directory</subtask>
+        <subtask id="6.4">Generate sample_estimate_client.pdf (client-ready version)</subtask>
+        <subtask id="6.5">Print file info: page count, size, generation time</subtask>
+        <subtask id="6.6">Add --sections argument to test filtering</subtask>
+        <subtask id="6.7">Auto-open PDF in default viewer (optional flag)</subtask>
+      </task>
+    </tasks>
+  </story>
+
+  <acceptanceCriteria>
+    <criterion id="4.3.1" verification="Visual inspection">PDF contains Executive Summary with total cost, timeline, and confidence range</criterion>
+    <criterion id="4.3.2" verification="Visual inspection">PDF contains Cost Breakdown by CSI division with subtotals</criterion>
+    <criterion id="4.3.3" verification="Visual inspection">PDF contains Bill of Quantities with all line items</criterion>
+    <criterion id="4.3.4" verification="Visual inspection">PDF contains Labor Analysis with trades and hours</criterion>
+    <criterion id="4.3.5" verification="Visual inspection">PDF contains Schedule section with task list or timeline</criterion>
+    <criterion id="4.3.6" verification="Visual inspection">PDF contains Risk Analysis with P50/P80/P90 and top risks</criterion>
+    <criterion id="4.3.7" verification="Visual inspection">PDF contains Assumptions and Exclusions section</criterion>
+    <criterion id="4.3.8" verification="Visual inspection">CAD plan image included with annotations (if available)</criterion>
+    <criterion id="4.3.9" verification="Performance test">PDF generated in less than 10 seconds</criterion>
+    <criterion id="4.3.10" verification="Integration test">PDF uploaded to Firebase Storage and download URL returned</criterion>
+    <criterion id="4.3.11" verification="Unit test">Section filtering works (can exclude specific sections)</criterion>
+    <criterion id="4.3.12" verification="Visual inspection">Client-ready mode produces simplified output (no internal notes)</criterion>
+  </acceptanceCriteria>
+
+  <artifacts>
+    <docs>
+      <doc>
+        <path>docs/sprint-artifacts/tech-spec-epic-4.md</path>
+        <title>Epic 4 Technical Specification</title>
+        <section>Story 4.3: PDF Report Generation (lines 455-506, 651-668)</section>
+        <snippet>Specifies WeasyPrint + Jinja2 for PDF generation (ADR-006), template structure, PDFGenerationRequest/Result dataclasses, and the PDF Generation Flow diagram showing Firestore load -> Jinja2 render -> WeasyPrint convert -> Storage upload.</snippet>
+      </doc>
+      <doc>
+        <path>docs/architecture.md</path>
+        <title>TrueCost Architecture</title>
+        <section>PDF Generation (FR59-64)</section>
+        <snippet>Architecture decision ADR-006: WeasyPrint + Jinja2 for PDF generation. PDF Generator Service at functions/services/pdf_generator.py, templates at functions/templates/. Called by Final Agent (Epic 2) or frontend API.</snippet>
+      </doc>
+      <doc>
+        <path>docs/epics.md</path>
+        <title>Epic Breakdown</title>
+        <section>Story 4.3: PDF Report Generation</section>
+        <snippet>Dev 4 exclusive ownership of pdf_generator.py and functions/templates/**. Produces professional PDF estimate reports with sections: Executive Summary, Cost Breakdown, BoQ, Labor, Schedule, Risk, Assumptions, CAD Plan.</snippet>
+      </doc>
+    </docs>
+    <code>
+      <file>
+        <path>functions/services/cost_data_service.py</path>
+        <kind>service</kind>
+        <symbol>MaterialCost, LocationFactors, MonteCarloResult (data models)</symbol>
+        <lines>36-156, 1220-1443</lines>
+        <reason>PDF generator needs to understand cost data structures to format them in the report. MaterialCost has fields like unit_cost, labor_hours, csi_division that map to PDF sections.</reason>
+      </file>
+      <file>
+        <path>functions/services/monte_carlo.py</path>
+        <kind>service</kind>
+        <symbol>MonteCarloResult, RiskFactor, HistogramBin</symbol>
+        <lines>35-122</lines>
+        <reason>PDF risk analysis section needs MonteCarloResult with p50, p80, p90 percentiles, top_risks list, and histogram data for charts.</reason>
+      </file>
+      <file>
+        <path>functions/services/__init__.py</path>
+        <kind>module</kind>
+        <symbol>services package</symbol>
+        <lines>all</lines>
+        <reason>PDF generator service will be added to this package alongside existing services.</reason>
+      </file>
+      <file>
+        <path>functions/tests/unit/test_monte_carlo.py</path>
+        <kind>test</kind>
+        <symbol>test patterns</symbol>
+        <lines>all</lines>
+        <reason>Reference for test structure and patterns used in the project for unit tests.</reason>
+      </file>
+      <file>
+        <path>functions/demo_monte_carlo.py</path>
+        <kind>demo</kind>
+        <symbol>demo script pattern</symbol>
+        <lines>all</lines>
+        <reason>Reference for demo script structure - similar pattern needed for demo_pdf_generator.py.</reason>
+      </file>
+    </code>
+    <dependencies>
+      <python>
+        <package name="firebase-admin" version=">=6.0.0,<7.0.0" purpose="Firestore and Storage access"/>
+        <package name="firebase-functions" version=">=0.4.0,<1.0.0" purpose="Cloud Functions framework"/>
+        <package name="structlog" version=">=23.0.0,<25.0.0" purpose="Structured logging"/>
+        <package name="numpy" version=">=1.26.0,<2.0.0" purpose="Monte Carlo simulation (already installed)"/>
+        <package name="weasyprint" version=">=60.0,<62.0" purpose="HTML to PDF conversion (NEW - uncomment in requirements.txt)"/>
+        <package name="jinja2" version=">=3.1.0,<4.0.0" purpose="PDF template rendering (NEW - uncomment in requirements.txt)"/>
+        <package name="pytest" version=">=7.0.0,<9.0.0" purpose="Testing framework"/>
+        <package name="pytest-asyncio" version=">=0.21.0,<1.0.0" purpose="Async test support"/>
+      </python>
+    </dependencies>
+  </artifacts>
+
+  <constraints>
+    <constraint source="Architecture">Dev 4 has exclusive ownership of functions/services/pdf_generator.py and functions/templates/**</constraint>
+    <constraint source="ADR-006">Must use WeasyPrint + Jinja2 for PDF generation (CSS-based styling, Python native)</constraint>
+    <constraint source="Performance">PDF generation must complete in under 10 seconds</constraint>
+    <constraint source="Performance">PDF file size should be under 5MB typical</constraint>
+    <constraint source="Storage">PDFs stored at Firebase Storage path /pdfs/{estimateId}/estimate.pdf</constraint>
+    <constraint source="Logging">Use structlog for all logging (consistent with existing services)</constraint>
+    <constraint source="Testing">Follow pytest patterns established in existing tests (test_monte_carlo.py, test_location_service.py)</constraint>
+    <constraint source="WeasyPrint">Use CSS page-break-before: always for page breaks, @page rules for headers/footers</constraint>
+    <constraint source="Images">Compress CAD images to 150dpi max for PDF inclusion</constraint>
+  </constraints>
+
+  <interfaces>
+    <interface name="generate_pdf" kind="function signature">
+      <signature>async def generate_pdf(estimate_id: str, sections: Optional[List[str]] = None, client_ready: bool = False) -> PDFGenerationResult</signature>
+      <path>functions/services/pdf_generator.py</path>
+    </interface>
+    <interface name="PDFGenerationRequest" kind="dataclass">
+      <signature>@dataclass PDFGenerationRequest(estimate_id: str, sections: Optional[List[str]] = None, client_ready: bool = False)</signature>
+      <path>functions/services/pdf_generator.py</path>
+    </interface>
+    <interface name="PDFGenerationResult" kind="dataclass">
+      <signature>@dataclass PDFGenerationResult(pdf_url: str, storage_path: str, page_count: int, file_size_bytes: int, generated_at: str)</signature>
+      <path>functions/services/pdf_generator.py</path>
+    </interface>
+    <interface name="Firestore estimate document" kind="REST endpoint">
+      <signature>/estimates/{estimateId} with fields: finalEstimate, costEstimate, riskAnalysis, billOfQuantities, cadData</signature>
+      <path>Firestore collection</path>
+    </interface>
+    <interface name="Firebase Storage" kind="storage">
+      <signature>gs://bucket/pdfs/{estimateId}/estimate.pdf</signature>
+      <path>Firebase Storage bucket</path>
+    </interface>
+  </interfaces>
+
+  <tests>
+    <standards>
+      Use pytest with pytest-asyncio for async tests. Follow the existing test structure in functions/tests/unit/.
+      Use structlog for logging during tests. Mock Firebase services (Firestore, Storage) in unit tests.
+      Integration tests should use Firebase emulator. Tests should be comprehensive but focused on behavior, not implementation.
+    </standards>
+    <locations>
+      <location>functions/tests/unit/test_pdf_generator.py</location>
+      <location>functions/tests/integration/test_pdf_generation_e2e.py</location>
+    </locations>
+    <ideas>
+      <idea ac="4.3.1-4.3.8">Test that Jinja2 template renders all 8 sections with mock estimate data</idea>
+      <idea ac="4.3.9">Test that PDF generation completes within 10 seconds using pytest timeout</idea>
+      <idea ac="4.3.10">Integration test: verify PDF uploaded to Firebase Storage emulator and URL is valid</idea>
+      <idea ac="4.3.11">Test section filtering: pass sections=["executive_summary"] and verify only that section in output</idea>
+      <idea ac="4.3.12">Test client_ready=True removes internal notes and raw data fields from PDF</idea>
+      <idea ac="4.3.2">Test CSI division tables render correctly with proper subtotals</idea>
+      <idea ac="4.3.6">Test risk analysis section includes histogram chart SVG and P50/P80/P90 values</idea>
+      <idea ac="4.3.8">Test CAD plan section handles both present and absent CAD data gracefully</idea>
+    </ideas>
+  </tests>
+</story-context>

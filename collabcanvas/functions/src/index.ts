@@ -8,6 +8,7 @@ import { getHomeDepotPrice } from './pricing';
 import { sagemakerInvoke } from './sagemakerInvoke';
 import { clarificationAgent } from './clarificationAgent';
 import { estimationPipeline } from './estimationPipeline';
+import { comparePrices } from './priceComparison';
 // import { onProjectDeleted } from './projectDeletion'; // TODO: Uncomment when ready to deploy
 
 export { 
@@ -17,5 +18,6 @@ export {
   sagemakerInvoke,
   clarificationAgent,
   estimationPipeline,
+  comparePrices,
 };
 // export { onProjectDeleted }; // TODO: Uncomment when ready to deploy

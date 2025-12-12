@@ -1,0 +1,170 @@
+{# Assumptions & Exclusions Section - AC 4.3.7
+   Lists all assumptions and items excluded from the estimate
+#}
+<div class="section page-break">
+    <h2>Assumptions & Exclusions</h2>
+
+    <p class="text-muted">
+        This section documents the assumptions made in preparing this estimate
+        and items that are specifically excluded from the scope of work.
+    </p>
+
+    <h3>Key Assumptions</h3>
+    <div class="card">
+        <p class="text-muted text-small">
+            This estimate is based on the following assumptions. If actual conditions differ,
+            costs may need to be adjusted accordingly.
+        </p>
+        <ul>
+            {% for assumption in assumptions.get('items', []) %}
+            <li>{{ assumption }}</li>
+            {% else %}
+            {# Default assumptions #}
+            <li><strong>Site Access:</strong> Adequate access for material delivery and crew parking is available</li>
+            <li><strong>Working Hours:</strong> Work performed during normal business hours (8am-5pm, Mon-Fri)</li>
+            <li><strong>Existing Conditions:</strong> No hidden damage, asbestos, lead paint, or structural issues</li>
+            <li><strong>Permits:</strong> All required permits will be obtainable in a timely manner</li>
+            <li><strong>Utilities:</strong> Existing electrical, plumbing, and HVAC systems are in working condition</li>
+            <li><strong>Material Availability:</strong> Specified materials are available within normal lead times</li>
+            <li><strong>Weather:</strong> Normal weather conditions during construction period</li>
+            <li><strong>Code Compliance:</strong> Work area currently meets minimum code requirements</li>
+            <li><strong>Owner Decisions:</strong> Timely owner decisions on selections and change orders</li>
+            <li><strong>Pricing:</strong> Material prices valid for 30 days from estimate date</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <h3>Scope Inclusions</h3>
+    <div class="card">
+        <p class="text-muted text-small">
+            The following items are specifically included in this estimate:
+        </p>
+        <ul class="check-list">
+            {% for inclusion in assumptions.get('inclusions', []) %}
+            <li>{{ inclusion }}</li>
+            {% else %}
+            <li>All materials, labor, and equipment as specified in Bill of Quantities</li>
+            <li>Project management and site supervision</li>
+            <li>Permit fees and inspection costs</li>
+            <li>Standard warranty on workmanship (1 year)</li>
+            <li>Daily cleanup and final construction cleaning</li>
+            <li>Dumpster rental and debris disposal</li>
+            <li>Protection of adjacent surfaces during construction</li>
+            {% endfor %}
+        </ul>
+    </div>
+
+    <h3>Scope Exclusions</h3>
+    <div class="card">
+        <p class="text-muted text-small">
+            The following items are specifically <strong>NOT</strong> included in this estimate:
+        </p>
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30%;">Category</th>
+                    <th style="width: 70%;">Excluded Items</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for exclusion in assumptions.get('exclusions', []) %}
+                <tr>
+                    <td>{{ exclusion.category }}</td>
+                    <td>{{ exclusion.get('items', []) | join(', ') }}</td>
+                </tr>
+                {% else %}
+                {# Default exclusions #}
+                <tr>
+                    <td>Structural Work</td>
+                    <td>Load-bearing wall modifications, foundation repairs, structural engineering</td>
+                </tr>
+                <tr>
+                    <td>Hazardous Materials</td>
+                    <td>Asbestos abatement, lead paint remediation, mold remediation</td>
+                </tr>
+                <tr>
+                    <td>HVAC</td>
+                    <td>HVAC system replacement, ductwork modifications, equipment upgrades</td>
+                </tr>
+                <tr>
+                    <td>Exterior Work</td>
+                    <td>Roofing, siding, windows, exterior doors, landscaping</td>
+                </tr>
+                <tr>
+                    <td>Appliances</td>
+                    <td>Appliance delivery, installation of owner-supplied appliances</td>
+                </tr>
+                <tr>
+                    <td>Furniture</td>
+                    <td>Furniture moving, storage, or temporary relocation</td>
+                </tr>
+                <tr>
+                    <td>Design Services</td>
+                    <td>Architectural drawings, engineering, interior design services</td>
+                </tr>
+                <tr>
+                    <td>Utility Upgrades</td>
+                    <td>Electrical panel upgrade, water main upgrade, gas line extension</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <h3>Change Order Policy</h3>
+    <div class="annotation">
+        <div class="annotation-title">Important Notice</div>
+        <p>
+            Any work outside the defined scope will require a written change order
+            before work begins. Change orders may affect the project schedule and
+            final cost. All change orders must be approved by the owner in writing.
+        </p>
+    </div>
+
+    <h3>Warranty Information</h3>
+    <table>
+        <thead>
+            <tr>
+                <th style="width: 30%;">Category</th>
+                <th style="width: 20%;">Duration</th>
+                <th style="width: 50%;">Coverage</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for warranty in assumptions.get('warranties', []) %}
+            <tr>
+                <td>{{ warranty.category }}</td>
+                <td>{{ warranty.duration }}</td>
+                <td>{{ warranty.coverage }}</td>
+            </tr>
+            {% else %}
+            <tr>
+                <td>Workmanship</td>
+                <td>1 Year</td>
+                <td>Defects in installation and construction</td>
+            </tr>
+            <tr>
+                <td>Materials</td>
+                <td>Varies</td>
+                <td>Per manufacturer warranty (typically 1-10 years)</td>
+            </tr>
+            <tr>
+                <td>Appliances</td>
+                <td>Varies</td>
+                <td>Per manufacturer warranty</td>
+            </tr>
+            <tr>
+                <td>Plumbing Fixtures</td>
+                <td>Lifetime*</td>
+                <td>*Limited lifetime warranty per manufacturer</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if not client_ready and assumptions.internal_notes %}
+    <div class="internal-only">
+        {{ assumptions.internal_notes }}
+    </div>
+    {% endif %}
+</div>
