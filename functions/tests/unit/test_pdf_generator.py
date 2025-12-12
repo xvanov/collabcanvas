@@ -17,6 +17,9 @@ import time
 from pathlib import Path
 from typing import Dict, Any
 
+# These tests require WeasyPrint (and its native deps). Skip cleanly if not installed.
+pytest.importorskip("weasyprint")
+
 from services.pdf_generator import (
     PDFGenerationRequest,
     PDFGenerationResult,

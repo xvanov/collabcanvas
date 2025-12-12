@@ -1,3 +1,37 @@
+# TrueCost Deep Agent Pipeline - Python Dependencies
+
+# Firebase
+firebase-admin>=6.0.0
+firebase-functions>=0.4.0
+
+# LangChain & LLM
+openai>=1.0.0
+langchain>=0.1.0
+langchain-openai>=0.1.0
+langgraph>=0.2.0
+
+# A2A Protocol - HTTP Client
+httpx>=0.25.0
+
+# Data Validation
+pydantic>=2.0.0
+
+# Logging
+structlog>=23.0.0
+
+# Math/Statistics (for Monte Carlo)
+numpy>=1.24.0
+
+# Environment Variables
+python-dotenv>=1.0.0
+
+# Testing
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+
+
+
 # TrueCost Python Cloud Functions Dependencies
 # Epic 4: Data Services & PDF Output
 

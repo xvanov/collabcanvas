@@ -70,6 +70,21 @@
       "predeploy": [
         "npm --prefix \"$RESOURCE_DIR\" run lint"
       ]
+    },
+    {
+      "source": "../functions",
+      "codebase": "deep-pipeline",
+      "runtime": "python311",
+      "ignore": [
+        "__pycache__",
+        ".git",
+        "venv",
+        ".venv",
+        "*.pyc",
+        "*.local",
+        ".pytest_cache",
+        "tests"
+      ]
     }
   ]
 }

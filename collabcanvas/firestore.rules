@@ -435,6 +435,83 @@ service cloud.firestore {
       }
     }
 
+    // Estimates collection - TrueCost deep pipeline
+    match /estimates/{estimateId} {
+      // Helper: require auth
+      function isSignedIn() {
+        return request.auth != null;
+      }
+
+      // Helper: fetch parent estimate
+      function getEstimate() {
+        return get(/databases/$(database)/documents/estimates/$(estimateId));
+      }
+
+      // Helper: check estimate ownership safely for both estimate docs and subcollections.
+      // - For estimate document reads/updates/deletes, `resource` is the estimate doc.
+      // - For subcollection rules, `resource` is the child doc (no userId), so we must read parent.
+      // IMPORTANT: do NOT rely on request.resource for reads (it is not populated for reads).
+      function isEstimateOwner() {
+        return isSignedIn() && (
+          // Estimate document itself
+          (resource != null && resource.data.userId == request.auth.uid)
+          // Subcollections (derive from parent estimate)
+          || (getEstimate() != null && getEstimate().data.userId == request.auth.uid)
+        );
+      }
+
+      // Helper: allow writes while pipeline is mutable
+      function pipelineWritable() {
+        let est = getEstimate();
+        return est != null
+          && est.data.status in ['draft', 'clarifying', 'processing', 'plan_review'];
+      }
+
+      // Estimate document rules
+      allow read: if isEstimateOwner();
+
+      allow create: if isSignedIn()
+        && request.resource.data.userId == request.auth.uid
+        && request.resource.data.createdAt is timestamp
+        && request.resource.data.updatedAt is timestamp
+        && request.resource.data.status is string;
+
+      allow update: if isEstimateOwner()
+        // owner cannot change
+        && request.resource.data.userId == resource.data.userId
+        // preserve creation time
+        && request.resource.data.createdAt == resource.data.createdAt
+        // updatedAt must be timestamp
+        && request.resource.data.updatedAt is timestamp;
+
+      allow delete: if isEstimateOwner();
+
+      // Agent outputs (per agent) - read-only after pipeline completion
+      match /agentOutputs/{agentId} {
+        allow read: if isEstimateOwner();
+        allow create, update: if isEstimateOwner() && pipelineWritable();
+        allow delete: if isEstimateOwner() && pipelineWritable();
+      }
+      
+      // Granular cost ledger items
+      match /costItems/{costItemId} {
+        allow read: if isEstimateOwner();
+        allow create, update, delete: if isEstimateOwner() && pipelineWritable();
+      }
+
+      // Conversations tied to an estimate
+      match /conversations/{msgId} {
+        allow read, create, update, delete: if isEstimateOwner();
+      }
+
+      // Version snapshots of an estimate
+      match /versions/{versionId} {
+        allow read: if isEstimateOwner();
+        allow create: if isEstimateOwner();
+        allow update, delete: if isEstimateOwner();
+      }
+    }
+    
     // Global Product Cache - shared across all users for price comparison optimization
     // Structure: productCache/{retailer}/products/{normalizedProductName}
     match /productCache/{retailer} {
