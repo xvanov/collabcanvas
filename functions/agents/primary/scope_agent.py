@@ -466,7 +466,10 @@ class ScopeAgent(BaseA2AAgent):
                             expected_max = wall_sqft * 1.2
                             if expected_min <= item.quantity <= expected_max:
                                 item.quantity_validation = QuantityValidationStatus.VALIDATED
-                        item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                            else:
+                                item.quantity_validation = QuantityValidationStatus.ESTIMATED
+                        else:
+                            item.quantity_validation = QuantityValidationStatus.ESTIMATED
                     else:
                         item.quantity_validation = QuantityValidationStatus.ESTIMATED
                 

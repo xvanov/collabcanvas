@@ -6,6 +6,8 @@ This will be replaced by Dev 4 with real RSMeans/cost database integration.
 PR #6 Addition: Material cost and labor rate lookups with P50/P80/P90 ranges.
 """
 
+from __future__ import annotations
+
 from typing import Dict, List, Optional, Tuple, Any
 import re
 import structlog
@@ -13,10 +15,10 @@ import structlog
 from models.cost_estimate import CostRange, CostConfidenceLevel
 from models.bill_of_quantities import TradeCategory
 from models.location_factors import (
-    LocationFactors,
-    LaborRates,
-    PermitCosts,
-    WeatherFactors,
+    LocationFactors as LocationLocationFactors,
+    LaborRates as LocationLaborRates,
+    PermitCosts as LocationPermitCosts,
+    WeatherFactors as LocationWeatherFactors,
     MaterialCostAdjustments,
     Region,
     UnionStatus,
@@ -95,18 +97,18 @@ NATIONAL_AVERAGE_LABOR_RATES: Dict[TradeCategory, float] = {
 # MOCK LOCATION DATA - MAJOR METROS
 # =============================================================================
 
-MOCK_LOCATIONS: Dict[str, LocationFactors] = {}
+MOCK_LOCATIONS: Dict[str, LocationLocationFactors] = {}
 
 
-def _create_denver_factors() -> LocationFactors:
+def _create_denver_factors() -> LocationLocationFactors:
     """Create location factors for Denver, CO (80202)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="80202",
         city="Denver",
         state="CO",
         county="Denver",
         region=Region.MOUNTAIN,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=58.0,
             plumber=62.0,
             carpenter=48.0,
@@ -118,7 +120,7 @@ def _create_denver_factors() -> LocationFactors:
             concrete_finisher=46.0,
             drywall_installer=44.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=500.0,
             building_permit_percentage=0.015,
             electrical_permit=175.0,
@@ -128,7 +130,7 @@ def _create_denver_factors() -> LocationFactors:
             impact_fees=0.0,
             inspection_fees=125.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.MODERATE,
             seasonal_adjustment=1.05,
             seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
@@ -149,15 +151,15 @@ def _create_denver_factors() -> LocationFactors:
     )
 
 
-def _create_nyc_factors() -> LocationFactors:
+def _create_nyc_factors() -> LocationLocationFactors:
     """Create location factors for New York City (10001)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="10001",
         city="New York",
         state="NY",
         county="New York",
         region=Region.NORTHEAST,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=95.0,
             plumber=100.0,
             carpenter=82.0,
@@ -169,7 +171,7 @@ def _create_nyc_factors() -> LocationFactors:
             concrete_finisher=75.0,
             drywall_installer=70.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=1500.0,
             building_permit_percentage=0.025,
             electrical_permit=400.0,
@@ -179,7 +181,7 @@ def _create_nyc_factors() -> LocationFactors:
             impact_fees=250.0,
             inspection_fees=300.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.SEVERE,
             seasonal_adjustment=1.12,
             seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
@@ -200,15 +202,15 @@ def _create_nyc_factors() -> LocationFactors:
     )
 
 
-def _create_houston_factors() -> LocationFactors:
+def _create_houston_factors() -> LocationLocationFactors:
     """Create location factors for Houston, TX (77001)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="77001",
         city="Houston",
         state="TX",
         county="Harris",
         region=Region.SOUTH,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=45.0,
             plumber=48.0,
             carpenter=38.0,
@@ -220,7 +222,7 @@ def _create_houston_factors() -> LocationFactors:
             concrete_finisher=40.0,
             drywall_installer=36.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=350.0,
             building_permit_percentage=0.01,
             electrical_permit=125.0,
@@ -230,7 +232,7 @@ def _create_houston_factors() -> LocationFactors:
             impact_fees=0.0,
             inspection_fees=100.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.NONE,
             seasonal_adjustment=1.03,
             seasonal_reason=SeasonalAdjustmentReason.SUMMER_HEAT,
@@ -251,15 +253,15 @@ def _create_houston_factors() -> LocationFactors:
     )
 
 
-def _create_la_factors() -> LocationFactors:
+def _create_la_factors() -> LocationLocationFactors:
     """Create location factors for Los Angeles, CA (90001)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="90001",
         city="Los Angeles",
         state="CA",
         county="Los Angeles",
         region=Region.PACIFIC,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=78.0,
             plumber=82.0,
             carpenter=68.0,
@@ -271,7 +273,7 @@ def _create_la_factors() -> LocationFactors:
             concrete_finisher=62.0,
             drywall_installer=58.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=1200.0,
             building_permit_percentage=0.02,
             electrical_permit=350.0,
@@ -281,7 +283,7 @@ def _create_la_factors() -> LocationFactors:
             impact_fees=500.0,
             inspection_fees=250.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.NONE,
             seasonal_adjustment=1.0,
             seasonal_reason=SeasonalAdjustmentReason.NONE,
@@ -302,15 +304,15 @@ def _create_la_factors() -> LocationFactors:
     )
 
 
-def _create_chicago_factors() -> LocationFactors:
+def _create_chicago_factors() -> LocationLocationFactors:
     """Create location factors for Chicago, IL (60601)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="60601",
         city="Chicago",
         state="IL",
         county="Cook",
         region=Region.MIDWEST,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=72.0,
             plumber=78.0,
             carpenter=62.0,
@@ -322,7 +324,7 @@ def _create_chicago_factors() -> LocationFactors:
             concrete_finisher=58.0,
             drywall_installer=52.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=800.0,
             building_permit_percentage=0.018,
             electrical_permit=275.0,
@@ -332,7 +334,7 @@ def _create_chicago_factors() -> LocationFactors:
             impact_fees=100.0,
             inspection_fees=200.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.SEVERE,
             seasonal_adjustment=1.10,
             seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
@@ -353,15 +355,15 @@ def _create_chicago_factors() -> LocationFactors:
     )
 
 
-def _create_phoenix_factors() -> LocationFactors:
+def _create_phoenix_factors() -> LocationLocationFactors:
     """Create location factors for Phoenix, AZ (85001)."""
-    return LocationFactors(
+    return LocationLocationFactors(
         zip_code="85001",
         city="Phoenix",
         state="AZ",
         county="Maricopa",
         region=Region.SOUTHWEST,
-        labor_rates=LaborRates(
+        labor_rates=LocationLaborRates(
             electrician=48.0,
             plumber=52.0,
             carpenter=40.0,
@@ -373,7 +375,7 @@ def _create_phoenix_factors() -> LocationFactors:
             concrete_finisher=42.0,
             drywall_installer=38.0
         ),
-        permit_costs=PermitCosts(
+        permit_costs=LocationPermitCosts(
             building_permit_base=400.0,
             building_permit_percentage=0.012,
             electrical_permit=150.0,
@@ -383,7 +385,7 @@ def _create_phoenix_factors() -> LocationFactors:
             impact_fees=50.0,
             inspection_fees=125.0
         ),
-        weather_factors=WeatherFactors(
+        weather_factors=LocationWeatherFactors(
             winter_impact=WinterImpact.NONE,
             seasonal_adjustment=1.08,
             seasonal_reason=SeasonalAdjustmentReason.SUMMER_HEAT,
@@ -436,10 +438,10 @@ class CostDataService:
     
     def __init__(self):
         """Initialize CostDataService."""
-        self._cache: Dict[str, LocationFactors] = {}
+        self._cache: Dict[str, LocationLocationFactors] = {}
         logger.info("cost_data_service_initialized", mock=True)
     
-    async def get_location_factors(self, zip_code: str) -> LocationFactors:
+    async def get_location_factors(self, zip_code: str) -> LocationLocationFactors:
         """Get location factors for a ZIP code.
         
         Args:
@@ -481,7 +483,7 @@ class CostDataService:
         
         return factors
     
-    def _generate_regional_factors(self, zip_code: str) -> LocationFactors:
+    def _generate_regional_factors(self, zip_code: str) -> LocationLocationFactors:
         """Generate regional factors for unknown ZIP codes.
         
         Uses ZIP code prefix to estimate state and region.
@@ -513,12 +515,12 @@ class CostDataService:
         # Adjust labor rates based on cost level
         labor_multiplier = location_factor
         
-        return LocationFactors(
+        return LocationLocationFactors(
             zip_code=zip_code,
             city="Unknown",
             state=state,
             region=region,
-            labor_rates=LaborRates(
+            labor_rates=LocationLaborRates(
                 electrician=defaults.labor_rates.electrician * labor_multiplier,
                 plumber=defaults.labor_rates.plumber * labor_multiplier,
                 carpenter=defaults.labor_rates.carpenter * labor_multiplier,
@@ -530,7 +532,7 @@ class CostDataService:
                 concrete_finisher=defaults.labor_rates.concrete_finisher * labor_multiplier,
                 drywall_installer=defaults.labor_rates.drywall_installer * labor_multiplier
             ),
-            permit_costs=PermitCosts(
+            permit_costs=LocationPermitCosts(
                 building_permit_base=defaults.permit_costs.building_permit_base * location_factor,
                 building_permit_percentage=defaults.permit_costs.building_permit_percentage,
                 electrical_permit=defaults.permit_costs.electrical_permit * location_factor,
@@ -661,7 +663,7 @@ class CostDataService:
         else:
             return "XX"
     
-    def _get_regional_weather(self, region: Region) -> WeatherFactors:
+    def _get_regional_weather(self, region: Region) -> LocationWeatherFactors:
         """Get typical weather factors for a region.
         
         Args:
@@ -671,46 +673,46 @@ class CostDataService:
             WeatherFactors for the region.
         """
         regional_weather = {
-            Region.NORTHEAST: WeatherFactors(
+            Region.NORTHEAST: LocationWeatherFactors(
                 winter_impact=WinterImpact.SEVERE,
                 seasonal_adjustment=1.08,
                 seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
                 frost_line_depth_inches=42
             ),
-            Region.SOUTHEAST: WeatherFactors(
+            Region.SOUTHEAST: LocationWeatherFactors(
                 winter_impact=WinterImpact.MINIMAL,
                 seasonal_adjustment=1.02,
                 seasonal_reason=SeasonalAdjustmentReason.HURRICANE_SEASON
             ),
-            Region.MIDWEST: WeatherFactors(
+            Region.MIDWEST: LocationWeatherFactors(
                 winter_impact=WinterImpact.SEVERE,
                 seasonal_adjustment=1.08,
                 seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
                 frost_line_depth_inches=48
             ),
-            Region.SOUTH: WeatherFactors(
+            Region.SOUTH: LocationWeatherFactors(
                 winter_impact=WinterImpact.NONE,
                 seasonal_adjustment=1.03,
                 seasonal_reason=SeasonalAdjustmentReason.SUMMER_HEAT
             ),
-            Region.SOUTHWEST: WeatherFactors(
+            Region.SOUTHWEST: LocationWeatherFactors(
                 winter_impact=WinterImpact.NONE,
                 seasonal_adjustment=1.05,
                 seasonal_reason=SeasonalAdjustmentReason.SUMMER_HEAT,
                 extreme_heat_days=120
             ),
-            Region.MOUNTAIN: WeatherFactors(
+            Region.MOUNTAIN: LocationWeatherFactors(
                 winter_impact=WinterImpact.MODERATE,
                 seasonal_adjustment=1.05,
                 seasonal_reason=SeasonalAdjustmentReason.WINTER_WEATHER,
                 frost_line_depth_inches=36
             ),
-            Region.PACIFIC: WeatherFactors(
+            Region.PACIFIC: LocationWeatherFactors(
                 winter_impact=WinterImpact.MINIMAL,
                 seasonal_adjustment=1.0,
                 seasonal_reason=SeasonalAdjustmentReason.NONE
             ),
-            Region.NATIONAL: WeatherFactors(
+            Region.NATIONAL: LocationWeatherFactors(
                 winter_impact=WinterImpact.MODERATE,
                 seasonal_adjustment=1.0,
                 seasonal_reason=SeasonalAdjustmentReason.NONE

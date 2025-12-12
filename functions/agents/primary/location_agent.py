@@ -6,6 +6,7 @@ Uses LLM to interpret location data and generate insights.
 
 from typing import Dict, Any, Optional
 import json
+import time
 import structlog
 
 from agents.base_agent import BaseA2AAgent
@@ -120,6 +121,9 @@ class LocationAgent(BaseA2AAgent):
         Returns:
             Location factors dict with analysis.
         """
+        # Track duration consistently with other agents (e.g., RiskAgent)
+        self._start_time = time.time()
+
         logger.info(
             "location_agent_running",
             estimate_id=estimate_id,
