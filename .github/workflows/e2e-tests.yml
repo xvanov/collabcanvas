@@ -88,33 +88,12 @@ jobs:
         env:
           VITE_USE_FIREBASE_EMULATORS: true
 
-      - name: Start preview server and run E2E tests (shard ${{ matrix.shard }})
+      - name: Run E2E tests (shard ${{ matrix.shard }})
         working-directory: collabcanvas
-        run: |
-          # Start preview server in background
-          npm run preview > /dev/null 2>&1 &
-          PREVIEW_PID=$!
-          
-          # Wait for server to be ready (simple check)
-          for i in {1..30}; do
-            if curl -f http://localhost:4173 > /dev/null 2>&1; then
-              echo "✅ Server ready"
-              break
-            fi
-            sleep 1
-          done
-          
-          # Run tests
-          npm run test:e2e -- --shard=${{ matrix.shard }}/4 --project=chromium || TEST_EXIT=$?
-          
-          # Cleanup
-          kill $PREVIEW_PID 2>/dev/null || true
-          
-          exit ${TEST_EXIT:-0}
+        run: npm run test:e2e -- --shard=${{ matrix.shard }}/4 --project=chromium
         env:
           CI: true
           BASE_URL: http://localhost:4173
-          PORT: 4173
 
       - name: Upload test results (on failure only)
         if: failure()

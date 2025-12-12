@@ -39,7 +39,8 @@ export default defineConfig({
 
   /* Run local dev server before starting the tests */
   webServer: {
-    command: 'npm run preview',
+    // Be explicit about the port to avoid clashes and make CI behavior deterministic.
+    command: 'npm run preview -- --port=4173 --strictPort',
     url: 'http://localhost:4173',
     reuseExistingServer: !process.env.CI,
     timeout: 120 * 1000,
