@@ -1,12 +1,74 @@
 # TrueCost - Active Context
 
-## Current Focus: Epic 2 - Deep Agent Pipeline (Granular Cost Ledger + Dashboard Stability)
+## Current Focus: Post-Merge Integration (Epic 6) + Pipeline ↔ UI Wiring
 
-**Role**: Dev 2  
-**Responsibility**: Maintain/extend the deep agent pipeline that transforms `ClarificationOutput` into a complete cost estimate, with **granular cost transparency** for UI/PDF consumers.  
-**Task List**: See [epic2-task-list.md](./epic2-task-list.md) for detailed breakdown
+**Role**: Dev 2 (Deep Agent Pipeline owner)  
+**Current Branch**: `bugfix/post-merge-integration`  
+**Goal**: Ensure the **end-to-end user flow** works after merging Epics 1 (UI), 2 (Deep Pipeline), 4 (PDF/Data), and 5 (Price Comparison).
 
-## Epic 2 Overview
+### What’s Different Now (Post-Merge)
+
+The system now has **two coordinated tracks**:
+
+1. **User-facing “Projects” workflow** (CollabCanvas app)
+   - Collection: `/projects/{projectId}/...`
+   - UI watches pipeline progress at: `/projects/{projectId}/pipeline/status`
+
+2. **Deep Agent Pipeline “Estimates” workflow** (Python functions)
+   - Collection: `/estimates/{estimateId}/...`
+   - Granular cost ledger: `/estimates/{estimateId}/costItems`
+
+### Key Integration Bridge (TS → Python)
+
+- **TS callable orchestrator** (`collabcanvas/functions/src/estimatePipelineOrchestrator.ts`)
+  - Gathers project context (scope + board background + shapes)
+  - Writes:
+    - `/projects/{projectId}/pipeline/status`
+    - `/projects/{projectId}/pipeline/context`
+  - Calls Python `start_deep_pipeline` and passes `projectId` for UI sync
+
+- **Python pipeline** (`functions/main.py`, `functions/agents/orchestrator.py`, `functions/services/firestore_service.py`)
+  - Accepts `projectId` and periodically syncs progress back to
+    `/projects/{projectId}/pipeline/status` via `FirestoreService.sync_to_project_pipeline()`
+
+### Current Docs of Record
+
+- `docs/sprint-artifacts/tech-spec-post-merge-integration.md` (Epic 6)
+- `docs/sprint-artifacts/sprint-status.yaml` (story status)
+- `docs/sprint-artifacts/sprint-1-completion-report.md` (overall merged epics summary)
+
+### Immediate Next Steps (High Signal)
+
+1. Verify the **Projects pipeline progress** is consistent:
+   - TS “status” document shape vs Python `sync_to_project_pipeline()` shape
+2. Verify ClarificationOutput bridging contract is compatible:
+   - TS `buildClarificationOutput()` output vs Python `validate_clarification_output()`
+3. Confirm UI can render:
+   - Progress stages (`cad_analysis`, `location`, `scope`, `cost`, `risk`, `final`)
+   - PDF generation via `collabcanvas/src/services/pdfService.ts`
+
+### New: User-Selected Cost Defaults (Input JSON)
+
+The pipeline now supports user-selected costing defaults supplied in the incoming JSON:
+
+- `projectBrief.costPreferences.overheadPct` (decimal; 0.10 == 10%)
+- `projectBrief.costPreferences.profitPct` (decimal; 0.10 == 10%)
+- `projectBrief.costPreferences.contingencyPct` (decimal; 0.05 == 5%)
+- `projectBrief.costPreferences.wasteFactor` (multiplier; 1.10 == +10% waste)
+
+Consumption:
+- `CostAgent` uses these values for overhead/profit/contingency adjustments and for waste-based takeoff heuristics.
+- `FinalAgent` prefers user `contingencyPct` (if present) over the RiskAgent recommendation when computing final totals.
+
+### New: “Never Invent Numbers” Policy (N/A Instead of Fake Defaults)
+
+- **RiskAgent**: if `cost_output.total` and `cost_output.subtotals.subtotal` are missing/zero, it does **not**
+  invent a `base_cost`. It returns `monteCarlo: null`, `contingency: null`, `riskLevel: "n/a"`, plus an
+  `error` object (`INSUFFICIENT_DATA`) so UI can render **N/A** cleanly.
+- **FinalAgent**: if risk contingency is missing and the user did not supply `contingencyPct`, it uses **0**
+  rather than defaulting to a made-up 10%.
+
+## Epic 2 Overview (Still the Core Engine)
 
 The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and runs through an **orchestrated, non-linear pipeline** with **Scorer + Critic validation**:
 

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { AuthenticatedLayout } from '../../components/layouts/AuthenticatedLayout';
 import { Button, GlassPanel, Input, Select, Textarea } from '../../components/ui';
@@ -8,7 +8,12 @@ import { EstimateStepper } from '../../components/estimate/EstimateStepper';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useStepCompletion } from '../../hooks/useStepCompletion';
+import { uploadPlanImage } from '../../services/estimationService';
 import type { BackgroundImage } from '../../types';
+import type { EstimateConfig } from '../../types/project';
+
+// Re-export EstimateConfig for backward compatibility
+export type { EstimateConfig } from '../../types/project';
 
 /**
  * ScopePage - Combined form for project creation/editing with file upload.
@@ -28,9 +33,12 @@ export function ScopePage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const createNewProject = useProjectStore((state) => state.createNewProject);
+  const loadProject = useProjectStore((state) => state.loadProject);
+  const updateProjectScopeAction = useProjectStore((state) => state.updateProjectScopeAction);
   const loading = useProjectStore((state) => state.loading);
 
   const isEditMode = !!projectId;
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -44,16 +52,62 @@ export function ScopePage() {
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [preparedBackground, setPreparedBackground] = useState<BackgroundImage | null>(null);
+  const [existingPlanUrl, setExistingPlanUrl] = useState<string | null>(null);
+  const [existingPlanFileName, setExistingPlanFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  // Estimate configuration state
+  const defaultStartDate = useMemo(() => {
+    const date = new Date();
+    date.setDate(date.getDate() + 14); // 2 weeks from today
+    return date.toISOString().split('T')[0];
+  }, []);
+
+  const [overheadPercent, setOverheadPercent] = useState(10);
+  const [profitPercent, setProfitPercent] = useState(10);
+  const [contingencyPercent, setContingencyPercent] = useState(5);
+  const [wasteFactorPercent, setWasteFactorPercent] = useState(10);
+  const [startDate, setStartDate] = useState(defaultStartDate);
+
   // Load existing project data if in edit mode
   useEffect(() => {
-    if (isEditMode && projectId) {
-      // TODO: Load project data from Firestore
-      // For now, we'll implement this when the project exists
+    if (isEditMode && projectId && !isDataLoaded) {
+      loadProject(projectId).then((project) => {
+        if (project) {
+          setFormData({
+            name: project.name || '',
+            location: project.location || '',
+            type: project.projectType || '',
+            size: project.size || '',
+            scopeDefinition: project.description || '',
+            zipCode: project.zipCode || '',
+            useUnionLabor: project.useUnionLabor || false,
+          });
+
+          // Load estimate config if exists
+          if (project.estimateConfig) {
+            setOverheadPercent(project.estimateConfig.overheadPercent);
+            setProfitPercent(project.estimateConfig.profitPercent);
+            setContingencyPercent(project.estimateConfig.contingencyPercent);
+            setWasteFactorPercent(project.estimateConfig.wasteFactorPercent);
+            setStartDate(project.estimateConfig.startDate);
+          }
+
+          // Load existing plan image if available
+          if (project.planImageUrl) {
+            setExistingPlanUrl(project.planImageUrl);
+            setExistingPlanFileName(project.planImageFileName || 'Uploaded plan');
+          }
+
+          setIsDataLoaded(true);
+        }
+      }).catch((err) => {
+        console.error('Failed to load project:', err);
+        setError('Failed to load project data');
+      });
     }
-  }, [isEditMode, projectId]);
+  }, [isEditMode, projectId, isDataLoaded, loadProject]);
 
   const prepareBackgroundImage = (file: File): Promise<BackgroundImage> => {
     return new Promise((resolve, reject) => {
@@ -117,7 +171,9 @@ export function ScopePage() {
       return;
     }
 
-    if (!uploadedFile) {
+    // In edit mode, allow submission if we have an existing plan or new upload
+    const hasPlan = uploadedFile || existingPlanUrl;
+    if (!hasPlan) {
       setError('Please upload a plan file');
       return;
     }
@@ -126,28 +182,127 @@ export function ScopePage() {
     setError(null);
 
     try {
-      // Create the project in Firestore
-      const project = await createNewProject(
-        formData.name,
-        formData.scopeDefinition,
-        user.uid
-      );
+      // Build estimate config
+      const estimateConfig: EstimateConfig = {
+        overheadPercent,
+        profitPercent,
+        contingencyPercent,
+        wasteFactorPercent,
+        startDate,
+      };
 
-      // Navigate to Annotate page with the background image state
-      const state = preparedBackground ? { backgroundImage: preparedBackground } : undefined;
-      navigate(`/project/${project.id}/annotate`, { state });
+      let finalProjectId = projectId;
+      let planImageUrl = existingPlanUrl;
+      let planImageFileName = existingPlanFileName;
+
+      // Upload new plan image if provided
+      if (uploadedFile && finalProjectId) {
+        const planImage = await uploadPlanImage(finalProjectId, uploadedFile, user.uid);
+        planImageUrl = planImage.url;
+        planImageFileName = planImage.fileName;
+      }
+
+      if (isEditMode && projectId) {
+        // Update existing project
+        await updateProjectScopeAction(projectId, {
+          name: formData.name,
+          description: formData.scopeDefinition,
+          location: formData.location,
+          projectType: formData.type,
+          size: formData.size,
+          zipCode: formData.zipCode,
+          useUnionLabor: formData.useUnionLabor,
+          estimateConfig,
+          planImageUrl: planImageUrl || undefined,
+          planImageFileName: planImageFileName || undefined,
+        }, user.uid);
+      } else {
+        // Create new project with all scope data
+        const project = await createNewProject(
+          formData.name,
+          formData.scopeDefinition,
+          user.uid,
+          {
+            location: formData.location,
+            projectType: formData.type,
+            size: formData.size,
+            zipCode: formData.zipCode,
+            useUnionLabor: formData.useUnionLabor,
+            estimateConfig,
+          }
+        );
+        finalProjectId = project.id;
+
+        // Upload plan image for new project
+        if (uploadedFile) {
+          const planImage = await uploadPlanImage(finalProjectId, uploadedFile, user.uid);
+          planImageUrl = planImage.url;
+          planImageFileName = planImage.fileName;
+
+          // Update project with plan image URL
+          await updateProjectScopeAction(finalProjectId, {
+            planImageUrl: planImage.url,
+            planImageFileName: planImage.fileName,
+          }, user.uid);
+        }
+      }
+
+      // Build config with scope text for navigation state
+      const estimateConfigWithScope: EstimateConfig = {
+        ...estimateConfig,
+        scopeText: formData.scopeDefinition,
+      };
+
+      // Navigate to Annotate page with the background image and estimate config
+      navigate(`/project/${finalProjectId}/annotate`, {
+        state: {
+          backgroundImage: preparedBackground || (planImageUrl ? {
+            id: `bg-${Date.now()}`,
+            url: planImageUrl,
+            fileName: planImageFileName || 'plan',
+            fileSize: 0,
+            width: 0,
+            height: 0,
+            aspectRatio: 1,
+            uploadedAt: Date.now(),
+            uploadedBy: user.uid,
+          } : null),
+          estimateConfig: estimateConfigWithScope,
+        }
+      });
     } catch (err) {
-      console.error('Failed to create project:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      console.error('Failed to save project:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save project');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isFormValid = formData.name.trim() && formData.location.trim() && uploadedFile;
+  const handleRemoveExistingPlan = useCallback(() => {
+    setExistingPlanUrl(null);
+    setExistingPlanFileName(null);
+  }, []);
+
+  const isFormValid = formData.name.trim() && formData.location.trim() && (uploadedFile || existingPlanUrl);
 
   // Get actual completion state from hook
   const { completedSteps } = useStepCompletion(projectId);
+
+  // Show loading state when fetching project data
+  if (isEditMode && loading && !isDataLoaded) {
+    return (
+      <AuthenticatedLayout>
+        <div className="container-spacious max-w-full pt-20 pb-14 md:pt-24">
+          <div className="flex items-center justify-center py-12">
+            <div className="text-center">
+              <div className="mb-4 h-12 w-12 animate-spin rounded-full border-4 border-truecost-cyan border-t-transparent mx-auto"></div>
+              <p className="text-truecost-text-secondary">Loading project data...</p>
+            </div>
+          </div>
+        </div>
+      </AuthenticatedLayout>
+    );
+  }
 
   return (
     <AuthenticatedLayout>
@@ -245,10 +400,50 @@ export function ScopePage() {
                   <label className="block font-body text-body font-medium text-truecost-text-primary">
                     Upload Plans *
                   </label>
-                  {!uploadedFile ? (
-                    <FileUploadZone onFileSelect={handleFileSelect} />
-                  ) : (
+                  {uploadedFile ? (
                     <FilePreview file={uploadedFile} onRemove={handleRemoveFile} />
+                  ) : existingPlanUrl ? (
+                    <div className="glass-panel p-4">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-3">
+                          <div className="w-16 h-16 rounded-lg overflow-hidden bg-truecost-glass-bg">
+                            <img
+                              src={existingPlanUrl}
+                              alt="Uploaded plan"
+                              className="w-full h-full object-cover"
+                            />
+                          </div>
+                          <div>
+                            <p className="font-body text-body font-medium text-truecost-text-primary">
+                              {existingPlanFileName || 'Uploaded plan'}
+                            </p>
+                            <p className="text-body-meta text-truecost-text-secondary">
+                              Plan already uploaded
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={handleRemoveExistingPlan}
+                            className="text-truecost-text-secondary hover:text-truecost-danger transition-colors p-2"
+                            title="Remove plan"
+                          >
+                            <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 pt-3 border-t border-truecost-glass-border">
+                        <p className="text-body-meta text-truecost-text-secondary mb-2">
+                          Upload a new plan to replace:
+                        </p>
+                        <FileUploadZone onFileSelect={handleFileSelect} />
+                      </div>
+                    </div>
+                  ) : (
+                    <FileUploadZone onFileSelect={handleFileSelect} />
                   )}
                 </div>
 
@@ -296,6 +491,83 @@ export function ScopePage() {
                   </div>
                 </div>
 
+                {/* Estimate Configuration */}
+                <div className="pt-4 border-t border-truecost-glass-border">
+                  <h3 className="font-heading text-lg text-truecost-text-primary mb-4">
+                    Estimate Configuration
+                  </h3>
+                  
+                  <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Overhead %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={overheadPercent}
+                        onChange={(e) => setOverheadPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Profit %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={profitPercent}
+                        onChange={(e) => setProfitPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Contingency %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={contingencyPercent}
+                        onChange={(e) => setContingencyPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Waste Factor %
+                      </label>
+                      <input
+                        type="number"
+                        min="0"
+                        max="100"
+                        step="0.5"
+                        value={wasteFactorPercent}
+                        onChange={(e) => setWasteFactorPercent(parseFloat(e.target.value) || 0)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <label className="block font-body text-body-meta font-medium text-truecost-text-secondary">
+                        Start Date
+                      </label>
+                      <input
+                        type="date"
+                        value={startDate}
+                        onChange={(e) => setStartDate(e.target.value)}
+                        className="glass-input w-full"
+                      />
+                    </div>
+                  </div>
+                </div>
+
                 {/* Submit Button */}
                 <div className="pt-4">
                   <Button
@@ -304,7 +576,9 @@ export function ScopePage() {
                     fullWidth
                     disabled={!isFormValid || isSubmitting || loading}
                   >
-                    {isSubmitting ? 'Creating Project...' : 'Continue to Annotate'}
+                    {isSubmitting
+                      ? (isEditMode ? 'Saving Changes...' : 'Creating Project...')
+                      : (isEditMode ? 'Save & Continue to Annotate' : 'Continue to Annotate')}
                   </Button>
                 </div>
               </form>

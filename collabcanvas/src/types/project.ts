@@ -18,6 +18,16 @@ export interface Collaborator {
   role: CollaboratorRole;
 }
 
+// Estimate configuration stored with project
+export interface EstimateConfig {
+  overheadPercent: number;
+  profitPercent: number;
+  contingencyPercent: number;
+  wasteFactorPercent: number;
+  startDate: string;
+  scopeText?: string; // Optional scope text for backward compatibility
+}
+
 export interface Project {
   id: string;
   name: string;
@@ -32,5 +42,17 @@ export interface Project {
   profitLoss?: number; // Calculated when status is completed-profitable or completed-unprofitable
   actualCosts?: number; // Actual costs entered by user (for profit/loss calculation)
   estimateTotal?: number; // Estimated total from BOM (for profit/loss calculation)
+
+  // Scope fields
+  location?: string;
+  projectType?: string;
+  size?: string;
+  zipCode?: string;
+  useUnionLabor?: boolean;
+  estimateConfig?: EstimateConfig;
+
+  // Plan image (from file upload)
+  planImageUrl?: string;
+  planImageFileName?: string;
 }
 

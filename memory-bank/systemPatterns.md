@@ -109,6 +109,18 @@ DEEP_AGENT_SEQUENCE = [
 firestore/
 ├── users/{userId}
 │   └── profile, settings
+
+├── projects/{projectId}                # UI-first workflow (CollabCanvas)
+│   ├── ownerId, name, description, status, createdAt, updatedAt, ...
+│   ├── /board/{state}                  # background image / board state
+│   ├── /shapes/{shapeId}               # plan annotations
+│   ├── /scope/{scopeId}                # scope definition items
+│   ├── /bom/{bomId}                    # bill of materials (Epic 4/1)
+│   ├── /cpm/{cpmId}                    # schedule tasks (Epic 1/4)
+│   ├── /priceComparison/{comparisonId} # Epic 5 results
+│   └── /pipeline/
+│       ├── status                      # real-time pipeline progress (Epic 6)
+│       └── context                     # snapshot of project context sent to pipeline
 │
 ├── estimates/{estimateId}
 │   ├── userId, projectName, status, createdAt, updatedAt
@@ -147,6 +159,55 @@ firestore/
 Firestore documents have practical size limits; for high-granularity “ledger-like” data, store each record as a document in a subcollection and reference it from the root estimate document:
 - Root estimate holds summary + discoverability metadata (e.g., `costItemsCount`, `costItemsCollectionPath`)
 - UI/API fetches subcollection items when needed (dashboard renders “Cost Ledger”)
+
+### Pattern: UI “Projects” Track Pipeline via `/projects/{projectId}/pipeline/status`
+
+Post-merge integration introduces a UI-facing pipeline status document:
+
+- Created/initialized by TS callable: `collabcanvas/functions/src/estimatePipelineOrchestrator.ts`
+- Updated by Python pipeline via `functions/services/firestore_service.py::sync_to_project_pipeline()`
+- Read by frontend via `collabcanvas/src/services/pipelineService.ts` (Firestore `onSnapshot`)
+
+This allows the UI to show progress without polling `get_pipeline_status`.
+
+### Pattern: User-Selected Cost Defaults Live in `ClarificationOutput.projectBrief.costPreferences`
+
+Certain cost defaults are selected by the user in the UI (scope definition) and passed through the pipeline
+as part of the ClarificationOutput input. These values override agent-side hardcoded defaults.
+
+- `overheadPct` (decimal; e.g. 0.10 == 10%)
+- `profitPct` (decimal; e.g. 0.10 == 10%)
+- `contingencyPct` (decimal; e.g. 0.05 == 5%)
+- `wasteFactor` (multiplier; e.g. 1.10 == +10% waste)
+
+Implementation notes:
+- `CostAgent` consumes these values to compute `adjustments.overheadPercentage`, `adjustments.profitPercentage`,
+  `adjustments.contingencyPercentage`, and to feed waste into heuristic takeoff conversions (e.g., SF → plank count).
+- `FinalAgent` prefers the user-supplied `contingencyPct` over the RiskAgent recommendation when computing final totals.
+
+### Pattern: Monte Carlo Iterations Are Configurable (Default 10,000)
+
+Monte Carlo simulation iterations are configured via environment variable:
+
+- `MONTE_CARLO_ITERATIONS` (default: 10000)
+
+Implementation:
+- `RiskAgent` uses `settings.monte_carlo_iterations` when calling `MonteCarloService.run_simulation(...)`.
+- Unit tests monkeypatch `settings.monte_carlo_iterations = 1000` to keep tests fast.
+
+### Pattern: Never Invent Numbers (Use Explicit N/A When Inputs Missing)
+
+Policy: if the pipeline lacks required inputs for a computation, it must **not fabricate numeric values**.
+Instead it should emit explicit “N/A”/`None` fields (and/or an error object) so the UI can display
+missing data clearly.
+
+Current implementation:
+- `RiskAgent` does **not** default `base_cost` to an arbitrary number if totals/subtotals are missing.
+  It returns an output with:
+  - `monteCarlo: null`
+  - `contingency: null`
+  - `riskLevel: "n/a"`
+  - `error.code: "INSUFFICIENT_DATA"`
 
 ### Status Flows
 

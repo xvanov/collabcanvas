@@ -11,20 +11,13 @@ import { Terms } from './pages/Terms';
 
 // Authenticated pages
 import { Dashboard } from './pages/Dashboard';
-import { Project } from './pages/Project';
 import { Account } from './pages/Account';
-import { Board } from './pages/Board';
 import { PriceComparisonPage } from './components/PriceComparisonPage';
 
-// Project flow pages (new)
+// Project flow pages
 import { ScopePage } from './pages/project/ScopePage';
 import { AnnotatePage } from './pages/project/AnnotatePage';
 import { EstimatePage } from './pages/project/EstimatePage';
-
-// Legacy estimate pages (to be removed after full migration)
-import { EstimateView } from './pages/estimate/EstimateView';
-import { PlanView } from './pages/estimate/PlanView';
-import { FinalView } from './pages/estimate/FinalView';
 
 /**
  * Protected Route Component
@@ -132,53 +125,13 @@ function App() {
           }
         />
 
-        {/* Legacy estimate routes - redirect to new routes */}
-        <Route
-          path="/estimate/new"
-          element={<Navigate to="/project/new" replace />}
-        />
-        <Route
-          path="/estimate/:id"
-          element={
-            <ProtectedRoute>
-              <EstimateView />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/estimate/:id/plan"
-          element={
-            <ProtectedRoute>
-              <PlanView />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/estimate/:id/canvas"
-          element={
-            <ProtectedRoute>
-              <Board />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/estimate/:id/final"
-          element={
-            <ProtectedRoute>
-              <FinalView />
-            </ProtectedRoute>
-          }
-        />
-
-        {/* Legacy route preserved during transition */}
-        <Route
-          path="/projects/:projectId/*"
-          element={
-            <ProtectedRoute>
-              <Project />
-            </ProtectedRoute>
-          }
-        />
+        {/* Legacy routes - redirect to new project flow */}
+        <Route path="/estimate/new" element={<Navigate to="/project/new" replace />} />
+        <Route path="/estimate/:id" element={<Navigate to="/project/new" replace />} />
+        <Route path="/estimate/:id/plan" element={<Navigate to="/project/new" replace />} />
+        <Route path="/estimate/:id/canvas" element={<Navigate to="/project/new" replace />} />
+        <Route path="/estimate/:id/final" element={<Navigate to="/project/new" replace />} />
+        <Route path="/projects/:projectId/*" element={<Navigate to="/dashboard" replace />} />
         <Route
           path="/compare-prices"
           element={
