@@ -598,6 +598,27 @@ class TestTimelineCritic:
         # Should identify missing tasks
         assert any("task" in issue.lower() for issue in result["issues"])
 
+    @pytest.mark.asyncio
+    async def test_critic_does_not_use_fixed_duration_heuristics(self, critic):
+        """TimelineCritic should not enforce arbitrary small/large remodel duration ranges."""
+        output = get_valid_timeline_output()
+        # Force a duration value that would have triggered the old heuristic when sqft is small
+        output["totalDuration"] = 50
+        output["durationRange"] = {"optimistic": 45, "expected": 50, "pessimistic": 65}
+
+        input_data = {
+            "clarification_output": {
+                "projectBrief": {"scopeSummary": {"totalSqft": 50}}
+            }
+        }
+
+        result = await critic.analyze_output(output, input_data, 90, "Good")
+
+        combined = " ".join(result.get("issues", []) + result.get("how_to_fix", []))
+        assert "seems long" not in combined.lower()
+        assert "seems short" not in combined.lower()
+        assert "20-30%" not in combined
+
 
 # =============================================================================
 # FINAL ESTIMATE MODEL TESTS

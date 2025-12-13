@@ -209,6 +209,43 @@ Current implementation:
   - `riskLevel: "n/a"`
   - `error.code: "INSUFFICIENT_DATA"`
 
+### Pattern: No Hardcoded Timeline Task Templates (LLM Generates Tasks)
+
+Policy: The schedule must be generated from the **user-defined scope** and the **pipeline input JSON**.
+We do **not** maintain static “kitchen/bathroom/default remodel” task templates.
+
+Implementation:
+- `TimelineAgent` uses the LLM to generate task specs (names, phases, durations, trades, dependencies).
+- If the LLM cannot generate a schedule (or durations are missing), the agent returns **N/A** rather than
+  falling back to a canned task list.
+
+### Pattern: Start Date Must Come From Clarification JSON (No Default Offset)
+
+Policy: Do **not** assume “2 weeks from now” (or any other default) for schedule start date.
+
+Implementation:
+- `TimelineAgent` requires `clarification_output.projectBrief.timeline.desiredStart` (ISO date/datetime).
+- If missing: return **N/A** with `error.code = "INSUFFICIENT_DATA"`.
+- If invalid format: return **N/A** with `error.code = "INVALID_INPUT"`.
+
+### Pattern: Critic Feedback Is Structural + Context-Driven (No Fixed Duration Ranges)
+
+Policy: Critics must not enforce arbitrary “small remodel 20–30 days / large 60–90 days” heuristics.
+Project schedules vary based on scope, sequencing, lead times, trade availability, inspections, and user constraints.
+
+Implementation:
+- `TimelineCritic` validates **structural completeness and internal consistency** (durations present, ranges bracket totalDuration, dependency sequencing),
+  but does not assert a specific total duration based solely on sqft.
+
+### Pattern: Code Compliance Warnings Are Informational (ICC, AHJ Applies)
+
+Policy: Provide **warnings/considerations** based on ICC code families (IBC/IRC/IECC) without claiming legal determinations.
+
+Implementation:
+- `CodeComplianceAgent` emits structured warnings (severity/title/details/whatToCheckNext).
+- `FinalAgent` surfaces these warnings under `codeCompliance` in the final report output.
+- Always include an AHJ/local-amendments disclaimer.
+
 ### Status Flows
 
 **Estimate Status**:
