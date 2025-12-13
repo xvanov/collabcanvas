@@ -29,41 +29,55 @@ import type { SelectionBox as SelectionBoxType, UnitType, Shape, Layer as LayerT
 // Component to properly load and display background image
 const BackgroundImageComponent = ({ backgroundImage }: { backgroundImage: BackgroundImage }) => {
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  
+  const [loadedDimensions, setLoadedDimensions] = useState<{ width: number; height: number } | null>(null);
+
   useEffect(() => {
+    let isMounted = true;
+
     // Reset image state when backgroundImage changes
     setImage(null);
-    
+    setLoadedDimensions(null);
+
     const img = new window.Image();
     img.crossOrigin = 'anonymous';
     img.onload = () => {
-      console.log('✅ Background image loaded:', { url: backgroundImage.url, width: img.width, height: img.height });
-      setImage(img);
+      if (isMounted) {
+        console.log('✅ Background image loaded:', { url: backgroundImage.url, width: img.width, height: img.height });
+        setImage(img);
+        // Store the actual loaded dimensions to use as fallback
+        setLoadedDimensions({ width: img.width, height: img.height });
+      }
     };
     img.onerror = (error) => {
-      console.error('❌ Failed to load background image:', error, backgroundImage.url);
-      setImage(null);
+      if (isMounted) {
+        console.error('❌ Failed to load background image:', error, backgroundImage.url);
+        setImage(null);
+        setLoadedDimensions(null);
+      }
     };
     img.src = backgroundImage.url;
-    
+
     return () => {
-      // Cleanup: remove event listeners
-      img.onload = null;
-      img.onerror = null;
+      isMounted = false;
     };
   }, [backgroundImage.url, backgroundImage.id]); // Include id to detect when the entire object changes
-  
+
   if (!image) {
     return null;
   }
-  
+
+  // Use stored dimensions if valid, otherwise fall back to actual loaded image dimensions
+  // This fixes the bug where images with 0x0 stored dimensions become invisible
+  const displayWidth = backgroundImage.width > 0 ? backgroundImage.width : (loadedDimensions?.width || image.width);
+  const displayHeight = backgroundImage.height > 0 ? backgroundImage.height : (loadedDimensions?.height || image.height);
+
   return (
     <Image
       image={image}
       x={0}
       y={0}
-      width={backgroundImage.width}
-      height={backgroundImage.height}
+      width={displayWidth}
+      height={displayHeight}
       listening={false}
     />
   );
@@ -95,9 +109,15 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
   const containerRef = useRef<HTMLDivElement>(null);
   const stageRef = useRef<Konva.Stage>(null);
   const [dimensions, setDimensions] = useState({ width: 0, height: 0 });
+
+  // Get viewport state from store for persistence across navigation
+  const storedViewportState = useScopedCanvasStore(projectId, (state) => state.viewportState);
+  const setViewportState = useScopedCanvasStore(projectId, (state) => state.setViewportState);
+
   // Imperative stage position and scale to avoid React re-renders during pan/zoom
-  const stagePosRef = useRef({ x: 0, y: 0 });
-  const stageScaleRef = useRef(1);
+  // Initialize from stored state for persistence
+  const stagePosRef = useRef({ x: storedViewportState?.x ?? 0, y: storedViewportState?.y ?? 0 });
+  const stageScaleRef = useRef(storedViewportState?.scale ?? 1);
   // Mouse position for snap indicators
   const [mousePosition, setMousePosition] = useState<{ x: number; y: number } | null>(null);
   // Measurement input modal state
@@ -270,6 +290,46 @@ const Canvas = forwardRef<CanvasHandle, CanvasProps>(({ projectId, onFpsUpdate, 
         zoomChangeRafRef.current = null;
       }
     };
+  }, []);
+
+  // Restore viewport state from store on mount (when stored state differs from initial)
+  useEffect(() => {
+    const stage = stageRef.current;
+    if (stage && storedViewportState) {
+      // Only apply if the stored state differs from defaults
+      const hasStoredPosition = storedViewportState.x !== 0 || storedViewportState.y !== 0;
+      const hasStoredScale = storedViewportState.scale !== 1;
+
+      if (hasStoredPosition || hasStoredScale) {
+        stagePosRef.current = { x: storedViewportState.x, y: storedViewportState.y };
+        stageScaleRef.current = storedViewportState.scale;
+        stage.position({ x: storedViewportState.x, y: storedViewportState.y });
+        stage.scale({ x: storedViewportState.scale, y: storedViewportState.scale });
+
+        // Notify parent of restored zoom level
+        if (onZoomChange) {
+          onZoomChange(storedViewportState.scale);
+        }
+      }
+    }
+  // Only run on mount - storedViewportState is read once
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Save viewport state to store on unmount for persistence across navigation
+  useEffect(() => {
+    return () => {
+      // Save current viewport state to store
+      if (setViewportState) {
+        setViewportState({
+          x: stagePosRef.current.x,
+          y: stagePosRef.current.y,
+          scale: stageScaleRef.current,
+        });
+      }
+    };
+  // Only run cleanup on unmount
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // Handle wheel zoom - imperative updates for performance
