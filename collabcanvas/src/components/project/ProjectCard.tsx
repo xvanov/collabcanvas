@@ -49,7 +49,7 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const canShare = user ? canShareProject(project, user.uid) : false;
 
   const handleProjectClick = () => {
-    navigate(`/projects/${project.id}/space`);
+    navigate(`/project/${project.id}/annotate`);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {

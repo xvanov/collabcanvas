@@ -80,7 +80,7 @@ export function ScopeView() {
       }
     }
     
-    navigate(`/projects/${projectId}/space`);
+    navigate(`/project/${projectId}/annotate`);
   }, [projectId, navigate, user, session]);
 
   if (loading && !session) {

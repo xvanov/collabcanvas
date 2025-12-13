@@ -47,7 +47,7 @@ export function ProjectListItem({ project }: ProjectListItemProps) {
   const canShare = user ? canShareProject(project, user.uid) : false;
 
   const handleRowClick = () => {
-    navigate(`/projects/${project.id}/space`);
+    navigate(`/project/${project.id}/annotate`);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {
