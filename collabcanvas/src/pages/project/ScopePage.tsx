@@ -8,11 +8,23 @@ import { EstimateStepper } from '../../components/estimate/EstimateStepper';
 import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useStepCompletion } from '../../hooks/useStepCompletion';
+import { saveScopeConfig, loadScopeConfig } from '../../services/scopeConfigService';
 import type { BackgroundImage } from '../../types';
 
-// Estimate configuration interface
+// Project scope and estimate configuration interface
 export interface EstimateConfig {
+  // Project details from Define Your Project Scope page
+  projectName: string;
+  location: string; // Note: location and address are the same thing
+  projectType: string;
+  approximateSize: string;
+  useUnionLabor: boolean;
+  zipCodeOverride: string;
+  
+  // Scope definition (user-provided description)
   scopeText: string;
+  
+  // Estimate configuration
   overheadPercent: number;
   profitPercent: number;
   contingencyPercent: number;
@@ -73,10 +85,29 @@ export function ScopePage() {
   // Load existing project data if in edit mode
   useEffect(() => {
     if (isEditMode && projectId) {
-      // TODO: Load project data from Firestore
-      // For now, we'll implement this when the project exists
+      // Load saved scope config from Firestore
+      loadScopeConfig(projectId).then((config) => {
+        if (config) {
+          setFormData({
+            name: config.projectName || '',
+            location: config.location || '',
+            type: config.projectType || '',
+            size: config.approximateSize || '',
+            scopeDefinition: config.scopeText || '',
+            zipCode: config.zipCodeOverride || '',
+            useUnionLabor: config.useUnionLabor || false,
+          });
+          setOverheadPercent(config.overheadPercent ?? 10);
+          setProfitPercent(config.profitPercent ?? 10);
+          setContingencyPercent(config.contingencyPercent ?? 5);
+          setWasteFactorPercent(config.wasteFactorPercent ?? 10);
+          setStartDate(config.startDate || defaultStartDate);
+        }
+      }).catch((err) => {
+        console.error('Failed to load scope config:', err);
+      });
     }
-  }, [isEditMode, projectId]);
+  }, [isEditMode, projectId, defaultStartDate]);
 
   const prepareBackgroundImage = (file: File): Promise<BackgroundImage> => {
     return new Promise((resolve, reject) => {
@@ -156,15 +187,29 @@ export function ScopePage() {
         user.uid
       );
 
-      // Build estimate config
+      // Build estimate config with all project details
       const estimateConfig: EstimateConfig = {
+        // Project details from scope page
+        projectName: formData.name,
+        location: formData.location, // location = address
+        projectType: formData.type,
+        approximateSize: formData.size,
+        useUnionLabor: formData.useUnionLabor,
+        zipCodeOverride: formData.zipCode,
+        
+        // Scope definition
         scopeText: formData.scopeDefinition,
+        
+        // Estimate configuration
         overheadPercent,
         profitPercent,
         contingencyPercent,
         wasteFactorPercent,
         startDate,
       };
+
+      // Save the scope config to Firestore for persistence
+      await saveScopeConfig(project.id, user.uid, estimateConfig);
 
       // Navigate to Annotate page with the background image and estimate config
       navigate(`/project/${project.id}/annotate`, { 
