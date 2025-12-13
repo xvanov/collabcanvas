@@ -68,6 +68,32 @@ Consumption:
 - **FinalAgent**: if risk contingency is missing and the user did not supply `contingencyPct`, it uses **0**
   rather than defaulting to a made-up 10%.
 
+### New: Timeline Tasks Are LLM-Generated (No Hardcoded Templates)
+
+- Timeline task templates (kitchen/bathroom/default lists) are **removed**.
+- `TimelineAgent` generates tasks via LLM from the pipeline inputs (scope + context JSON).
+- If the schedule cannot be generated (or durations are missing), Timeline returns **N/A / insufficient data**
+  instead of falling back to a pre-baked task list.
+
+### Change: No Default Start Date Offset (Start Date Comes From JSON)
+
+- Removed the TimelineAgent default of “**2 weeks from now**”.
+- Timeline now requires `projectBrief.timeline.desiredStart` in the Clarification JSON.
+- If missing/invalid, Timeline returns **N/A** with an explicit error (`INSUFFICIENT_DATA` / `INVALID_INPUT`).
+
+### Change: TimelineCritic No Longer Uses Fixed Remodel Duration Heuristics
+
+- Removed the heuristic “small remodel 20–30 days / large 60–90 days” from TimelineCritic feedback.
+- TimelineCritic feedback is now **structural + internal consistency** (e.g., missing durations/ranges, inconsistent durationRange),
+  not arbitrary sqft-based duration expectations.
+
+### New: ICC Code Compliance Agent (Warnings in Final Report)
+
+- Added a new primary agent: `code_compliance` (ICC-focused: IBC/IRC/IECC family).
+- Runs after `scope` to leverage structured scope context.
+- Produces **non-legal** code considerations/warnings (AHJ/local amendments apply).
+- `FinalAgent` now includes a `codeCompliance` section with the agent’s warnings for the UI/report.
+
 ## Epic 2 Overview (Still the Core Engine)
 
 The Deep Agent Pipeline consumes the output from Dev 3's Clarification Agent and runs through an **orchestrated, non-linear pipeline** with **Scorer + Critic validation**:

@@ -35,6 +35,10 @@ I'm Dev 2 for the TrueCost project, working on post-merge integration (Epic 6) a
 Note:
 - RiskAgent Monte Carlo iterations are controlled by `MONTE_CARLO_ITERATIONS` (default: 10000). Unit tests override to 1000 for speed.
 - Policy: never invent numbers. If required upstream cost inputs are missing, RiskAgent returns N/A (`monteCarlo: null`, `contingency: null`) with `INSUFFICIENT_DATA`.
+- Policy: no hardcoded timeline task templates. TimelineAgent generates tasks via LLM from user scope + pipeline JSON; if it cannot, it returns N/A instead of using canned tasks.
+- Policy: Timeline start date must come from Clarification JSON (`projectBrief.timeline.desiredStart`). Do not default to “2 weeks from now”; if missing/invalid, return N/A with explicit error.
+- Policy: TimelineCritic must not enforce fixed “small/large remodel” duration ranges. Critique should be context-driven and focus on completeness + internal consistency.
+- New: `code_compliance` agent (ICC: IBC/IRC/IECC family) generates code-related warnings and FinalAgent exposes them under `codeCompliance.warnings` with an AHJ disclaimer.
 
 ## What I Need Help With Next
 

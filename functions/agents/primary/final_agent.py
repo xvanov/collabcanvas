@@ -135,6 +135,7 @@ class FinalAgent(BaseA2AAgent):
         clarification = input_data.get("clarification_output", {})
         location_output = input_data.get("location_output", {})
         scope_output = input_data.get("scope_output", {})
+        code_compliance_output = input_data.get("code_compliance_output", {})
         cost_output = input_data.get("cost_output", {})
         risk_output = input_data.get("risk_output", {})
         timeline_output = input_data.get("timeline_output", {})
@@ -229,6 +230,25 @@ class FinalAgent(BaseA2AAgent):
         
         # Convert to output format
         output = final_estimate.to_agent_output()
+
+        # Attach ICC code compliance warnings (informational; depends on AHJ/local amendments).
+        if code_compliance_output:
+            output["codeCompliance"] = {
+                "codeSystem": code_compliance_output.get("codeSystem", "ICC"),
+                "jurisdiction": code_compliance_output.get("jurisdiction", {}),
+                "warnings": code_compliance_output.get("warnings", []),
+                "disclaimer": code_compliance_output.get("disclaimer", ""),
+            }
+        else:
+            output["codeCompliance"] = {
+                "codeSystem": "ICC",
+                "jurisdiction": {},
+                "warnings": [],
+                "disclaimer": (
+                    "Code compliance warnings were not available for this estimate. "
+                    "Final requirements depend on local amendments and the authority having jurisdiction (AHJ)."
+                ),
+            }
         
         # Add status update flag
         output["estimateComplete"] = True
