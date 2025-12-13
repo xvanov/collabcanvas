@@ -621,6 +621,13 @@ def a2a_scope(req: https_fn.Request) -> https_fn.Response:
 
 
 @https_fn.on_request(**AGENT_ENDPOINT_CONFIG)
+def a2a_code_compliance(req: https_fn.Request) -> https_fn.Response:
+    """A2A endpoint for Code Compliance Agent (ICC warnings)."""
+    from agents.primary.code_compliance_agent import CodeComplianceAgent
+    return _handle_a2a_request(req, CodeComplianceAgent, "code_compliance")
+
+
+@https_fn.on_request(**AGENT_ENDPOINT_CONFIG)
 def a2a_cost(req: https_fn.Request) -> https_fn.Response:
     """A2A endpoint for Cost Agent."""
     from agents.primary.cost_agent import CostAgent
@@ -664,6 +671,13 @@ def a2a_scope_scorer(req: https_fn.Request) -> https_fn.Response:
 
 
 @https_fn.on_request(**AGENT_ENDPOINT_CONFIG)
+def a2a_code_compliance_scorer(req: https_fn.Request) -> https_fn.Response:
+    """A2A endpoint for Code Compliance Scorer."""
+    from agents.scorers.code_compliance_scorer import CodeComplianceScorer
+    return _handle_a2a_request(req, CodeComplianceScorer, "code_compliance_scorer")
+
+
+@https_fn.on_request(**AGENT_ENDPOINT_CONFIG)
 def a2a_cost_scorer(req: https_fn.Request) -> https_fn.Response:
     """A2A endpoint for Cost Scorer."""
     from agents.scorers.cost_scorer import CostScorer
@@ -704,6 +718,13 @@ def a2a_scope_critic(req: https_fn.Request) -> https_fn.Response:
     """A2A endpoint for Scope Critic."""
     from agents.critics.scope_critic import ScopeCritic
     return _handle_a2a_request(req, ScopeCritic, "scope_critic")
+
+
+@https_fn.on_request(**AGENT_ENDPOINT_CONFIG)
+def a2a_code_compliance_critic(req: https_fn.Request) -> https_fn.Response:
+    """A2A endpoint for Code Compliance Critic."""
+    from agents.critics.code_compliance_critic import CodeComplianceCritic
+    return _handle_a2a_request(req, CodeComplianceCritic, "code_compliance_critic")
 
 
 @https_fn.on_request(**AGENT_ENDPOINT_CONFIG)

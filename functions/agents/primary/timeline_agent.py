@@ -143,16 +143,65 @@ class TimelineAgent(BaseA2AAgent):
         seasonal_adjustment = weather.get("seasonalAdjustment", 1.0)
         winter_impact = weather.get("winterImpact", "low")
         
-        # Calculate start date (use user preference if present; otherwise default to 2 weeks from now)
+        # Calculate start date (must come from clarification JSON; do NOT default to "2 weeks from now")
         desired_start = project_brief.get("timeline", {}).get("desiredStart")
-        if isinstance(desired_start, str) and desired_start:
-            try:
-                # Accept ISO date or datetime strings
-                start_date = datetime.fromisoformat(desired_start.replace("Z", ""))
-            except Exception:
-                start_date = datetime.now() + timedelta(days=14)
-        else:
-            start_date = datetime.now() + timedelta(days=14)
+        if not (isinstance(desired_start, str) and desired_start.strip()):
+            msg = "Timeline unavailable (missing required projectBrief.timeline.desiredStart)."
+            logger.warning(
+                "timeline_agent_missing_desired_start",
+                estimate_id=estimate_id,
+            )
+            output = {
+                "estimateId": estimate_id,
+                "error": {"code": "INSUFFICIENT_DATA", "message": msg},
+                "tasks": [],
+                "milestones": [],
+                "criticalPath": None,
+                "totalDuration": 0,
+                "totalCalendarDays": 0,
+                "durationRange": {"optimistic": 0, "pessimistic": 0},
+            }
+            await self.firestore.save_agent_output(
+                estimate_id=estimate_id,
+                agent_name=self.name,
+                output=output,
+                summary="Timeline unavailable (missing desiredStart)",
+                confidence=0.0,
+                tokens_used=self._tokens_used,
+                duration_ms=self.duration_ms,
+            )
+            return output
+
+        try:
+            # Accept ISO date or datetime strings (optionally "Z"-terminated)
+            start_date = datetime.fromisoformat(desired_start.strip().replace("Z", ""))
+        except Exception:
+            msg = "Timeline unavailable (invalid desiredStart; must be ISO date/datetime)."
+            logger.warning(
+                "timeline_agent_invalid_desired_start",
+                estimate_id=estimate_id,
+                desired_start=desired_start,
+            )
+            output = {
+                "estimateId": estimate_id,
+                "error": {"code": "INVALID_INPUT", "message": msg},
+                "tasks": [],
+                "milestones": [],
+                "criticalPath": None,
+                "totalDuration": 0,
+                "totalCalendarDays": 0,
+                "durationRange": {"optimistic": 0, "pessimistic": 0},
+            }
+            await self.firestore.save_agent_output(
+                estimate_id=estimate_id,
+                agent_name=self.name,
+                output=output,
+                summary="Timeline unavailable (invalid desiredStart)",
+                confidence=0.0,
+                tokens_used=self._tokens_used,
+                duration_ms=self.duration_ms,
+            )
+            return output
 
         # Generate task plan via LLM (no hardcoded templates)
         task_specs = await self._generate_task_specs_with_llm(
