@@ -1,4 +1,5 @@
 /* eslint-disable react-hooks/rules-of-hooks */
+/* eslint-disable no-empty-pattern */
 import { test as base } from '@playwright/test';
 import { UserFactory } from './factories/user-factory';
 import { ProjectFactory } from './factories/project-factory';
@@ -23,26 +24,26 @@ type TestFixtures = {
 };
 
 export const test = base.extend<TestFixtures>({
-  userFactory: async ({ }, use) => {
+  userFactory: async ({}, use) => {
     const factory = new UserFactory();
     await use(factory);
     // Auto-cleanup: Delete all users created during test
     await factory.cleanup();
   },
 
-  projectFactory: async ({ }, use) => {
+  projectFactory: async ({}, use) => {
     const factory = new ProjectFactory();
     await use(factory);
     // Auto-cleanup: Delete all projects created during test
     await factory.cleanup();
   },
 
-  shapeFactory: async ({ }, use) => {
+  shapeFactory: async ({}, use) => {
     const factory = new ShapeFactory();
     await use(factory);
   },
 
-  layerFactory: async ({ }, use) => {
+  layerFactory: async ({}, use) => {
     const factory = new LayerFactory();
     await use(factory);
   },

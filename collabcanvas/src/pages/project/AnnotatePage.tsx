@@ -6,6 +6,7 @@ import { ChatPanel } from '../../components/estimate/ChatPanel';
 import { CanvasNavbar } from '../../components/navigation/CanvasNavbar';
 import { useCanvasStore } from '../../store/canvasStore';
 import { getProjectCanvasStoreApi, useScopedCanvasStore } from '../../store/projectCanvasStore';
+import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useShapes } from '../../hooks/useShapes';
 import { useLayers } from '../../hooks/useLayers';
@@ -31,7 +32,7 @@ export function AnnotatePage() {
   const navigate = useNavigate();
   const { id: projectId } = useParams<{ id: string }>();
   const location = useLocation();
-  const locationState = location.state as { 
+  const locationState = location.state as {
     backgroundImage?: BackgroundImage;
     estimateConfig?: EstimateConfig;
   } | null;
@@ -53,6 +54,10 @@ export function AnnotatePage() {
       });
     }
   }, [projectId, locationEstimateConfig]);
+
+  // Project store for loading project data when no navigation state
+  const loadProject = useProjectStore((state) => state.loadProject);
+  const [loadedFromProject, setLoadedFromProject] = useState(false);
 
   const [fps, setFps] = useState<number>(60);
   const [zoom, setZoom] = useState<number>(1);
@@ -104,10 +109,49 @@ export function AnnotatePage() {
       // Ensure user is set in project store before saving background image
       const projectStore = getProjectCanvasStoreApi(projectId);
       projectStore.getState().setCurrentUser(user);
-      // Now save with Firestore sync enabled (skipFirestoreSync: false)
-      setBackgroundImage(pendingBackgroundImage, false);
+      // Only sync to Firestore if we have valid dimensions
+      // If dimensions are 0, skip sync to avoid saving broken data
+      // The Canvas component will use the actual loaded image dimensions
+      const hasValidDimensions = pendingBackgroundImage.width > 0 && pendingBackgroundImage.height > 0;
+      setBackgroundImage(pendingBackgroundImage, !hasValidDimensions);
+      setLoadedFromProject(true); // Mark as loaded to prevent duplicate loading
     }
   }, [projectId, pendingBackgroundImage, setBackgroundImage, user]);
+
+  // Load background image from project data when no navigation state
+  // This handles the case when user navigates directly to annotate page or navigates back
+  useEffect(() => {
+    if (!projectId || !user || pendingBackgroundImage || loadedFromProject) return;
+
+    // Load project to get planImageUrl
+    loadProject(projectId).then((project) => {
+      if (project?.planImageUrl && setBackgroundImage) {
+        const bgImage: BackgroundImage = {
+          id: `bg-${Date.now()}`,
+          url: project.planImageUrl,
+          fileName: project.planImageFileName || 'plan',
+          fileSize: 0,
+          width: 0,
+          height: 0,
+          aspectRatio: 1,
+          uploadedAt: Date.now(),
+          uploadedBy: user.uid,
+        };
+
+        // Ensure user is set in project store
+        const projectStore = getProjectCanvasStoreApi(projectId);
+        projectStore.getState().setCurrentUser(user);
+
+        // Set background image but skip Firestore sync since we don't have valid dimensions
+        // The Canvas component will use the actual loaded image dimensions for display
+        // This prevents overwriting valid dimensions in Firestore with 0x0
+        setBackgroundImage(bgImage, true);
+        setLoadedFromProject(true);
+      }
+    }).catch((err) => {
+      console.error('Failed to load project for background image:', err);
+    });
+  }, [projectId, user, pendingBackgroundImage, loadedFromProject, loadProject, setBackgroundImage]);
 
   // Initialize board state subscription
   useEffect(() => {

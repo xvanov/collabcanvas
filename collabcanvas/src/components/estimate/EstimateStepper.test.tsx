@@ -69,7 +69,7 @@ describe('EstimateStepper Component', () => {
     expect(checkIcon).toBeInTheDocument();
   });
 
-  it('should disable future steps', () => {
+  it('should disable future steps (but not the immediate next step)', () => {
     render(
       <BrowserRouter>
         <EstimateStepper {...defaultProps} currentStep="scope" />
@@ -79,7 +79,8 @@ describe('EstimateStepper Component', () => {
     const annotateButton = screen.getByText('Annotate').closest('button');
     const estimateButton = screen.getByText('Estimate').closest('button');
 
-    expect(annotateButton).toBeDisabled();
+    // Next step (annotate) is accessible, only 2+ steps ahead are disabled
+    expect(annotateButton).not.toBeDisabled();
     expect(estimateButton).toBeDisabled();
   });
 

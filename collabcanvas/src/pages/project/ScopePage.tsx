@@ -9,28 +9,12 @@ import { useProjectStore } from '../../store/projectStore';
 import { useAuth } from '../../hooks/useAuth';
 import { useStepCompletion } from '../../hooks/useStepCompletion';
 import { saveScopeConfig, loadScopeConfig } from '../../services/scopeConfigService';
+import { uploadPlanImage } from '../../services/estimationService';
 import type { BackgroundImage } from '../../types';
+import type { EstimateConfig } from '../../types/project';
 
-// Project scope and estimate configuration interface
-export interface EstimateConfig {
-  // Project details from Define Your Project Scope page
-  projectName: string;
-  location: string; // Note: location and address are the same thing
-  projectType: string;
-  approximateSize: string;
-  useUnionLabor: boolean;
-  zipCodeOverride: string;
-  
-  // Scope definition (user-provided description)
-  scopeText: string;
-  
-  // Estimate configuration
-  overheadPercent: number;
-  profitPercent: number;
-  contingencyPercent: number;
-  wasteFactorPercent: number;
-  startDate: string;
-}
+// Re-export EstimateConfig for backward compatibility
+export type { EstimateConfig } from '../../types/project';
 
 /**
  * ScopePage - Combined form for project creation/editing with file upload.
@@ -50,9 +34,12 @@ export function ScopePage() {
   const { id: projectId } = useParams<{ id: string }>();
   const { user } = useAuth();
   const createNewProject = useProjectStore((state) => state.createNewProject);
+  const loadProject = useProjectStore((state) => state.loadProject);
+  const updateProjectScopeAction = useProjectStore((state) => state.updateProjectScopeAction);
   const loading = useProjectStore((state) => state.loading);
 
   const isEditMode = !!projectId;
+  const [isDataLoaded, setIsDataLoaded] = useState(false);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -66,6 +53,8 @@ export function ScopePage() {
 
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
   const [preparedBackground, setPreparedBackground] = useState<BackgroundImage | null>(null);
+  const [existingPlanUrl, setExistingPlanUrl] = useState<string | null>(null);
+  const [existingPlanFileName, setExistingPlanFileName] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -75,7 +64,7 @@ export function ScopePage() {
     date.setDate(date.getDate() + 14); // 2 weeks from today
     return date.toISOString().split('T')[0];
   }, []);
-  
+
   const [overheadPercent, setOverheadPercent] = useState(10);
   const [profitPercent, setProfitPercent] = useState(10);
   const [contingencyPercent, setContingencyPercent] = useState(5);
@@ -84,30 +73,60 @@ export function ScopePage() {
 
   // Load existing project data if in edit mode
   useEffect(() => {
-    if (isEditMode && projectId) {
-      // Load saved scope config from Firestore
+    if (isEditMode && projectId && !isDataLoaded) {
+      // First try to load from project document
+      loadProject(projectId).then((project) => {
+        if (project) {
+          setFormData({
+            name: project.name || '',
+            location: project.location || '',
+            type: project.projectType || '',
+            size: project.size || '',
+            scopeDefinition: project.description || '',
+            zipCode: project.zipCode || '',
+            useUnionLabor: project.useUnionLabor || false,
+          });
+
+          // Load estimate config if exists
+          if (project.estimateConfig) {
+            setOverheadPercent(project.estimateConfig.overheadPercent ?? 10);
+            setProfitPercent(project.estimateConfig.profitPercent ?? 10);
+            setContingencyPercent(project.estimateConfig.contingencyPercent ?? 5);
+            setWasteFactorPercent(project.estimateConfig.wasteFactorPercent ?? 10);
+            setStartDate(project.estimateConfig.startDate || defaultStartDate);
+          }
+
+          // Load existing plan image if available
+          if (project.planImageUrl) {
+            setExistingPlanUrl(project.planImageUrl);
+            setExistingPlanFileName(project.planImageFileName || 'Uploaded plan');
+          }
+
+          setIsDataLoaded(true);
+        }
+      }).catch((err) => {
+        console.error('Failed to load project:', err);
+      });
+
+      // Also try to load from scope config (for additional fields)
       loadScopeConfig(projectId).then((config) => {
         if (config) {
-          setFormData({
-            name: config.projectName || '',
-            location: config.location || '',
-            type: config.projectType || '',
-            size: config.approximateSize || '',
-            scopeDefinition: config.scopeText || '',
-            zipCode: config.zipCodeOverride || '',
-            useUnionLabor: config.useUnionLabor || false,
-          });
-          setOverheadPercent(config.overheadPercent ?? 10);
-          setProfitPercent(config.profitPercent ?? 10);
-          setContingencyPercent(config.contingencyPercent ?? 5);
-          setWasteFactorPercent(config.wasteFactorPercent ?? 10);
-          setStartDate(config.startDate || defaultStartDate);
+          // Merge with existing form data, preferring project data
+          setFormData((prev) => ({
+            name: prev.name || config.projectName || '',
+            location: prev.location || config.location || '',
+            type: prev.type || config.projectType || '',
+            size: prev.size || config.approximateSize || '',
+            scopeDefinition: prev.scopeDefinition || config.scopeText || '',
+            zipCode: prev.zipCode || config.zipCodeOverride || '',
+            useUnionLabor: prev.useUnionLabor || config.useUnionLabor || false,
+          }));
         }
       }).catch((err) => {
         console.error('Failed to load scope config:', err);
       });
     }
-  }, [isEditMode, projectId, defaultStartDate]);
+  }, [isEditMode, projectId, isDataLoaded, loadProject, defaultStartDate]);
 
   const prepareBackgroundImage = (file: File): Promise<BackgroundImage> => {
     return new Promise((resolve, reject) => {
@@ -161,6 +180,8 @@ export function ScopePage() {
   const handleRemoveFile = () => {
     setUploadedFile(null);
     setPreparedBackground(null);
+    setExistingPlanUrl(null);
+    setExistingPlanFileName(null);
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -171,7 +192,9 @@ export function ScopePage() {
       return;
     }
 
-    if (!uploadedFile) {
+    // In edit mode, allow submission if we have an existing plan or new upload
+    const hasPlan = uploadedFile || existingPlanUrl;
+    if (!hasPlan) {
       setError('Please upload a plan file');
       return;
     }
@@ -180,26 +203,16 @@ export function ScopePage() {
     setError(null);
 
     try {
-      // Create the project in Firestore
-      const project = await createNewProject(
-        formData.name,
-        formData.scopeDefinition,
-        user.uid
-      );
-
       // Build estimate config with all project details
       const estimateConfig: EstimateConfig = {
         // Project details from scope page
         projectName: formData.name,
-        location: formData.location, // location = address
+        location: formData.location,
         projectType: formData.type,
         approximateSize: formData.size,
         useUnionLabor: formData.useUnionLabor,
         zipCodeOverride: formData.zipCode,
-        
-        // Scope definition
         scopeText: formData.scopeDefinition,
-        
         // Estimate configuration
         overheadPercent,
         profitPercent,
@@ -208,25 +221,84 @@ export function ScopePage() {
         startDate,
       };
 
-      // Save the scope config to Firestore for persistence
-      await saveScopeConfig(project.id, user.uid, estimateConfig);
+      let finalProjectId = projectId;
+      let planImageUrl = existingPlanUrl;
+      let planImageFileName = existingPlanFileName;
+
+      // Upload new plan image if provided
+      if (uploadedFile && finalProjectId) {
+        const planImage = await uploadPlanImage(finalProjectId, uploadedFile, user.uid);
+        planImageUrl = planImage.url;
+        planImageFileName = planImage.fileName;
+      }
+
+      if (isEditMode && projectId) {
+        // Update existing project
+        await updateProjectScopeAction(projectId, {
+          name: formData.name,
+          description: formData.scopeDefinition,
+          location: formData.location,
+          projectType: formData.type,
+          size: formData.size,
+          zipCode: formData.zipCode,
+          useUnionLabor: formData.useUnionLabor,
+          estimateConfig,
+          planImageUrl: planImageUrl || undefined,
+          planImageFileName: planImageFileName || undefined,
+        }, user.uid);
+
+        // Also save to scope config for persistence
+        await saveScopeConfig(projectId, user.uid, estimateConfig);
+      } else {
+        // Create new project with all scope data
+        const project = await createNewProject(
+          formData.name,
+          formData.scopeDefinition,
+          user.uid,
+          {
+            location: formData.location,
+            projectType: formData.type,
+            size: formData.size,
+            zipCode: formData.zipCode,
+            useUnionLabor: formData.useUnionLabor,
+            estimateConfig,
+          }
+        );
+        finalProjectId = project.id;
+
+        // Upload plan image for new project
+        if (uploadedFile) {
+          const planImage = await uploadPlanImage(finalProjectId, uploadedFile, user.uid);
+          planImageUrl = planImage.url;
+          planImageFileName = planImage.fileName;
+
+          // Update project with plan image URL
+          await updateProjectScopeAction(finalProjectId, {
+            planImageUrl,
+            planImageFileName,
+          }, user.uid);
+        }
+
+        // Save to scope config for persistence
+        await saveScopeConfig(finalProjectId, user.uid, estimateConfig);
+      }
 
       // Navigate to Annotate page with the background image and estimate config
-      navigate(`/project/${project.id}/annotate`, { 
-        state: { 
+      navigate(`/project/${finalProjectId}/annotate`, {
+        state: {
           backgroundImage: preparedBackground,
           estimateConfig,
-        } 
+        }
       });
     } catch (err) {
-      console.error('Failed to create project:', err);
-      setError(err instanceof Error ? err.message : 'Failed to create project');
+      console.error('Failed to create/update project:', err);
+      setError(err instanceof Error ? err.message : 'Failed to save project');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const isFormValid = formData.name.trim() && formData.location.trim() && uploadedFile;
+  const isFormValid = formData.name.trim() && formData.location.trim() && (uploadedFile || existingPlanUrl);
 
   // Get actual completion state from hook
   const { completedSteps } = useStepCompletion(projectId);
@@ -327,10 +399,15 @@ export function ScopePage() {
                   <label className="block font-body text-body font-medium text-truecost-text-primary">
                     Upload Plans *
                   </label>
-                  {!uploadedFile ? (
+                  {!uploadedFile && !existingPlanUrl ? (
                     <FileUploadZone onFileSelect={handleFileSelect} />
                   ) : (
-                    <FilePreview file={uploadedFile} onRemove={handleRemoveFile} />
+                    <FilePreview
+                      file={uploadedFile}
+                      existingUrl={existingPlanUrl}
+                      existingFileName={existingPlanFileName}
+                      onRemove={handleRemoveFile}
+                    />
                   )}
                 </div>
 
@@ -463,7 +540,7 @@ export function ScopePage() {
                     fullWidth
                     disabled={!isFormValid || isSubmitting || loading}
                   >
-                    {isSubmitting ? 'Creating Project...' : 'Continue to Annotate'}
+                    {isSubmitting ? 'Saving...' : isEditMode ? 'Save & Continue to Annotate' : 'Continue to Annotate'}
                   </Button>
                 </div>
               </form>

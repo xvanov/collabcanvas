@@ -10,6 +10,7 @@ import { ChatMessage } from './ChatMessage';
 import { useCanvasStore } from '../../store/canvasStore';
 import { useScopeStore } from '../../store/scopeStore';
 import { useEstimationStore } from '../../store/estimationStore';
+import { useProjectStore } from '../../store/projectStore';
 import type { EstimateConfig } from '../../pages/project/ScopePage';
 import { useAuth } from '../../hooks/useAuth';
 import { processDialogueRequest } from '../../services/aiDialogueService';
@@ -113,6 +114,11 @@ export function ChatPanel({
   // Get estimation session for scope text
   const { session: estimationSession, loadSession: loadEstimationSession } = useEstimationStore();
 
+  // Get project data for scope text fallback (description field)
+  const loadProject = useProjectStore((state) => state.loadProject);
+  const currentProject = useProjectStore((state) => state.currentProject);
+  const [projectDescription, setProjectDescription] = useState<string>('');
+
   // Load estimation session for scope text
   useEffect(() => {
     if (projectId) {
@@ -148,6 +154,26 @@ export function ChatPanel({
       unsubscribe();
     };
   }, [projectId, user?.uid]);
+
+  // Load project data to get description as scope text fallback
+  useEffect(() => {
+    if (projectId) {
+      loadProject(projectId).then((project) => {
+        if (project?.description) {
+          setProjectDescription(project.description);
+        }
+      }).catch((err) => {
+        console.error('Failed to load project for scope text:', err);
+      });
+    }
+  }, [projectId, loadProject]);
+
+  // Also update from currentProject if it changes
+  useEffect(() => {
+    if (currentProject?.id === projectId && currentProject?.description) {
+      setProjectDescription(currentProject.description);
+    }
+  }, [currentProject, projectId]);
 
   // Use refs to ensure single instance per component mount
   const materialAIRef = useRef<MaterialAIService | null>(null);
@@ -311,7 +337,7 @@ export function ChatPanel({
       return;
     }
 
-    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || '';
+    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || projectDescription || '';
     let comprehensiveScopeText = baseScopeText;
     if (Object.keys(clarificationExtractedData).length > 0) {
       comprehensiveScopeText += '\n\n--- Clarification Details ---\n';
@@ -387,7 +413,7 @@ export function ChatPanel({
       return;
     }
 
-    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || '';
+    const baseScopeText = estimateConfig?.scopeText || estimationSession?.scopeText || projectDescription || '';
     let comprehensiveScopeText = baseScopeText;
     if (Object.keys(clarificationExtractedData).length > 0) {
       comprehensiveScopeText += '\n\n--- Clarification Details ---\n';
@@ -483,8 +509,8 @@ export function ChatPanel({
       comprehensiveScopeText += '\n\n';
     }
     
-    // Add scope definition text
-    const scopeText = estimateConfig?.scopeText || estimationSession?.scopeText || '';
+    // Add scope definition text (with projectDescription as fallback)
+    const scopeText = estimateConfig?.scopeText || estimationSession?.scopeText || projectDescription || '';
     if (scopeText) {
       comprehensiveScopeText += '--- SCOPE DEFINITION ---\n';
       comprehensiveScopeText += scopeText;
@@ -679,7 +705,7 @@ export function ChatPanel({
             layerColor = getColorForItemType(itemType);
             await hookCreateLayer(layerName, layerId);
             await new Promise((resolve) => setTimeout(resolve, 300));
-            try { await hookUpdateLayer(layerId, { color: layerColor, visible: true, locked: false, order: hookLayers.length + layerMap.size }); } catch {}
+            try { await hookUpdateLayer(layerId, { color: layerColor, visible: true, locked: false, order: hookLayers.length + layerMap.size }); } catch { /* Layer update failure is non-critical, continue with defaults */ }
             layerMap.set(itemType, { id: layerId, name: layerName, color: layerColor });
           } catch {
             const defaultLayer = hookLayers.find((l) => l.id === 'default-layer') || hookLayers[0];

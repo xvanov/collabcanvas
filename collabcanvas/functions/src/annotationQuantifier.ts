@@ -508,7 +508,7 @@ export function buildSpaceModelFromQuantities(quantities: ComputedQuantities): R
   }));
 
   // Build walls array
-  const walls = quantities.walls.map((wall, index) => ({
+  const walls = quantities.walls.map((wall, _index) => ({
     id: wall.id,
     length: quantities.scaleUnit === 'feet' ? wall.lengthReal :
             quantities.scaleUnit === 'meters' ? wall.lengthReal * 3.281 : // convert m to ft

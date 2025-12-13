@@ -121,6 +121,9 @@ function getDefaultState(): CanvasState {
     billOfMaterials: null,
     userMaterialPreferences: null,
     isAccumulatingBOM: false,
+    // Viewport State (persisted across navigation)
+    viewportState: { x: 0, y: 0, scale: 1 },
+    setViewportState: () => {},
     // Methods - these won't be called when projectId is undefined
     createShape: () => {},
     updateShapePosition: () => {},
@@ -1096,6 +1099,11 @@ function createProjectCanvasStore(projectId: string): StoreApi<CanvasState> {
         set({ userMaterialPreferences: preferences }),
       setIsAccumulatingBOM: (isAccumulating: boolean) =>
         set({ isAccumulatingBOM: isAccumulating }),
+
+      // Viewport State (persisted across navigation)
+      viewportState: { x: 0, y: 0, scale: 1 },
+      setViewportState: (viewportState: { x: number; y: number; scale: number }) =>
+        set({ viewportState }),
     };
   }) as StoreApi<CanvasState>;
 

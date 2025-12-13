@@ -49,7 +49,8 @@ export function ProjectCard({ project }: ProjectCardProps) {
   const canShare = user ? canShareProject(project, user.uid) : false;
 
   const handleProjectClick = () => {
-    navigate(`/project/${project.id}/annotate`);
+    // Navigate to scope page for the project
+    navigate(`/project/${project.id}/scope`);
   };
 
   const handleDelete = async (e: React.MouseEvent) => {

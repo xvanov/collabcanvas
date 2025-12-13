@@ -183,8 +183,8 @@ export function CanvasNavbar({
   ];
 
   const menuButtonClass = "flex items-center gap-1.5 px-2.5 py-1.5 text-sm font-medium text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-glass-bg/50 rounded-md transition-colors";
-  const dropdownClass = "absolute top-full left-0 mt-1 w-48 bg-truecost-bg-secondary rounded-lg shadow-xl border border-truecost-glass-border z-50";
-  const dropdownItemClass = "flex items-center gap-2 w-full px-3 py-2 text-sm text-truecost-text-secondary hover:text-truecost-text-primary hover:bg-truecost-glass-bg/50 disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
+  const dropdownClass = "absolute top-full left-0 mt-1 w-48 bg-truecost-bg-surface border border-truecost-glass-border rounded-lg shadow-xl backdrop-blur-md z-50";
+  const dropdownItemClass = "flex items-center gap-2 w-full px-3 py-2 text-sm text-truecost-text-primary hover:text-truecost-cyan hover:bg-truecost-glass-bg disabled:opacity-40 disabled:cursor-not-allowed transition-colors";
 
   return (
     <>
