@@ -92,8 +92,11 @@ export function AnnotatePage() {
       // Ensure user is set in project store before saving background image
       const projectStore = getProjectCanvasStoreApi(projectId);
       projectStore.getState().setCurrentUser(user);
-      // Now save with Firestore sync enabled (skipFirestoreSync: false)
-      setBackgroundImage(pendingBackgroundImage, false);
+      // Only sync to Firestore if we have valid dimensions
+      // If dimensions are 0, skip sync to avoid saving broken data
+      // The Canvas component will use the actual loaded image dimensions
+      const hasValidDimensions = pendingBackgroundImage.width > 0 && pendingBackgroundImage.height > 0;
+      setBackgroundImage(pendingBackgroundImage, !hasValidDimensions);
       setLoadedFromProject(true); // Mark as loaded to prevent duplicate loading
     }
   }, [projectId, pendingBackgroundImage, setBackgroundImage, user]);
@@ -122,10 +125,10 @@ export function AnnotatePage() {
         const projectStore = getProjectCanvasStoreApi(projectId);
         projectStore.getState().setCurrentUser(user);
 
-        // Set background image and sync to Firestore board state
-        // This ensures the board state has the background, preventing it from being cleared
-        // by the subscription sync logic that clears images not in Firestore
-        setBackgroundImage(bgImage, false);
+        // Set background image but skip Firestore sync since we don't have valid dimensions
+        // The Canvas component will use the actual loaded image dimensions for display
+        // This prevents overwriting valid dimensions in Firestore with 0x0
+        setBackgroundImage(bgImage, true);
         setLoadedFromProject(true);
       }
     }).catch((err) => {
