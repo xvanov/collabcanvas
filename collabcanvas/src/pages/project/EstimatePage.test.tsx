@@ -153,8 +153,14 @@ describe('EstimatePage', () => {
     });
   });
 
-  it('shows Materials tab content by default', async () => {
+  it('shows Materials tab content when Materials tab is clicked', async () => {
     renderWithRouter();
+
+    // Click on Materials tab
+    await waitFor(() => {
+      const materialsTab = screen.getByRole('button', { name: /materials/i });
+      fireEvent.click(materialsTab);
+    });
 
     await waitFor(() => {
       expect(screen.getByTestId('money-view-materials')).toBeInTheDocument();

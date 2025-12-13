@@ -168,7 +168,7 @@ export function MoneyView({ mode = 'full' }: MoneyViewProps) {
   // Render labor-only view for mode="labor"
   if (mode === 'labor') {
     return (
-      <div className="flex h-full bg-gray-50">
+      <div className="flex h-full bg-gray-50" data-testid="money-view-labor">
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header */}
           <div className="bg-white border-b border-gray-200 px-6 py-4">
@@ -212,7 +212,7 @@ export function MoneyView({ mode = 'full' }: MoneyViewProps) {
   // Render materials-focused view for mode="materials"
   if (mode === 'materials') {
     return (
-      <div className="flex h-full bg-gray-50">
+      <div className="flex h-full bg-gray-50" data-testid="money-view-materials">
         <div className="flex-1 flex flex-col overflow-hidden">
           {/* Header with View Toggle */}
           <div className="bg-white border-b border-gray-200 px-6 py-4">

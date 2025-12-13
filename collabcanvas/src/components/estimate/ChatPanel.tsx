@@ -614,7 +614,7 @@ export function ChatPanel({
             layerColor = getColorForItemType(itemType);
             await hookCreateLayer(layerName, layerId);
             await new Promise((resolve) => setTimeout(resolve, 300));
-            try { await hookUpdateLayer(layerId, { color: layerColor, visible: true, locked: false, order: hookLayers.length + layerMap.size }); } catch {}
+            try { await hookUpdateLayer(layerId, { color: layerColor, visible: true, locked: false, order: hookLayers.length + layerMap.size }); } catch { /* Layer update failure is non-critical, continue with defaults */ }
             layerMap.set(itemType, { id: layerId, name: layerName, color: layerColor });
           } catch {
             const defaultLayer = hookLayers.find((l) => l.id === 'default-layer') || hookLayers[0];

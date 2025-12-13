@@ -47,7 +47,7 @@ interface ProjectContext {
  * Pipeline stages for the estimate generation pipeline
  * Note: Clarification runs separately during Annotate phase (Epic 3)
  */
-const PIPELINE_STAGES = [
+const _PIPELINE_STAGES = [
   'cad_analysis',
   'location',
   'scope',
@@ -56,7 +56,7 @@ const PIPELINE_STAGES = [
   'final',
 ] as const;
 
-type PipelineStageId = typeof PIPELINE_STAGES[number];
+type PipelineStageId = typeof _PIPELINE_STAGES[number];
 
 interface PipelineStatus {
   status: 'idle' | 'running' | 'complete' | 'error';
